@@ -68,7 +68,7 @@ final class StockPageTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertCount(2, $client->getCrawler()->filter('table.stock-table tbody tr'));
-        self::assertStringContainsString('Valeur du stock : 117,50 € HT', $this->text($client));
+        self::assertStringContainsString('Valeur totale du stock (hors filtres catégorie et recherche) : 117,50 € HT', $this->text($client));
         self::assertStringContainsString('Gants vrac', $this->text($client));
         self::assertStringContainsString('Casque série', $this->text($client));
     }
@@ -83,7 +83,7 @@ final class StockPageTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertCount(1, $client->getCrawler()->filter('table.stock-table tbody tr'));
-        self::assertStringContainsString('Valeur du stock : 37,50 € HT', $this->text($client));
+        self::assertStringContainsString('Valeur totale du stock du lieu (hors filtres catégorie et recherche) : 37,50 € HT', $this->text($client));
         self::assertStringNotContainsString('Casque série', $client->getCrawler()->filter('table.stock-table')->text());
     }
 
@@ -100,7 +100,7 @@ final class StockPageTest extends WebTestCase
 
         self::assertCount(1, $client->getCrawler()->filter('table.stock-table tbody tr'));
         self::assertStringNotContainsString('Casque série', $client->getCrawler()->filter('table.stock-table')->text());
-        self::assertStringContainsString('Valeur du stock : 37,50 € HT', $this->text($client));
+        self::assertStringContainsString('Valeur totale du stock (hors filtres catégorie et recherche) : 37,50 € HT', $this->text($client));
     }
 
     public function testStockValueIgnoresTariffChange(): void
@@ -118,7 +118,7 @@ final class StockPageTest extends WebTestCase
 
         $client->request('GET', '/stock');
 
-        self::assertStringContainsString('Valeur du stock : 37,50 € HT', $this->text($client));
+        self::assertStringContainsString('Valeur totale du stock (hors filtres catégorie et recherche) : 37,50 € HT', $this->text($client));
     }
 
     public function testSearchByEanAndReference(): void
