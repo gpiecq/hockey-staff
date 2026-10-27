@@ -13,6 +13,7 @@ use App\Entity\Product;
 use App\Entity\SeasonPrice;
 use App\Entity\Variant;
 use App\Enum\ImportRunStatus;
+use App\Enum\TrackingMode;
 use App\Import\Exception\ImportNotApplicableException;
 use App\Import\Exception\StaleImportException;
 use App\Repository\CategoryRepository;
@@ -146,8 +147,17 @@ final class CatalogueImportApplier
             return $brands[$normalized] ??= $this->findOrCreateBrand($normalized);
         };
         $categoriesByPath = [];
-        $categoryFor = function (array $path) use (&$categoriesByPath): Category {
-            return $categoriesByPath[implode(' › ', $path)] ??= $this->categories->findOrCreatePath(array_values($path));
+        // Jamais de création : un chemin vide ou devenu introuvable (catégorie supprimée depuis l'analyse) donne null.
+        $categoryFor = function (array $path) use (&$categoriesByPath): ?Category {
+            if ([] === $path) {
+                return null;
+            }
+            $key = implode(' › ', $path);
+            if (!\array_key_exists($key, $categoriesByPath)) {
+                $categoriesByPath[$key] = $this->categories->findByPath(array_values($path));
+            }
+
+            return $categoriesByPath[$key];
         };
 
         $operations = 0;
@@ -168,7 +178,7 @@ final class CatalogueImportApplier
                 ->setDesignation($new['designation'])
                 ->setBrand($brandFor($new['brand']))
                 ->setCategory($category)
-                ->setTrackingMode($this->trackingModes->defaultFor($category));
+                ->setTrackingMode(null === $category ? TrackingMode::Quantity : $this->trackingModes->defaultFor($category));
             $this->em->persist($product);
             $createdProducts[$new['reference']] = $product;
             $tick();
@@ -210,7 +220,10 @@ final class CatalogueImportApplier
                     $product->setBrand($brandFor($changes['brand']['to']));
                 }
                 if (isset($changes['category']) && null !== $changes['category']['to']) {
-                    $product->setCategory($categoryFor(explode(' › ', $changes['category']['to'])));
+                    $category = $categoryFor(explode(' › ', $changes['category']['to']));
+                    if (null !== $category) {
+                        $product->setCategory($category);
+                    }
                 }
             }
             foreach ($changes as $field => $change) {

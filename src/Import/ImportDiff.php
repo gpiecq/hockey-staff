@@ -11,7 +11,7 @@ namespace App\Import;
  * Formes des entrées (les prix sont en centimes TTC, null = absent) :
  *
  * - newProducts : un par référence inconnue du fournisseur, champs issus de la première ligne acceptée
- *   {line, reference, designation, brand (nom normalisé), categoryPath (list<string>, 1 à 3 niveaux)}
+ *   {line, reference, designation, brand (nom normalisé), categoryPath (list<string>, 1 à 3 niveaux ; [] si catégorie vide ou inconnue : produit sans catégorie)}
  * - newVariants : une par ligne acceptée sans variante correspondante ; productId = produit existant,
  *   null si le produit est dans newProducts (même reference)
  *   {line, reference, productId, ean, size, fit, side, width, color, clubPriceTtc, publicPriceTtc,
@@ -75,6 +75,12 @@ final readonly class ImportDiff
             'rejected' => \count($this->rejectedLines),
             'anomalies' => \count($this->anomalies),
         ];
+    }
+
+    /** Nombre de nouveaux produits créés sans catégorie (catégorie vide ou inconnue dans le fichier). */
+    public function uncategorizedNewProductCount(): int
+    {
+        return \count(array_filter($this->newProducts, static fn (array $p): bool => [] === $p['categoryPath']));
     }
 
     /** Vrai s'il y a quelque chose à appliquer ; les anomalies et lignes rejetées seules ne comptent pas. */

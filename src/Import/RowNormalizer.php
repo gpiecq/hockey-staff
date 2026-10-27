@@ -34,7 +34,6 @@ final class RowNormalizer
         foreach ([
             'Référence' => '' === $reference,
             'Désignation' => '' === $designation,
-            'Catégorie' => null === $category1,
             'Marque' => '' === $brand,
         ] as $label => $isMissing) {
             if ($isMissing) {
@@ -67,7 +66,7 @@ final class RowNormalizer
             $add(ImportAnomalyCode::ColorAliased, \sprintf('Couleur « %s » remplacée par « %s ».', $original, $color));
         }
 
-        // Chemin = niveaux non vides ; vide si la catégorie racine manque (ligne rejetée de toute façon).
+        // Chemin = niveaux non vides ; vide si la catégorie racine manque (catégorie facultative : produit sans catégorie).
         $path = [];
         $levels = [];
         if (null !== $category1) {

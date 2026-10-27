@@ -219,7 +219,8 @@ final class RowNormalizerTest extends TestCase
     {
         $row = $this->normalize(['reference' => '  ', 'designation' => null, 'category1' => '', 'brand' => null]);
 
-        self::assertSame(['MissingRequired', 'MissingRequired', 'MissingRequired', 'MissingRequired'], $this->codes($row));
+        // La catégorie n'est plus obligatoire : seuls référence, désignation et marque le sont.
+        self::assertSame(['MissingRequired', 'MissingRequired', 'MissingRequired'], $this->codes($row));
         self::assertTrue($row->isRejected());
         self::assertSame('', $row->reference);
         self::assertSame([], $row->categoryPath);
@@ -251,13 +252,13 @@ final class RowNormalizerTest extends TestCase
         self::assertFalse($row->isRejected());
     }
 
-    public function testMissingRootCategoryWithDeeperLevelsIsRejectedAsMissingRequired(): void
+    public function testMissingRootCategoryWithDeeperLevelsGivesEmptyPathWithoutRejection(): void
     {
         $row = $this->normalize(['category1' => null, 'category2' => 'B', 'category3' => 'C']);
 
         self::assertSame([], $row->categoryPath);
-        self::assertSame(['MissingRequired'], $this->codes($row));
-        self::assertTrue($row->isRejected());
+        self::assertSame([], $this->codes($row));
+        self::assertFalse($row->isRejected());
     }
 
     /** @param array<string, ?string> $override */

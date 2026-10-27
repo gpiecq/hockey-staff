@@ -43,8 +43,8 @@ final readonly class NormalizedRow
     }
 
     /**
-     * Ligne rejetée : un champ obligatoire (référence, désignation, catégorie, marque) est vide.
-     * Les champs correspondants valent alors '' (ou [] pour le chemin de catégorie) : l'analyse ne doit pas
+     * Ligne rejetée : un champ obligatoire (référence, désignation, marque) est vide.
+     * Les champs correspondants valent alors '' : l'analyse ne doit pas
      * traiter la ligne, seulement la reporter.
      */
     public function isRejected(): bool

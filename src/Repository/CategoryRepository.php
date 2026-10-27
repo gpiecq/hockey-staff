@@ -66,6 +66,36 @@ class CategoryRepository extends ServiceEntityRepository
     }
 
     /**
+     * Retrouve (sans jamais rien créer) la catégorie désignée par un chemin, racine d'abord. Niveaux normalisés,
+     * niveaux vides de fin ignorés ; null si le chemin est vide ou si un niveau n'existe pas.
+     *
+     * @param list<?string> $names
+     */
+    public function findByPath(array $names): ?Category
+    {
+        $levels = [];
+        foreach ($names as $name) {
+            $normalized = null === $name ? '' : NameNormalizer::normalize($name);
+            if ('' !== $normalized) {
+                $levels[] = $normalized;
+            }
+        }
+        if ([] === $levels) {
+            return null;
+        }
+
+        $category = null;
+        foreach ($levels as $name) {
+            $category = $this->findOneBy(['parent' => $category, 'name' => $name]);
+            if (null === $category) {
+                return null;
+            }
+        }
+
+        return $category;
+    }
+
+    /**
      * Catégories pouvant recevoir une sous-catégorie (niveaux 1 et 2), avec leurs parents pour afficher le chemin.
      */
     public function createParentCandidatesQueryBuilder(): QueryBuilder

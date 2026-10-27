@@ -43,6 +43,8 @@
         <h2>{{ run.status.value == 'applied' ? 'Résumé de l\'import appliqué' : 'Résumé de l\'analyse' }}</h2>
         <ul class="summary">
             <li>{{ summary.newProducts }} nouveaux produits</li>
+            {% set uncategorized = diff.uncategorizedNewProductCount %}
+            {% if uncategorized > 0 %}<li>{{ uncategorized }} {{ uncategorized > 1 ? 'produits sans catégorie' : 'produit sans catégorie' }}</li>{% endif %}
             <li>{{ summary.newVariants }} nouvelles variantes</li>
             <li>{{ summary.changedVariants }} variantes modifiées</li>
             <li>{{ summary.priceChanges }} changements de prix</li>
@@ -79,7 +81,7 @@
                     <thead><tr><th class="num">Ligne</th><th>Référence</th><th>Désignation</th><th>Marque</th><th>Catégorie</th></tr></thead>
                     <tbody>
                         {% for p in diff.newProducts|slice(0, limit) %}
-                            <tr>{{ _self.line(p.line) }}<td data-label="Référence">{{ p.reference }}</td><td data-label="Désignation">{{ p.designation }}</td><td data-label="Marque">{{ p.brand }}</td><td data-label="Catégorie">{{ p.categoryPath|join(' › ') }}</td></tr>
+                            <tr>{{ _self.line(p.line) }}<td data-label="Référence">{{ p.reference }}</td><td data-label="Désignation">{{ p.designation }}</td><td data-label="Marque">{{ p.brand }}</td><td data-label="Catégorie">{{ p.categoryPath|join(' › ') ?: '—' }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

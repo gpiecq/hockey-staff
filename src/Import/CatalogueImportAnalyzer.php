@@ -48,13 +48,28 @@ final class CatalogueImportAnalyzer
         $mapping = $this->mappings->findOneBy(['supplier' => $supplier])
             ?? throw new \DomainException('Aucun mapping d\'import n\'est configuré pour ce fournisseur.');
 
-        $rows = [];
-        foreach ($this->reader->read($this->resolvePath($run), $mapping) as $line => $raw) {
-            $rows[] = $this->normalizer->normalize($line, $raw, $mapping);
+        // Précharge les catégories (une requête) : sert à résoudre les chemins du fichier et évite toute requête
+        // lors de Category::getPath().
+        $knownPaths = [];
+        foreach ($this->em->getRepository(Category::class)->findAll() as $category) {
+            $knownPaths[$category->getPath()] = true;
         }
 
-        // Précharge les catégories pour que Category::getPath() ne déclenche aucune requête.
-        $this->em->getRepository(Category::class)->findAll();
+        $rows = [];
+        foreach ($this->reader->read($this->resolvePath($run), $mapping) as $line => $raw) {
+            $row = $this->normalizer->normalize($line, $raw, $mapping);
+            // Une catégorie introuvable n'est jamais créée : ligne traitée avec un chemin vide, simple avertissement.
+            if ([] !== $row->categoryPath && !isset($knownPaths[implode(' › ', $row->categoryPath)])) {
+                $row = new NormalizedRow(
+                    $row->line, $row->reference, $row->ean, $row->designation, $row->size, $row->fit, $row->side,
+                    $row->width, $row->color, $row->clubPriceTtc, $row->publicPriceTtc, [], $row->brand,
+                    [...$row->anomalies, new ImportAnomaly($row->line, ImportAnomalyCode::CategoryUnknown, \sprintf(
+                        'Catégorie « %s » inconnue : produit importé sans catégorie.', implode(' › ', $row->categoryPath),
+                    ))],
+                );
+            }
+            $rows[] = $row;
+        }
 
         /** @var list<Product> $products */
         $products = $this->em->createQueryBuilder()
@@ -312,13 +327,16 @@ final class CatalogueImportAnalyzer
         $pairs = [
             'designation' => [$product?->getDesignation(), $productRow->designation],
             'brand' => [$product?->getBrand()?->getName(), $productRow->brand],
-            'category' => [$product?->getCategory()?->getPath(), implode(' › ', $productRow->categoryPath)],
             'size' => [$variant->getSize(), $row->size],
             'fit' => [$variant->getFit(), $row->fit],
             'side' => [$variant->getSide(), $row->side],
             'width' => [$variant->getWidth(), $row->width],
             'color' => [$variant->getColor(), $row->color],
         ];
+        // Catégorie vide ou inconnue : la catégorie existante est conservée (aucun changement).
+        if ([] !== $productRow->categoryPath) {
+            $pairs['category'] = [$product?->getCategory()?->getPath(), implode(' › ', $productRow->categoryPath)];
+        }
         // Gencode renseigné pour la première fois sur une variante qui n'en avait pas.
         if (null === $variant->getEan() && null !== $row->ean) {
             $pairs['ean'] = [null, $row->ean];

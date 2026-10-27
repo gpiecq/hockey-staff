@@ -42,6 +42,12 @@ final class CatalogueImportApplierTest extends KernelTestCase
         [$this->em, $this->analyzer, $this->applier] = [$em, $analyzer, $applier];
         $this->supplier = ImportFixtures::supplierWithMapping($this->em);
         $this->season = ImportFixtures::season($this->em);
+        // L'import ne crée jamais de catégorie : celles que les lignes de ces tests référencent doivent exister.
+        $categories = $this->em->getRepository(Category::class);
+        \assert($categories instanceof \App\Repository\CategoryRepository);
+        $categories->findOrCreatePath(['EQUIPEMENT', 'JOUEUR']);
+        $categories->findOrCreatePath(['EQUIPEMENT', 'ARBITRE']);
+        $categories->findOrCreatePath(['ACCESSOIRES', 'RUBAN', 'TEXTILE']);
         $this->memoryLimit = (string) \ini_get('memory_limit');
     }
 
@@ -86,7 +92,7 @@ final class CatalogueImportApplierTest extends KernelTestCase
         return $this->em->getRepository(SeasonPrice::class)->findOneBy(['variant' => $variant, 'season' => $this->season]);
     }
 
-    public function testApplyCreatesProductsVariantsBrandsCategoriesAndPrices(): void
+    public function testApplyCreatesProductsVariantsBrandsAndPrices(): void
     {
         $run = $this->analyzedRun([
             self::row(['Taille' => 'SR L']),
@@ -211,7 +217,7 @@ final class CatalogueImportApplierTest extends KernelTestCase
         self::assertNull($this->em->getRepository(Product::class)->findOneBy(['supplier' => $this->supplier, 'reference' => 'R3']));
     }
 
-    public function testChangesAreAppliedWithProductLevelBrandAndCategoryCreated(): void
+    public function testChangesAreAppliedWithProductLevelBrandAndCategory(): void
     {
         $product = ImportFixtures::product($this->em, $this->supplier, 'R1', 'Ancien', 'Warrior', ['EQUIPEMENT', 'GARDIEN']);
         $variant = ImportFixtures::variant($this->em, $product, '688698508062', 'SR L', season: $this->season, club: 25000, public: 30000);
@@ -225,7 +231,6 @@ final class CatalogueImportApplierTest extends KernelTestCase
         self::assertSame('EQUIPEMENT › ARBITRE', $product->getCategory()?->getPath());
         self::assertSame('NOIR', $variant->getColor());
         self::assertNotNull($this->em->getRepository(Brand::class)->findOneBy(['name' => 'MARQUE NEUVE']));
-        self::assertNotNull($this->em->getRepository(Category::class)->findOneBy(['name' => 'ARBITRE']));
     }
 
     public function testEanSuppliedForAVariantWithoutOneIsSet(): void
@@ -294,8 +299,9 @@ final class CatalogueImportApplierTest extends KernelTestCase
         ]);
         $runId = $run->getId();
         $connection = $this->em->getConnection();
+        $categoriesBefore = $connection->fetchOne('SELECT COUNT(*) FROM category');
         $state = new \ArrayObject(['written' => 0]);
-        // Les flush de création des catégories atteignent la base d'abord ; on échoue au premier flush après lequel
+        // On échoue au premier flush après lequel
         // les variantes sont déjà écrites en base (dans la transaction).
         $this->em->getEventManager()->addEventListener(Events::postFlush, new class($state, $connection) {
             /** @param \ArrayObject<string, int> $state */
@@ -323,7 +329,7 @@ final class CatalogueImportApplierTest extends KernelTestCase
         }
 
         self::assertSame(3, $state['written'], 'Les variantes devaient déjà être en base au moment de l\'échec.');
-        self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM category'));
+        self::assertEquals($categoriesBefore, $connection->fetchOne('SELECT COUNT(*) FROM category'), 'L\'import ne crée aucune catégorie.');
         self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM product'));
         self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM variant'));
         self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM season_price'));

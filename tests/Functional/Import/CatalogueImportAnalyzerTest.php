@@ -33,6 +33,11 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
         [$this->em, $this->analyzer] = [$em, $analyzer];
         $this->supplier = ImportFixtures::supplierWithMapping($this->em);
         $this->season = ImportFixtures::season($this->em);
+        // L'import ne crée jamais de catégorie : celles que les lignes de ces tests référencent doivent exister.
+        $categories = $this->em->getRepository(\App\Entity\Category::class);
+        \assert($categories instanceof \App\Repository\CategoryRepository);
+        $categories->findOrCreatePath(['EQUIPEMENT', 'JOUEUR']);
+        $categories->findOrCreatePath(['EQUIPEMENT', 'GARDIEN']);
     }
 
     protected function tearDown(): void

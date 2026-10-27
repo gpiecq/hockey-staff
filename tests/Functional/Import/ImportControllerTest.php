@@ -229,6 +229,10 @@ final class ImportControllerTest extends WebTestCase
     public function testAnalyzedRunShowsSummaryAndSections(): void
     {
         $this->login();
+        // Catégorie connue : sinon l'avertissement « catégorie inconnue » (ligne 2) passerait avant l'EAN manquant.
+        $categories = $this->em()->getRepository(\App\Entity\Category::class);
+        \assert($categories instanceof \App\Repository\CategoryRepository);
+        $categories->findOrCreatePath(['EQUIPEMENT']);
         $rows = $this->goodRows();
         $rows[] = ['Référence interne' => 'R2', 'Gencode' => '', 'Désignation' => 'Casque', 'Taille' => 'M',
             'PU Public TTC' => '100', 'PU Club TTC' => '80', 'Catégorie' => 'EQUIPEMENT', 'Marque' => 'BAUER'];
@@ -249,6 +253,35 @@ final class ImportControllerTest extends WebTestCase
         self::assertStringContainsString('3', $crawler->filter('#anomalies td.num')->first()->text());
         self::assertSelectorExists('form[action$="/apply"]');
         self::assertSelectorExists('form[action$="/cancel"]');
+    }
+
+    public function testPreviewShowsUncategorizedCount(): void
+    {
+        $this->login();
+        $rows = array_merge($this->goodRows('R1', '688698508062'), $this->goodRows('R2', '688698508079'));
+        foreach ($rows as &$row) {
+            $row['Catégorie'] = null;
+        }
+        unset($row);
+        $run = $this->analyzedRun($rows);
+
+        $crawler = $this->client->request('GET', '/imports/'.$run->getId());
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('2 produits sans catégorie', $crawler->filter('main')->text());
+    }
+
+    public function testPreviewListsNewBrands(): void
+    {
+        $this->login();
+        $rows = $this->goodRows();
+        $rows[0]['Marque'] = 'NOUVELLE MARQUE';
+        $run = $this->analyzedRun($rows);
+
+        $crawler = $this->client->request('GET', '/imports/'.$run->getId());
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('NOUVELLE MARQUE', $crawler->filter('#nouveautes')->text());
     }
 
     public function testFailedRunShowsTheError(): void

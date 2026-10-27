@@ -152,4 +152,17 @@ final class CategoryRepositoryTest extends KernelTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->categories->findOrCreatePath(['A', null, 'C']);
     }
+
+    public function testFindByPathNormalizesAndNeverCreates(): void
+    {
+        $leaf = $this->categories->findOrCreatePath(['EQUIPEMENT', 'JOUEUR', 'PATIN']);
+        $before = $this->categories->count([]);
+
+        self::assertSame($leaf, $this->categories->findByPath([' equipement ', 'Joueur', 'patin ']));
+        self::assertSame($leaf, $this->categories->findByPath(['EQUIPEMENT', 'JOUEUR', 'PATIN', null, '']));
+        self::assertNull($this->categories->findByPath(['EQUIPEMENT', 'INCONNU']));
+        self::assertNull($this->categories->findByPath(['JOUEUR']));
+        self::assertNull($this->categories->findByPath([]));
+        self::assertSame($before, $this->categories->count([]));
+    }
 }
