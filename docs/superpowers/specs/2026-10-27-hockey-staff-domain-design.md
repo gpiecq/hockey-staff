@@ -226,6 +226,23 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
      coût par import ; généricité pour d'autres fournisseurs.
    - Pré-requis : fichier Bauer brut multi-onglets fourni par l'utilisateur ; référentiel de catégories maison
      stabilisé.
+8. **Codes-barres et étiquettes** — *ajouté le 2026-10-27 à la demande de l'utilisateur, position dans l'ordre des
+   lots à décider (après le lot 2, idéalement avant ou avec le lot 3).*
+   - **Génération de codes-barres** pour chaque variante : à partir de l'**EAN** fournisseur quand il existe
+     (symbologie EAN-13 / UPC-A), sinon de la **référence fournisseur** (+ attributs) ou du code interne `HS-`
+     (Code128 / QR). But : rendre les mouvements de stock au téléphone plus rapides et fiables (scan au lieu de
+     recherche).
+   - **Impression d'étiquettes** avec code-barres : depuis la fiche produit/variante, une sélection du catalogue ou
+     une entrée de stock (une étiquette par pièce reçue) ; PDF imprimable (planches A4 autocollantes et/ou
+     imprimante d'étiquettes), avec désignation, taille/attributs et code lisible.
+   - Englobe et remplace les « étiquettes internes PDF » prévues au lot 2 (le lot 2 peut s'en tenir au code
+     interne si le lot 8 vient après).
+   - Le scan doit retrouver la variante quel que soit le code imprimé (EAN, référence fournisseur, code interne),
+     y compris l'EAN avec zéro de tête.
+   - Questions ouvertes (à trancher en brainstorming) : formats d'étiquettes et matériel d'impression du club ;
+     unicité d'un code basé sur la référence fournisseur (une référence = plusieurs variantes) ; étiquette par
+     pièce sérialisée vs par variante ; réimpression en masse après un import ; génération côté serveur (lib PHP)
+     ou navigateur.
 
 Chaque lot passe par son propre plan d'implémentation.
 
