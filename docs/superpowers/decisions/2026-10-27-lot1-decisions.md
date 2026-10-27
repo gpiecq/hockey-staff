@@ -38,6 +38,15 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 | R20 | 9 | Un prix absent du fichier n'efface jamais un prix enregistré ; une variation de tarif n'est listée que si un montant change. | Spec : « tarif absent signalé », pas effacé. | Ajuster la sémantique du diff. |
 | R21 | 9 | L'analyse ne crée rien : marque et catégorie comparées en texte (nom, chemin « A › B › C ») ; création à l'application (Task 10). | Spec : analyse en lecture seule. | Aucun. |
 | R22 | 9 | Codes d'anomalie ajoutés `VariantDuplicateInFile`, `ProductFieldsConflict` (la 1ʳᵉ ligne l'emporte) et clé `ean` dans les changements de variante. | Aucun code du plan ne convenait ; rien de silencieux. | Renommer les codes. |
+| R23 | 9 | L'analyse rejette (avec anomalie) les lignes qui heurteraient un index unique à l'application : EAN tenu par une variante vivante d'un produit supprimé (`EanHeldByDeletedProduct`), changement d'attributs vers la clé d'une variante sœur (`VariantKeyCollision`) ; une ligne rejetée par la normalisation qui désigne une variante la garde présente. | Index uniques partiels sur le `deleted_at` de la variante elle-même ; pas de diff inapplicable. | Une requête de préchargement en plus. |
+| R24 | 10 | Collision entre la nouvelle clé d'une variante modifiée et celle d'une nouvelle variante du même fichier → ligne rejetée (`VariantKeyCollision`), détectée dans l'analyse (l'application ré-analyse). | Une seule garde pour l'aperçu et l'application. | Un contrôle en plus. |
+| R25 | 10 | Changer la catégorie d'un produit existant par import conserve son mode de suivi (déduit seulement à la création). | Décision de stock, à ne pas recalculer en silence. | Recalcul au changement. |
+| R26 | 11 | Upload : `.xlsx` uniquement, 20 Mo max ; lecteur limité aux formats XLSX/XLS. | Plan : « fichier non xlsx → erreur » ; défense en profondeur. | Autoriser `.xls` dans le formulaire. |
+| R27 | 11 | Échec d'application → message + redirection sans réutiliser l'EntityManager ; rafraîchissement auto d'un run en cours par `<meta refresh>`. | `wrapInTransaction` ferme l'EM sur erreur ; fonctionne sans JS. | Passer à un polling Turbo. |
+| R28 | 12 | Dev uniquement : `memory_limit` 512M (`20-app.dev.ini`). L'application synchrone du vrai fichier dépassait 128M en mode debug (profiler) ; rollback vérifié. | Prod hors debug : +10 Mo mesurés. | Passer l'application sur le worker. |
+| R29 | 12 | À la demande du propriétaire : listes, tableaux et cartes en pleine largeur sur grand écran ; formulaires et textes gardent une largeur lisible. | Remplace « largeur de lecture confortable » de la charte. | Remettre le `max-width`. |
+| R30 | revue finale | Sous-catégorie 1 vide mais sous-catégorie 2 remplie : chemin ramené à 2 niveaux avec anomalie non bloquante `CategoryLevelMissing`. | « Jamais silencieux », produit importé quand même. | Rejeter la ligne. |
+| R31 | revue finale | Valeur plus longue que sa colonne → ligne rejetée (`ValueTooLong`, colonne et maximum nommés). | Sinon l'application échoue sans ligne désignée. | Raccourcir au lieu de rejeter. |
 
 ## Points mineurs reportés (à trier en revue finale du lot)
 
