@@ -22,3 +22,41 @@ Logs : `LOGS_MANAGER_API_KEY` à définir dans `.env.local` pour l'envoi fluent-
 ```bash
 make qa           # php-cs-fixer + PHPStan (niveau 9) + PHPUnit
 ```
+
+## Import du catalogue
+
+### Premier compte admin
+
+```bash
+docker compose exec php bin/console app:user:create <email> <Prénom> <Nom> ROLE_ADMIN
+```
+
+Le mot de passe est demandé en saisie masquée. L'option `--password` est possible mais déconseillée : la valeur reste visible dans l'historique du shell.
+
+Rôles disponibles : `ROLE_ADMIN`, `ROLE_MANAGER`, `ROLE_STOCK`, `ROLE_VIEWER`.
+
+### Préparation
+
+1. Créer une saison dans Catalogue › Saisons et la rendre courante.
+2. Le fournisseur BAUER et son mapping de colonnes sont créés par une migration de données (rien à saisir).
+
+### Lancer un import (Manager et plus)
+
+1. Catalogue › Imports › Nouvel import : choisir le fournisseur et la saison, puis déposer un fichier `.xlsx` (20 Mo max).
+2. L'analyse tourne en asynchrone : le service `worker` (`messenger:consume async`) doit être démarré (`docker compose ps`). Sinon l'import reste à « Analyse en cours… ».
+3. Les fichiers déposés sont stockés dans `var/storage/imports` (volume partagé entre `php` et `worker`).
+4. L'aperçu liste les nouveautés, modifications, prix, désactivations et anomalies (avec le n° de ligne Excel). Aucune ligne n'est ignorée sans être signalée.
+5. Appliquer (transaction unique, tout ou rien) ou annuler.
+
+Si un autre import du même fournisseur a été appliqué depuis l'analyse, l'application est refusée : relancer l'analyse.
+
+Règles de mise à jour :
+
+- Une variante absente du fichier est désactivée, jamais supprimée.
+- Un prix absent du fichier n'efface pas le prix existant.
+
+**Ne jamais commiter les catalogues fournisseurs.**
+
+### Environnement de dev
+
+`frankenphp/conf.d/20-app.dev.ini` relève `memory_limit` à 512M (mode debug et profiler). En prod, les limites d'upload de `10-app.ini` (20M / 24M) nécessitent une reconstruction de l'image : `docker compose build`.
