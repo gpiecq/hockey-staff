@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Import;
 
+use App\Entity\ImportRun;
+use App\Entity\SupplierImportMapping;
 use App\Enum\ImportRunStatus;
 use App\Import\ImportDiff;
 use App\Import\Message\AnalyzeImportRun;
 use App\Import\MessageHandler\AnalyzeImportRunHandler;
 use App\Tests\Support\CatalogueSpreadsheetFactory;
 use App\Tests\Support\ImportFixtures;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Event\PostLoadEventArgs;
+use Doctrine\ORM\Events;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
@@ -112,6 +117,39 @@ final class AnalyzeImportRunHandlerTest extends KernelTestCase
 
         self::assertSame(ImportRunStatus::Failed, $run->getStatus());
         self::assertSame('déjà en échec', $run->getError());
+    }
+
+    public function testRunCancelledWhileAnalyzingStaysCancelled(): void
+    {
+        $supplier = ImportFixtures::supplierWithMapping($this->em);
+        $run = ImportFixtures::run($this->em, $supplier, ImportFixtures::season($this->em), $this->goodRows());
+        $runId = (int) $run->getId();
+        $this->em->clear();
+
+        // Simule une annulation concurrente pendant l'analyse : déclenchée au chargement du mapping par l'analyseur.
+        $connection = $this->em->getConnection();
+        $this->em->getEventManager()->addEventListener(Events::postLoad, new class($connection, $runId) {
+            private bool $done = false;
+
+            public function __construct(private readonly Connection $connection, private readonly int $runId)
+            {
+            }
+
+            public function postLoad(PostLoadEventArgs $args): void
+            {
+                if (!$this->done && $args->getObject() instanceof SupplierImportMapping) {
+                    $this->done = true;
+                    $this->connection->executeStatement("UPDATE import_run SET status = 'cancelled' WHERE id = ?", [$this->runId]);
+                }
+            }
+        });
+
+        ($this->handler)(new AnalyzeImportRun($runId));
+
+        $this->em->clear();
+        $reloaded = $this->em->find(ImportRun::class, $runId);
+        self::assertSame(ImportRunStatus::Cancelled, $reloaded?->getStatus());
+        self::assertNull($reloaded->getDiff());
     }
 
     public function testUnknownRunIsIgnored(): void

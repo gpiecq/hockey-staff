@@ -41,16 +41,32 @@ final class AnalyzeImportRunHandler
             return;
         }
 
+        $diff = null;
+        $failure = null;
         try {
-            $run->markAnalyzed($this->analyzer->analyze($run)->toArray());
+            $diff = $this->analyzer->analyze($run)->toArray();
         } catch (MissingColumnsException|\DomainException $e) {
-            $run->markFailed($e->getMessage());
+            $failure = $e->getMessage();
         } catch (\Throwable $e) {
             $this->logger->error('Analyse d\'import en échec.', ['importRunId' => $message->importRunId, 'exception' => $e]);
             if (!$this->em->isOpen()) {
                 return;
             }
-            $run->markFailed('Le fichier n\'a pas pu être analysé. Vérifiez qu\'il s\'agit d\'un tableur valide (xlsx) puis recommencez.');
+            $failure = 'Le fichier n\'a pas pu être analysé. Vérifiez qu\'il s\'agit d\'un tableur valide (xlsx) puis recommencez.';
+        }
+
+        // Le run a pu être annulé pendant l'analyse : on ne ressuscite pas un run qui n'est plus Pending.
+        $this->em->refresh($run);
+        if (ImportRunStatus::Pending !== $run->getStatus()) {
+            $this->logger->info('Analyse d\'import abandonnée : run modifié pendant l\'analyse.', ['importRunId' => $message->importRunId, 'status' => $run->getStatus()->value]);
+
+            return;
+        }
+
+        if (null !== $failure) {
+            $run->markFailed($failure);
+        } else {
+            $run->markAnalyzed($diff ?? []);
         }
 
         $this->em->flush();
