@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion{% endblock %}
+
+{% block shell %}
+    <main class="login">
+        <div class="login-card">
+            <img src="{{ asset('images/logo-corsaires.png') }}" alt="Corsaires de Nantes" width="120" height="120">
+            <h1>Corsaires · Matériel</h1>
+
+            {% if error %}
+                <div class="flash flash-error" role="alert">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="{{ path('app_login') }}" class="form">
+                <div class="field">
+                    <label for="username">Adresse e-mail</label>
+                    <input type="email" id="username" name="_username" value="{{ last_username }}" autocomplete="email" autocapitalize="none" required autofocus>
+                </div>
+                <div class="field">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="_password" autocomplete="current-password" required>
+                </div>
+                <label class="check">
+                    <input type="checkbox" name="_remember_me" value="on"> Rester connecté
+                </label>
+                <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
+                <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+            </form>
+        </div>
+    </main>
+{% endblock %}

@@ -1,0 +1,56 @@
+{#
+  Modèle du menu. Ajouter une rubrique = ajouter un bloc dans `groups` :
+    {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
+        {label: 'Produits', route: 'app_product_index', prefix: 'app_product', main: true},
+    ]}
+  - title : intitulé de groupe (null = sans intitulé) ; role : rôle requis pour voir le groupe
+  - route : route du lien ; prefix : préfixe de route pour l'entrée active (défaut = route)
+  - main : entrée affichée directement dans le menu bas mobile (les autres vont dans « Plus »)
+#}
+{% set groups = [
+    {title: null, role: 'ROLE_VIEWER', items: [
+        {label: 'Tableau de bord', route: 'app_dashboard', main: true},
+    ]},
+] %}
+{% set visible = groups|filter(group => is_granted(group.role)) %}
+{% set current_route = app.current_route|default('') %}
+
+{% macro entry(item, current_route) %}
+    {% set prefix = item.prefix|default(item.route) %}
+    <a href="{{ path(item.route) }}"{% if current_route starts with prefix %} aria-current="page"{% endif %}>{{ item.label }}</a>
+{% endmacro %}
+
+<nav class="sidebar" aria-label="Menu principal">
+    <a class="brand" href="{{ path('app_dashboard') }}">
+        <img src="{{ asset('images/logo-corsaires.png') }}" alt="" width="48" height="48">
+        <span><strong>Corsaires</strong> · Matériel</span>
+    </a>
+    <div class="sidebar-links">
+        {% for group in visible %}
+            {% if group.title %}<p class="nav-group">{{ group.title }}</p>{% endif %}
+            {% for item in group.items %}{{ _self.entry(item, current_route) }}{% endfor %}
+        {% endfor %}
+    </div>
+    <a class="logout" href="{{ path('app_logout') }}">Déconnexion</a>
+</nav>
+
+<header class="mobile-header">
+    <img src="{{ asset('images/logo-corsaires.png') }}" alt="" width="38" height="38">
+    <span class="mobile-brand"><strong>Corsaires</strong> Matériel</span>
+</header>
+
+<nav class="bottombar" aria-label="Menu mobile">
+    {% for group in visible %}
+        {% for item in group.items|filter(i => i.main|default(false)) %}{{ _self.entry(item, current_route) }}{% endfor %}
+    {% endfor %}
+    <details class="more">
+        <summary>Plus</summary>
+        <div class="more-panel">
+            {% for group in visible %}
+                {% if group.title %}<p class="nav-group">{{ group.title }}</p>{% endif %}
+                {% for item in group.items %}{{ _self.entry(item, current_route) }}{% endfor %}
+            {% endfor %}
+            <a href="{{ path('app_logout') }}">Déconnexion</a>
+        </div>
+    </details>
+</nav>
