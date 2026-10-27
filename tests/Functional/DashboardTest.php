@@ -154,4 +154,83 @@ final class DashboardTest extends WebTestCase
 
         self::assertSelectorTextContains('main', 'Aucun import');
     }
+
+    private function currentSeason(): Season
+    {
+        $season = new Season('2026-2027', new \DateTimeImmutable('2026-07-01'), new \DateTimeImmutable('2027-06-30'));
+        $season->setCurrent(true);
+        $this->em()->persist($season);
+        $this->em()->flush();
+
+        return $season;
+    }
+
+    public function testManagerSeesMissingPriceAndCategoryCards(): void
+    {
+        $em = $this->em();
+        $season = $this->currentSeason();
+        $supplier = ImportFixtures::supplierWithMapping($em);
+        foreach (['NOCAT1', 'NOCAT2'] as $ref) {
+            $product = ImportFixtures::product($em, $supplier, $ref, $ref)->setCategory(null);
+            ImportFixtures::variant($em, $product, null, 'M', season: $season, club: 1000);
+        }
+        $noPrice = ImportFixtures::product($em, $supplier, 'NOPRICE', 'NOPRICE');
+        ImportFixtures::variant($em, $noPrice, null, 'M');
+        $this->login(UserRole::Manager);
+
+        $crawler = $this->client->request('GET', '/');
+
+        self::assertSame('1', trim($crawler->filter('[data-stat="missing-price"] .stat-value')->text()));
+        self::assertSame('2', trim($crawler->filter('[data-stat="missing-category"] .stat-value')->text()));
+        self::assertStringContainsString('Produits sans tarif', $crawler->filter('[data-stat="missing-price"]')->text());
+        self::assertStringContainsString('Produits sans catégorie', $crawler->filter('[data-stat="missing-category"]')->text());
+
+        $crawler = $this->client->click($crawler->filter('[data-stat="missing-price"] a')->link());
+        self::assertStringContainsString('sansTarif=1', (string) $this->client->getRequest()->getRequestUri());
+        self::assertSelectorTextContains('table', 'NOPRICE');
+        self::assertSelectorTextNotContains('table', 'NOCAT1');
+
+        $crawler = $this->client->request('GET', '/');
+        $this->client->click($crawler->filter('[data-stat="missing-category"] a')->link());
+        self::assertStringContainsString('sansCategorie=1', (string) $this->client->getRequest()->getRequestUri());
+        self::assertSelectorTextContains('table', 'NOCAT1');
+        self::assertSelectorTextNotContains('table', 'NOPRICE');
+    }
+
+    public function testCardsShowNoneWhenZero(): void
+    {
+        $em = $this->em();
+        $season = $this->currentSeason();
+        $product = ImportFixtures::product($em, ImportFixtures::supplierWithMapping($em), 'OK1');
+        ImportFixtures::variant($em, $product, null, 'M', season: $season, club: 1000);
+        $this->login(UserRole::Manager);
+
+        $crawler = $this->client->request('GET', '/');
+
+        foreach (['missing-price', 'missing-category'] as $stat) {
+            self::assertSame('Aucun', trim($crawler->filter('[data-stat="'.$stat.'"] .stat-value')->text()));
+            self::assertCount(0, $crawler->filter('[data-stat="'.$stat.'"] a'));
+        }
+    }
+
+    public function testMissingPriceCardHiddenWithoutCurrentSeason(): void
+    {
+        $this->login(UserRole::Manager);
+
+        $crawler = $this->client->request('GET', '/');
+
+        self::assertCount(0, $crawler->filter('[data-stat="missing-price"]'));
+        self::assertCount(1, $crawler->filter('[data-stat="missing-category"]'));
+    }
+
+    public function testViewerDoesNotSeeCompletionCards(): void
+    {
+        $this->currentSeason();
+        $this->login(UserRole::Viewer);
+
+        $crawler = $this->client->request('GET', '/');
+
+        self::assertCount(0, $crawler->filter('[data-stat="missing-price"]'));
+        self::assertCount(0, $crawler->filter('[data-stat="missing-category"]'));
+    }
 }

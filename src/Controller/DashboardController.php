@@ -22,12 +22,15 @@ final class DashboardController extends AbstractController
         ImportRunRepository $imports,
     ): Response {
         $isManager = $this->isGranted('ROLE_MANAGER');
+        $season = $currentSeason->get();
 
         return $this->render('dashboard/index.html.twig', [
-            'season' => $currentSeason->get(),
+            'season' => $season,
             'productCount' => $products->count([]),
             'variantCount' => $variants->countActiveOfLiveProducts(),
             'canImport' => $isManager,
+            'missingCategoryCount' => $isManager ? $products->countWithoutCategory() : null,
+            'missingPriceCount' => $isManager && null !== $season ? $products->countMissingClubPrice($season) : null,
             'lastImport' => $isManager ? $imports->findLatestNotCancelled() : null,
         ]);
     }

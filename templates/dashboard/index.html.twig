@@ -19,6 +19,26 @@
             <span class="stat-label">Variantes actives</span>
             <span class="stat-value">{{ variantCount }}</span>
         </div>
+        {% if missingPriceCount is not null %}
+            <div class="stat" data-stat="missing-price">
+                <span class="stat-label">Produits sans tarif</span>
+                {% if missingPriceCount > 0 %}
+                    <a class="stat-value" href="{{ path('catalogue_product_index', {sansTarif: 1}) }}">{{ missingPriceCount }}</a>
+                {% else %}
+                    <span class="stat-value">Aucun</span>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if missingCategoryCount is not null %}
+            <div class="stat" data-stat="missing-category">
+                <span class="stat-label">Produits sans catégorie</span>
+                {% if missingCategoryCount > 0 %}
+                    <a class="stat-value" href="{{ path('catalogue_product_index', {sansCategorie: 1}) }}">{{ missingCategoryCount }}</a>
+                {% else %}
+                    <span class="stat-value">Aucun</span>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 
     {% if canImport %}
