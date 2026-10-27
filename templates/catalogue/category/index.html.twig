@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Catégories{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Catégories</h1>
+        {% if is_granted('CATALOGUE_EDIT') %}<a class="btn btn-primary" href="{{ path('catalogue_category_new') }}">Nouvelle catégorie</a>{% endif %}
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucune catégorie.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Catégorie</th><th>Niveau</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for category in page.items %}
+                    <tr>
+                        <td>{{ category.path }}</td>
+                        <td data-label="Niveau">{{ category.depth }}</td>
+                        <td>
+                            {% if is_granted('CATALOGUE_EDIT') %}
+                                <a href="{{ path('catalogue_category_edit', {id: category.id}) }}">Modifier</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'catégories'} %}
+{% endblock %}

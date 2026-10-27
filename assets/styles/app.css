@@ -127,3 +127,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
 .page-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem}
 .help{color:var(--muted);font-size:.875rem;margin:0}
 .actions{display:flex;gap:.75rem;flex-wrap:wrap}
+
+/* Autocomplétion (Tom Select via symfony/ux-autocomplete) aux couleurs de la charte */
+.ts-wrapper{width:100%}
+.ts-wrapper .ts-control{min-height:2.75rem;padding:0 .75rem;border:2px solid var(--line);border-radius:.5rem;background:var(--surface);color:var(--text);font:inherit;font-size:1rem;box-shadow:none;align-items:center}
+.ts-wrapper.focus .ts-control,.ts-wrapper.dropdown-active .ts-control{border-color:var(--blue);box-shadow:none}
+.ts-control input{font:inherit;font-size:1rem;color:var(--text)}
+.ts-dropdown{border:2px solid var(--blue);border-radius:.5rem;background:var(--surface);color:var(--text);font:inherit;box-shadow:0 4px 12px rgba(9,22,38,.12)}
+.ts-dropdown .option{padding:.625rem .75rem;min-height:2.75rem;display:flex;align-items:center}
+.ts-dropdown .active,.ts-dropdown .option:hover{background:#e3edf9;color:var(--text)}
+.ts-dropdown .highlight{background:none;font-weight:800;text-decoration:underline}

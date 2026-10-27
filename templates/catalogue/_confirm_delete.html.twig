@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+    <h1>{{ title }}</h1>
+
+    <p>Supprimer « {{ name }} » ? Il n'apparaîtra plus dans les listes ; les données déjà enregistrées sont conservées.</p>
+
+    <form method="post" class="actions">
+        <input type="hidden" name="_token" value="{{ csrf_token(token_id) }}">
+        <button type="submit" class="btn btn-danger">Confirmer la suppression</button>
+        <a class="btn" href="{{ path(cancel_route) }}">Annuler</a>
+    </form>
+{% endblock %}

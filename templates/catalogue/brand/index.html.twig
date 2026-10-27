@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Marques{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Marques</h1>
+        {% if is_granted('CATALOGUE_EDIT') %}<a class="btn btn-primary" href="{{ path('catalogue_brand_new') }}">Nouvelle marque</a>{% endif %}
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucune marque.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Nom</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for brand in page.items %}
+                    <tr>
+                        <td>{{ brand.name }}</td>
+                        <td>
+                            {% if is_granted('CATALOGUE_EDIT') %}
+                                <a href="{{ path('catalogue_brand_edit', {id: brand.id}) }}">Modifier</a>
+                                <a href="{{ path('catalogue_brand_delete', {id: brand.id}) }}">Supprimer</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'marques'} %}
+{% endblock %}
