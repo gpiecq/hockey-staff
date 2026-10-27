@@ -12,6 +12,7 @@ use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\NotNull;
 
 final class ProductType extends AbstractType
 {
@@ -37,6 +38,7 @@ final class ProductType extends AbstractType
                 'label' => 'Catégorie',
                 'required' => true,
                 'placeholder' => 'Choisir une catégorie',
+                'constraints' => [new NotNull(message: 'La catégorie est obligatoire.')],
             ])
             // Deux radios non présélectionnés à la création : un choix vide reçoit le défaut de la catégorie (côté serveur).
             ->add('trackingMode', EnumType::class, [

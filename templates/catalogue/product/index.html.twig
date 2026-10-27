@@ -35,7 +35,7 @@
                             <td data-label="Référence">{{ product.reference }}</td>
                             <td><a href="{{ path('catalogue_product_show', {id: product.id}) }}" data-turbo-frame="_top"><strong>{{ product.designation }}</strong></a></td>
                             <td data-label="Marque">{{ product.brand ? product.brand.name : '—' }}</td>
-                            <td data-label="Catégorie">{{ product.category.path }}</td>
+                            <td data-label="Catégorie">{{ product.category ? product.category.path : 'Sans catégorie' }}</td>
                             <td data-label="Fournisseur">{{ product.supplier.name }}</td>
                         </tr>
                     {% endfor %}

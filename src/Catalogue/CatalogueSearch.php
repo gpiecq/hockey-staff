@@ -25,7 +25,7 @@ final readonly class CatalogueSearch
             ->addSelect('s', 'b', 'c', 'cp', 'cg')
             ->join('p.supplier', 's')
             ->leftJoin('p.brand', 'b')
-            ->join('p.category', 'c')
+            ->leftJoin('p.category', 'c')
             ->leftJoin('c.parent', 'cp')
             ->leftJoin('cp.parent', 'cg')
             ->orderBy('p.designation')

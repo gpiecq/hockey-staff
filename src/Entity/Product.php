@@ -51,8 +51,7 @@ class Product
     private ?Brand $brand = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
-    #[Assert\NotNull(message: 'La catégorie est obligatoire.')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?Category $category = null;
 
     #[ORM\Column(length: 20, enumType: TrackingMode::class)]

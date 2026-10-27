@@ -59,7 +59,7 @@ final class CatalogueImportAnalyzer
         /** @var list<Product> $products */
         $products = $this->em->createQueryBuilder()
             ->select('p', 'b', 'c')->from(Product::class, 'p')
-            ->leftJoin('p.brand', 'b')->join('p.category', 'c')
+            ->leftJoin('p.brand', 'b')->leftJoin('p.category', 'c')
             ->where('p.supplier = :supplier')->setParameter('supplier', $supplier)
             ->getQuery()->getResult();
         $productByReference = [];
