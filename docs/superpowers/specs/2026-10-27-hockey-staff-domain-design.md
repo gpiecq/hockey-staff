@@ -209,6 +209,21 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    d'occasion avec dépréciation, reçu PDF simple.
 5. **Inventaire** — sessions, scans multi-utilisateurs live (Mercure), écarts, ajustements.
 6. **Valorisation** — valeur HT courante, snapshots, graphiques d'évolution, valeur des dotations par fournisseur.
+7. **Préparation assistée du catalogue (IA)** — *ajouté le 2026-10-27, position dans l'ordre des lots à décider.*
+   - **Fichier template d'import** officiel (xlsx téléchargeable depuis l'appli) : format pivot unique accepté par
+     l'import du lot 1, colonnes de `bauer-catalogue-travail.xlsx` + notre arborescence de catégories (référentiel
+     maison, propre au club, différent de celui du fournisseur).
+   - **Consolidation par IA** : à partir du fichier fournisseur brut Bauer (multi-onglets, structure propre à
+     Bauer), une IA extrait et centralise les lignes dans le template : produits/variantes, gencodes, attributs
+     (taille, fit, côté, largeur, couleur normalisée), prix, et **affectation à nos catégories**.
+   - Le template produit repasse par le flux d'import existant (analyse, diff, anomalies, validation) : l'IA ne
+     touche jamais la base directement, l'humain valide toujours.
+   - Questions ouvertes (à trancher en brainstorming, sur le vrai fichier Bauer brut) : IA intégrée à l'appli
+     (API Claude, job Messenger) ou outil hors appli ; signalement des lignes à faible confiance (catégorie
+     incertaine) ; mémorisation des affectations validées d'une saison sur l'autre (référence → catégorie) ;
+     coût par import ; généricité pour d'autres fournisseurs.
+   - Pré-requis : fichier Bauer brut multi-onglets fourni par l'utilisateur ; référentiel de catégories maison
+     stabilisé.
 
 Chaque lot passe par son propre plan d'implémentation.
 
