@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lieux{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Lieux</h1>
+        <a class="btn btn-primary" href="{{ path('stock_location_new') }}">Nouveau lieu</a>
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucun lieu.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Nom</th><th>Description</th><th>Actif</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for location in page.items %}
+                    <tr>
+                        <td>{{ location.name }}</td>
+                        <td>{{ location.description }}</td>
+                        <td>{{ location.active ? 'Oui' : 'Non' }}</td>
+                        <td>
+                            <a href="{{ path('stock_location_edit', {id: location.id}) }}">Modifier</a>
+                            <a href="{{ path('stock_location_delete', {id: location.id}) }}">Supprimer</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'lieux'} %}
+{% endblock %}
