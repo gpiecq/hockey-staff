@@ -27,9 +27,9 @@
         .page { width: 62mm; height: 28.5mm; }
         .label { width: 62mm; height: 27.3mm; padding-top: 1.2mm; }
         .code { font-size: 8pt; height: 3.2mm; }
-        .designation { font-size: 6.5pt; height: 6.4mm; padding: 0 2mm; }
+        .designation { font-size: 6.5pt; height: 6.9mm; line-height: 1.08; padding: 0 2mm; }
         .attributes { font-size: 6pt; padding: 0 2mm; }
-        .bars { width: 52mm; height: 10mm; margin-top: 0.3mm; }
+        .bars { height: 10mm; margin-top: 0.3mm; }
         .value { font-size: 6pt; height: 2.6mm; }
         {% endif %}
     </style>
@@ -42,7 +42,7 @@
             <div class="code">{{ cell.label.itemCode ?? '' }}</div>
             <div class="designation">{{ cell.label.designation }}</div>
             <div class="attributes">{{ cell.label.attributes }}</div>
-            <img class="bars" src="{{ cell.image }}" alt="">
+            <img class="bars" src="{{ cell.image }}" alt=""{% if cell.width is defined %} style="width: {{ cell.width }}mm;"{% endif %}>
             <div class="value">{{ cell.label.barcode.value }}</div>
         </div>
     {% endfor %}

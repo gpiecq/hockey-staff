@@ -20,6 +20,9 @@ final readonly class LabelPdfRenderer
     /** 62 x 29 mm en points. */
     private const array ROLL_PAPER = [0, 0, 175.75, 82.20];
 
+    private const float ROLL_MODULE_MM = 0.45;
+    private const float ROLL_MAX_BARS_MM = 52.0;
+
     public function __construct(private Environment $twig)
     {
     }
@@ -79,16 +82,36 @@ final readonly class LabelPdfRenderer
     }
 
     /**
+     * Roll bars width: one module = 0.45 mm (quiet zone >= 11X on a 62 mm roll for 95-module EAN/UPC), capped.
+     */
+    public static function rollBarsWidthMm(int $modules): float
+    {
+        return min(self::ROLL_MAX_BARS_MM, $modules * self::ROLL_MODULE_MM);
+    }
+
+    /**
      * @param list<Label> $labels
      *
-     * @return list<list<array{label: Label, image: string}>>
+     * @return list<list<array{label: Label, image: string, width: float}>>
      */
     private function rollPages(array $labels): array
     {
         return array_map(
-            fn (Label $label): array => [['label' => $label, 'image' => $this->barcodeImage($label->barcode)]],
+            fn (Label $label): array => [[
+                'label' => $label,
+                'image' => $image = $this->barcodeImage($label->barcode),
+                'width' => self::rollBarsWidthMm($this->moduleCount($image)),
+            ]],
             $labels,
         );
+    }
+
+    private function moduleCount(string $dataUri): int
+    {
+        $png = base64_decode(substr($dataUri, \strlen('data:image/png;base64,')), true);
+        $size = false === $png ? false : getimagesizefromstring($png);
+
+        return false === $size ? 190 : intdiv($size[0], 2);
     }
 
     private function barcodeImage(LabelBarcode $barcode): string
