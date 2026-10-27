@@ -9,6 +9,7 @@ use App\Entity\StockLevel;
 use App\Entity\Variant;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -33,6 +34,7 @@ class StockLevelRepository extends ServiceEntityRepository
             ->setParameter('location', $location)
             ->getQuery()
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
             ->getOneOrNullResult();
         \assert(null === $level || $level instanceof StockLevel);
 

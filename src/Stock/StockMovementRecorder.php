@@ -11,12 +11,17 @@ use App\Entity\StockLevel;
 use App\Entity\StockMovement;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
+use App\Enum\ItemStatus;
 use App\Enum\StockMovementType;
+use App\Enum\StockOutReason;
 use App\Enum\TrackingMode;
 use App\Repository\ItemRepository;
 use App\Repository\StockLevelRepository;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
+use App\Stock\Input\StockLine;
+use App\Stock\Input\StockOut;
+use App\Stock\Input\StockTransfer;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -80,6 +85,152 @@ final readonly class StockMovementRecorder
 
             return $operation;
         });
+    }
+
+    public function recordOut(StockOut $out): StockOperation
+    {
+        if (StockOutReason::Other === $out->reason && '' === trim($out->comment ?? '')) {
+            throw new StockException('Précisez le motif en commentaire.');
+        }
+        $this->assertLines($out->lines);
+        $season = $this->seasons->get();
+
+        return $this->em->wrapInTransaction(function () use ($out, $season): StockOperation {
+            $locked = $this->lockAndCheck($out->location, $out->lines);
+            $operation = new StockOperation(StockMovementType::Out, $out->location, null, $out->reason, null, $out->comment);
+            $this->em->persist($operation);
+
+            foreach ($out->lines as $line) {
+                if (null !== $line->item) {
+                    $item = $locked['items'][(int) $line->item->getId()];
+                    $item->remove();
+                    $operation->addMovement(new StockMovement($operation, $line->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
+                    continue;
+                }
+                $value = $locked['levels'][(int) $line->variant->getId()]->remove($line->quantity);
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, null, $season));
+            }
+
+            $this->em->flush();
+
+            return $operation;
+        });
+    }
+
+    public function recordTransfer(StockTransfer $transfer): StockOperation
+    {
+        if ($transfer->from->getId() === $transfer->to->getId()) {
+            throw new StockException('Les lieux de départ et d\'arrivée doivent être différents.');
+        }
+        if (!$transfer->to->isActive()) {
+            throw new StockException(\sprintf('Le lieu « %s » est inactif.', $transfer->to->getName()));
+        }
+        $this->assertLines($transfer->lines);
+        $season = $this->seasons->get();
+
+        return $this->em->wrapInTransaction(function () use ($transfer, $season): StockOperation {
+            $locked = $this->lockAndCheck($transfer->from, $transfer->lines);
+            $operation = new StockOperation(StockMovementType::Transfer, $transfer->from, $transfer->to, null, null, $transfer->comment);
+            $this->em->persist($operation);
+            $destinations = [];
+
+            foreach ($transfer->lines as $line) {
+                if (null !== $line->item) {
+                    $item = $locked['items'][(int) $line->item->getId()];
+                    $item->moveTo($transfer->to);
+                    $operation->addMovement(new StockMovement($operation, $line->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
+                    continue;
+                }
+                $key = (int) $line->variant->getId();
+                $value = $locked['levels'][$key]->remove($line->quantity);
+                $destination = $destinations[$key] ??= $this->levels->findForUpdate($line->variant, $transfer->to) ?? $this->newLevel($line->variant, $transfer->to);
+                $destination->add($line->quantity, $value);
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, null, $season));
+            }
+
+            $this->em->flush();
+
+            return $operation;
+        });
+    }
+
+    /**
+     * Contrôles de forme des lignes (sans accès base).
+     *
+     * @param list<StockLine> $lines
+     */
+    private function assertLines(array $lines): void
+    {
+        if ([] === $lines) {
+            throw new StockException('Ajoutez au moins une ligne.');
+        }
+
+        $codes = [];
+        foreach ($lines as $line) {
+            if ($line->quantity < 1) {
+                throw new StockException('La quantité doit être au moins 1.');
+            }
+            if (TrackingMode::Serialized !== $line->variant->getProduct()?->getTrackingMode()) {
+                continue;
+            }
+            if (null === $line->item) {
+                throw new StockException(\sprintf('Indiquez la pièce (code HS-) pour « %s ».', $this->label($line->variant)));
+            }
+            if (1 !== $line->quantity) {
+                throw new StockException(\sprintf('La quantité de la pièce %s doit être 1.', $line->item->getCode()));
+            }
+            if (isset($codes[$line->item->getCode()])) {
+                throw new StockException(\sprintf('La pièce %s figure deux fois.', $line->item->getCode()));
+            }
+            $codes[$line->item->getCode()] = true;
+        }
+    }
+
+    /**
+     * Verrouille (PESSIMISTIC_WRITE) les niveaux et pièces visés, puis contrôle la disponibilité ; à appeler dans la transaction.
+     *
+     * @param list<StockLine> $lines
+     *
+     * @return array{levels: array<int, StockLevel>, items: array<int, Item>}
+     */
+    private function lockAndCheck(Location $from, array $lines): array
+    {
+        $wanted = [];
+        $variants = [];
+        $items = [];
+        foreach ($lines as $line) {
+            if (null !== $line->item) {
+                $items[(int) $line->item->getId()] = $line->item;
+                continue;
+            }
+            $key = (int) $line->variant->getId();
+            $wanted[$key] = ($wanted[$key] ?? 0) + $line->quantity;
+            $variants[$key] = $line->variant;
+        }
+
+        // Ordre de verrouillage stable (identifiant croissant) pour éviter les deadlocks entre saisies concurrentes.
+        ksort($variants);
+        ksort($items);
+
+        $levels = [];
+        foreach ($variants as $key => $variant) {
+            $level = $this->levels->findForUpdate($variant, $from);
+            if (null === $level || $wanted[$key] > $level->getQuantity()) {
+                throw new StockException(\sprintf('Stock insuffisant pour « %s » à « %s » : %d disponible(s).', $this->label($variant), $from->getName(), $level?->getQuantity() ?? 0));
+            }
+            $levels[$key] = $level;
+        }
+
+        $locked = [];
+        foreach ($items as $key => $item) {
+            $fresh = $this->items->findForUpdate($item);
+            if (ItemStatus::InStock !== $fresh->getStatus() || $fresh->getLocation()->getId() !== $from->getId()) {
+                throw new StockException(\sprintf('La pièce %s n\'est pas en stock à « %s ».', $fresh->getCode(), $from->getName()));
+            }
+            $locked[$key] = $fresh;
+        }
+
+        return ['levels' => $levels, 'items' => $locked];
     }
 
     /**

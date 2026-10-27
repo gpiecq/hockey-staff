@@ -6,6 +6,8 @@ namespace App\Repository;
 
 use App\Entity\Item;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -23,5 +25,22 @@ class ItemRepository extends ServiceEntityRepository
         $next = $this->getEntityManager()->getConnection()->fetchOne("SELECT nextval('item_code_seq')");
 
         return \sprintf('HS-%06d', is_numeric($next) ? (int) $next : throw new \LogicException('item_code_seq indisponible.'));
+    }
+
+    /**
+     * Relit la pièce en base avec un verrou PESSIMISTIC_WRITE (état rafraîchi) ; à appeler dans une transaction.
+     */
+    public function findForUpdate(Item $item): Item
+    {
+        $fresh = $this->createQueryBuilder('i')
+            ->where('i.id = :id')
+            ->setParameter('id', $item->getId())
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+        \assert($fresh instanceof Item);
+
+        return $fresh;
     }
 }
