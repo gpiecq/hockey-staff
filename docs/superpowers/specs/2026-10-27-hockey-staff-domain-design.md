@@ -203,7 +203,8 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    saison suivante = mise à jour des tarifs), recherche/consultation catalogue (par EAN, désignation, catégorie),
    CRUD manuel produit/variante.
 2. **Stock & mouvements** — lieux, entrées achat/dotation, sorties, transferts, pièces sérialisées, CUMP,
-   historique, étiquettes internes PDF.
+   historique, étiquettes internes PDF. *Design détaillé : `2026-10-27-lot2-stock-mouvements-design.md` ; les
+   étiquettes passent au lot 8, ordre retenu lot 2 → lot 8 → lot 3.*
 3. **Scan & Hotwire Native** — coques iOS/Android, bridge scanner, flux « scanner → action », scan web de secours.
 4. **Joueurs, équipes, attributions, ventes** — saisons d'équipe, roster, prêt/retour avec état, don, ventes
    d'occasion avec dépréciation, reçu PDF simple.
@@ -227,7 +228,7 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    - Pré-requis : fichier Bauer brut multi-onglets fourni par l'utilisateur ; référentiel de catégories maison
      stabilisé.
 8. **Codes-barres et étiquettes** — *ajouté le 2026-10-27 à la demande de l'utilisateur, position dans l'ordre des
-   lots à décider (après le lot 2, idéalement avant ou avec le lot 3).*
+   lots : après le lot 2, avant le lot 3 (décidé avec le design du lot 2).*
    - **Génération de codes-barres** pour chaque variante : à partir de l'**EAN** fournisseur quand il existe
      (symbologie EAN-13 / UPC-A), sinon de la **référence fournisseur** (+ attributs) ou du code interne `HS-`
      (Code128 / QR). But : rendre les mouvements de stock au téléphone plus rapides et fiables (scan au lieu de
