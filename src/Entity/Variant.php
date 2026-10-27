@@ -20,10 +20,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['product', 'matchKey'], message: 'Cette variante existe déjà pour ce produit.', errorPath: 'size')]
 class Variant
 {
+    use TimestampableBlameableTrait;
     /** Longueur max des colonnes taille, coupe, côté, largeur et couleur. */
     public const int ATTRIBUTE_MAX_LENGTH = 50;
-
-    use TimestampableBlameableTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

@@ -21,10 +21,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['supplier', 'reference'], message: 'Cette référence existe déjà chez ce fournisseur.', errorPath: 'reference')]
 class Product
 {
+    use TimestampableBlameableTrait;
     public const int REFERENCE_MAX_LENGTH = 100;
     public const int DESIGNATION_MAX_LENGTH = 255;
-
-    use TimestampableBlameableTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

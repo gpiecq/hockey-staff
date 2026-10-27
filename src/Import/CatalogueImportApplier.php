@@ -39,8 +39,8 @@ final class CatalogueImportApplier
     }
 
     /**
-     * @throws \LogicException      si le run n'est pas à l'état Analyzed
-     * @throws StaleImportException si un autre import du même fournisseur a été appliqué depuis l'analyse
+     * @throws ImportNotApplicableException si le run n'est pas à l'état Analyzed
+     * @throws StaleImportException         si un autre import du même fournisseur a été appliqué depuis l'analyse
      */
     public function apply(ImportRun $run): ImportDiff
     {

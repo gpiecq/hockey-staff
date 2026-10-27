@@ -19,9 +19,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['name'], message: 'Ce nom est déjà utilisé.')]
 class Brand
 {
-    public const int NAME_MAX_LENGTH = 150;
-
     use TimestampableBlameableTrait;
+    public const int NAME_MAX_LENGTH = 150;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
