@@ -19,7 +19,6 @@ use App\Import\CatalogueImportApplier;
 use App\Import\Exception\StaleImportException;
 use App\Tests\Support\ImportFixtures;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Event\PrePersistEventArgs;
 use Doctrine\ORM\Events;
 use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -294,15 +293,23 @@ final class CatalogueImportApplierTest extends KernelTestCase
             self::row(['Référence interne' => 'R3', 'Gencode' => '688698508086']),
         ]);
         $runId = $run->getId();
-        $count = 0;
-        $this->em->getEventManager()->addEventListener(Events::prePersist, new class($count) {
-            public function __construct(private int &$count)
+        $connection = $this->em->getConnection();
+        $state = new \ArrayObject(['written' => 0]);
+        // Les flush de création des catégories atteignent la base d'abord ; on échoue au premier flush après lequel
+        // les variantes sont déjà écrites en base (dans la transaction).
+        $this->em->getEventManager()->addEventListener(Events::postFlush, new class($state, $connection) {
+            /** @param \ArrayObject<string, int> $state */
+            public function __construct(private \ArrayObject $state, private \Doctrine\DBAL\Connection $connection)
             {
             }
 
-            public function prePersist(PrePersistEventArgs $args): void
+            public function postFlush(): void
             {
-                if ($args->getObject() instanceof Variant && 2 === ++$this->count) {
+                $written = $this->connection->fetchOne('SELECT COUNT(*) FROM variant');
+                \assert(is_numeric($written));
+                $written = (int) $written;
+                if ($written > 0) {
+                    $this->state['written'] = $written;
                     throw new \RuntimeException('Échec simulé');
                 }
             }
@@ -315,12 +322,46 @@ final class CatalogueImportApplierTest extends KernelTestCase
             self::assertSame('Échec simulé', $e->getMessage());
         }
 
-        $connection = $this->em->getConnection();
+        self::assertSame(3, $state['written'], 'Les variantes devaient déjà être en base au moment de l\'échec.');
+        self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM category'));
         self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM product'));
         self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM variant'));
         self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM season_price'));
         self::assertSame('analyzed', $connection->fetchOne('SELECT status FROM import_run WHERE id = ?', [$runId]));
         self::assertNull($connection->fetchOne('SELECT applied_at FROM import_run WHERE id = ?', [$runId]));
+    }
+
+    public function testSecondConcurrentApplyOfTheSameRunWritesNothingAndKeepsTheFirstDiff(): void
+    {
+        $run = $this->analyzedRun([self::row()]);
+        $this->applier->apply($run);
+        $connection = $this->em->getConnection();
+        $diffBefore = $connection->fetchOne('SELECT diff FROM import_run WHERE id = ?', [$run->getId()]);
+        $appliedBefore = $connection->fetchOne('SELECT applied_at FROM import_run WHERE id = ?', [$run->getId()]);
+        // Le second appel a chargé le run avant la première application : son état en mémoire est encore Analyzed.
+        (new \ReflectionProperty(ImportRun::class, 'status'))->setValue($run, ImportRunStatus::Analyzed);
+        sleep(1);
+
+        try {
+            $this->applier->apply($run);
+            self::fail('LogicException attendue.');
+        } catch (\LogicException) {
+        }
+
+        self::assertSame($diffBefore, $connection->fetchOne('SELECT diff FROM import_run WHERE id = ?', [$run->getId()]));
+        self::assertSame($appliedBefore, $connection->fetchOne('SELECT applied_at FROM import_run WHERE id = ?', [$run->getId()]));
+        self::assertSame('applied', $connection->fetchOne('SELECT status FROM import_run WHERE id = ?', [$run->getId()]));
+        self::assertEquals(1, $connection->fetchOne('SELECT COUNT(*) FROM variant'));
+    }
+
+    public function testBrandWithDifferentCaseInFileReusesTheStoredBrand(): void
+    {
+        ImportFixtures::product($this->em, $this->supplier, 'R0', 'Autre', 'Bauer');
+
+        $this->applier->apply($this->analyzedRun([self::row(['Marque' => ' bauer '])]));
+
+        self::assertCount(1, $this->em->getRepository(Brand::class)->findBy(['name' => 'BAUER']));
+        self::assertEquals(1, $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM brand'));
     }
 
     public function testApplyOnNonAnalyzedRunThrows(): void

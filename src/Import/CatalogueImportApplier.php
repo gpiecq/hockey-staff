@@ -52,6 +52,11 @@ final class CatalogueImportApplier
         $diff = $this->em->wrapInTransaction(function () use ($run): ImportDiff {
             // Verrou sur le fournisseur : deux applications concurrentes sont sérialisées, la seconde voit la première.
             $this->em->lock($run->getSupplier(), LockMode::PESSIMISTIC_WRITE);
+            // Un appel concurrent a pu appliquer ce run entre le contrôle préalable et le verrou : on relit son état.
+            $this->em->refresh($run);
+            if (ImportRunStatus::Analyzed !== $run->getStatus()) {
+                throw new \LogicException('Seul un import analysé peut être appliqué.');
+            }
             $this->assertNotStale($run);
 
             $diff = $this->analyzer->analyze($run);
@@ -232,10 +237,10 @@ final class CatalogueImportApplier
                 $price = (new SeasonPrice())->setVariant($variant)->setSeason($season);
                 $this->em->persist($price);
             }
-            if ($change['club']['from'] !== $change['club']['to']) {
+            if (null !== $change['club']['to'] && $change['club']['from'] !== $change['club']['to']) {
                 $price->setClubPriceTtc($change['club']['to']);
             }
-            if ($change['public']['from'] !== $change['public']['to']) {
+            if (null !== $change['public']['to'] && $change['public']['from'] !== $change['public']['to']) {
                 $price->setPublicPriceTtc($change['public']['to']);
             }
             $tick();
