@@ -13,6 +13,7 @@ use App\Entity\Product;
 use App\Entity\SeasonPrice;
 use App\Entity\Variant;
 use App\Enum\ImportRunStatus;
+use App\Import\Exception\ImportNotApplicableException;
 use App\Import\Exception\StaleImportException;
 use App\Repository\CategoryRepository;
 use Doctrine\DBAL\LockMode;
@@ -44,7 +45,7 @@ final class CatalogueImportApplier
     public function apply(ImportRun $run): ImportDiff
     {
         if (ImportRunStatus::Analyzed !== $run->getStatus()) {
-            throw new \LogicException('Seul un import analysé peut être appliqué.');
+            throw new ImportNotApplicableException('Seul un import analysé peut être appliqué.');
         }
         // Contrôle préalable hors transaction : un refus ordinaire ne ferme pas l'EntityManager.
         $this->assertNotStale($run);
@@ -55,7 +56,7 @@ final class CatalogueImportApplier
             // Un appel concurrent a pu appliquer ce run entre le contrôle préalable et le verrou : on relit son état.
             $this->em->refresh($run);
             if (ImportRunStatus::Analyzed !== $run->getStatus()) {
-                throw new \LogicException('Seul un import analysé peut être appliqué.');
+                throw new ImportNotApplicableException('Seul un import analysé peut être appliqué.');
             }
             $this->assertNotStale($run);
 

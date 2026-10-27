@@ -39,8 +39,12 @@ final class ImportControllerTest extends WebTestCase
         foreach ($this->tmpFiles as $file) {
             @unlink($file);
         }
-        foreach (glob(\dirname(__DIR__, 3).'/var/storage/imports/*.xlsx') ?: [] as $file) {
-            @unlink($file);
+        // Uniquement les fichiers créés par ces tests (le dossier est le volume partagé du dev).
+        $dir = \dirname(__DIR__, 3).'/var/storage/imports/';
+        foreach ($this->em()->getConnection()->fetchFirstColumn('SELECT stored_path FROM import_run') as $stored) {
+            if (\is_string($stored) && '' !== $stored && !str_contains($stored, '..') && is_file($dir.$stored)) {
+                @unlink($dir.$stored);
+            }
         }
         parent::tearDown();
     }
@@ -329,6 +333,26 @@ final class ImportControllerTest extends WebTestCase
         $this->client->followRedirect();
         self::assertSelectorExists('.flash-error');
         self::assertSame(1, $this->em()->getRepository(Product::class)->count([]));
+    }
+
+    public function testApplyWithDeletedFileFlashesReadableErrorAndKeepsRunAnalyzed(): void
+    {
+        $this->login();
+        $run = $this->analyzedRun();
+        $crawler = $this->client->request('GET', '/imports/'.$run->getId());
+        $token = $this->applyToken($crawler);
+        unlink(\dirname(__DIR__, 3).'/var/storage/imports/'.$run->getStoredPath());
+
+        $this->client->request('POST', '/imports/'.$run->getId().'/apply', ['_token' => $token]);
+
+        self::assertResponseRedirects('/imports/'.$run->getId());
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.flash-error', 'n\'a pas pu être appliqué');
+        self::assertSelectorTextContains('.flash-error', 'tableur');
+        $status = static::getContainer()->get(EntityManagerInterface::class)->getConnection()
+            ->fetchOne('SELECT status FROM import_run WHERE id = ?', [$run->getId()]);
+        self::assertSame('analyzed', $status);
+        self::assertSame(0, (int) $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM product'));
     }
 
     public function testCancelMarksRunCancelled(): void

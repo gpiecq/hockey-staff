@@ -11,6 +11,7 @@ use App\Entity\Supplier;
 use App\Enum\ImportRunStatus;
 use App\Form\ImportUploadType;
 use App\Import\CatalogueImportApplier;
+use App\Import\Exception\ImportNotApplicableException;
 use App\Import\Exception\StaleImportException;
 use App\Import\ImportDiff;
 use App\Import\Message\AnalyzeImportRun;
@@ -19,6 +20,7 @@ use App\Repository\ImportRunRepository;
 use App\Repository\SupplierImportMappingRepository;
 use App\Repository\VariantRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\FormError;
@@ -40,6 +42,7 @@ final class ImportController extends AbstractController
     public function __construct(
         #[Autowire('%app.imports_dir%')]
         private readonly string $importsDir,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -139,8 +142,15 @@ final class ImportController extends AbstractController
             $this->addFlash('error', $e->getMessage());
 
             return $this->redirectToRoute('import_show', ['id' => $id]);
-        } catch (\LogicException) {
+        } catch (ImportNotApplicableException) {
             $this->addFlash('error', 'Cet import ne peut plus être appliqué : il n\'est plus à l\'état « Analysé ».');
+
+            return $this->redirectToRoute('import_show', ['id' => $id]);
+        } catch (\Throwable $e) {
+            // Échec de lecture/analyse/écriture : la transaction est annulée (EM peut être fermé), on ne le touche plus.
+            $this->logger->error('Application d\'import en échec.', ['importRunId' => $id, 'exception' => $e]);
+            $reason = $e instanceof \DomainException ? $e->getMessage() : 'erreur inattendue, consultez les journaux.';
+            $this->addFlash('error', 'L\'import n\'a pas pu être appliqué, aucune donnée n\'a été modifiée : '.$reason);
 
             return $this->redirectToRoute('import_show', ['id' => $id]);
         }
