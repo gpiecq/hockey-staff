@@ -13,6 +13,8 @@ final readonly class CatalogueSearchCriteria
         public ?int $brandId = null,
         public bool $includeInactive = false,
         public int $page = 1,
+        public bool $withoutCategory = false,
+        public ?int $missingPriceSeasonId = null,
     ) {
     }
 }

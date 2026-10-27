@@ -16,6 +16,10 @@
         <div class="field">{{ form_label(form.brand) }}{{ form_widget(form.brand) }}</div>
         <div class="field-wide actions">
             <label class="check">{{ form_widget(form.includeInactive) }}<span>{{ form.includeInactive.vars.label }}</span></label>
+            {% if form.sansCategorie is defined %}
+                <label class="check">{{ form_widget(form.sansCategorie) }}<span>{{ form.sansCategorie.vars.label }}</span></label>
+                <label class="check">{{ form_widget(form.sansTarif) }}<span>{{ form.sansTarif.vars.label }}</span></label>
+            {% endif %}
             <button type="submit" class="btn btn-primary">Rechercher</button>
             <a class="btn" href="{{ path('catalogue_product_index') }}" data-turbo-frame="_top">Réinitialiser</a>
         </div>

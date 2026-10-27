@@ -11,8 +11,10 @@ use App\Catalogue\TrackingModeResolver;
 use App\Entity\Brand;
 use App\Entity\Category;
 use App\Entity\Product;
+use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Form\CatalogueFilterType;
+use App\Form\ProductPriceType;
 use App\Form\ProductType;
 use App\Repository\SeasonPriceRepository;
 use App\Repository\VariantRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class ProductController extends AbstractController
 {
     #[Route('', name: 'catalogue_product_index', methods: ['GET'])]
-    public function index(Request $request, CatalogueSearch $search): Response
+    public function index(Request $request, CatalogueSearch $search, CurrentSeasonProvider $currentSeason): Response
     {
         $form = $this->createForm(CatalogueFilterType::class);
         $form->handleRequest($request);
@@ -51,6 +53,8 @@ final class ProductController extends AbstractController
             supplierId: $supplier instanceof Supplier ? $supplier->getId() : null,
             brandId: $brand instanceof Brand ? $brand->getId() : null,
             includeInactive: true === ($data['includeInactive'] ?? false),
+            withoutCategory: true === ($data['sansCategorie'] ?? false),
+            missingPriceSeasonId: true === ($data['sansTarif'] ?? false) ? $currentSeason->get()?->getId() : null,
             page: ctype_digit($rawPage = $request->query->getString('page')) ? max(1, (int) $rawPage) : 1,
         ));
 
@@ -125,6 +129,68 @@ final class ProductController extends AbstractController
             'form' => $form,
             'title' => 'Modifier le produit '.$product->getReference(),
             'cancel_url' => $this->generateUrl('catalogue_product_show', ['id' => $product->getId()]),
+        ], new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+    }
+
+    /** Saisie du tarif au niveau produit : ne remplit que les variantes actives sans prix club, n'écrase aucun prix renseigné. */
+    #[Route('/{id}/tarif', name: 'catalogue_product_price', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    #[IsGranted('ROLE_MANAGER')]
+    public function price(
+        Product $product,
+        Request $request,
+        EntityManagerInterface $em,
+        CurrentSeasonProvider $currentSeason,
+        VariantRepository $variants,
+        SeasonPriceRepository $prices,
+    ): Response {
+        $season = $currentSeason->get();
+        $cancelUrl = $this->generateUrl('catalogue_product_show', ['id' => $product->getId()]);
+        $title = 'Tarif produit · '.$product->getDesignation();
+
+        if (null === $season) {
+            return $this->render('catalogue/product/price.html.twig', ['form' => null, 'title' => $title, 'season' => null, 'cancel_url' => $cancelUrl]);
+        }
+
+        $form = $this->createForm(ProductPriceType::class);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $data = $form->getData();
+            \assert(\is_array($data));
+            $club = $data['clubPriceTtc'];
+            $public = $data['publicPriceTtc'] ?? null;
+            \assert(\is_int($club) && (null === $public || \is_int($public)));
+
+            $existing = $prices->indexByVariantForProduct($product, $season);
+            $applied = 0;
+            foreach ($variants->findLiveByProduct($product) as $variant) {
+                if (!$variant->isActive()) {
+                    continue;
+                }
+                $variantId = $variant->getId();
+                $price = null === $variantId ? null : ($existing[$variantId] ?? null);
+                if (null === $price) {
+                    $price = (new SeasonPrice())->setVariant($variant)->setSeason($season)->setPublicPriceTtc($public);
+                    $em->persist($price);
+                } elseif (null !== $price->getClubPriceTtc()) {
+                    continue;
+                } elseif (null === $price->getPublicPriceTtc()) {
+                    $price->setPublicPriceTtc($public);
+                }
+                $price->setClubPriceTtc($club);
+                ++$applied;
+            }
+            $em->flush();
+            $this->addFlash('success', \sprintf('Tarif appliqué à %d variante(s).', $applied));
+
+            return $this->redirect($cancelUrl);
+        }
+
+        return $this->render('catalogue/product/price.html.twig', [
+            'form' => $form,
+            'title' => $title,
+            'season' => $season,
+            'cancel_url' => $cancelUrl,
         ], new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 

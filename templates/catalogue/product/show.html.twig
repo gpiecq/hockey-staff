@@ -8,6 +8,7 @@
         <h1>{{ product.designation }}</h1>
         {% if is_granted('CATALOGUE_EDIT') %}
             <span class="actions">
+                {% if is_granted('ROLE_MANAGER') %}<a class="btn" href="{{ path('catalogue_product_price', {id: product.id}) }}">Tarif produit</a>{% endif %}
                 <a class="btn" href="{{ path('catalogue_product_edit', {id: product.id}) }}">Modifier</a>
                 <a class="btn" href="{{ path('catalogue_product_delete', {id: product.id}) }}">Supprimer</a>
             </span>

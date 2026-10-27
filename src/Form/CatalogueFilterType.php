@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\SearchType;
@@ -13,6 +14,10 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 /** Formulaire de recherche du catalogue : GET, sans jeton CSRF, noms de champs nus (?q=…&category=…). */
 final class CatalogueFilterType extends AbstractType
 {
+    public function __construct(private readonly Security $security)
+    {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -29,6 +34,12 @@ final class CatalogueFilterType extends AbstractType
                 'label' => 'Inclure les produits retirés du catalogue',
                 'required' => false,
             ]);
+
+        if ($this->security->isGranted('ROLE_MANAGER')) {
+            $builder
+                ->add('sansCategorie', CheckboxType::class, ['label' => 'Sans catégorie', 'required' => false])
+                ->add('sansTarif', CheckboxType::class, ['label' => 'Sans tarif club', 'required' => false]);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void

@@ -53,6 +53,14 @@ final readonly class CatalogueSearch
             $qb->andWhere('b.id = :brand')->setParameter('brand', $criteria->brandId);
         }
 
+        if ($criteria->withoutCategory) {
+            $qb->andWhere('p.category IS NULL');
+        }
+
+        if (null !== $criteria->missingPriceSeasonId) {
+            $this->products->andMissingClubPrice($qb, 'p', $criteria->missingPriceSeasonId);
+        }
+
         if (!$criteria->includeInactive) {
             // masqué seulement s'il a au moins une variante vivante et qu'aucune n'est active
             $qb->andWhere('EXISTS (SELECT 1 FROM '.Variant::class.' va WHERE va.product = p AND va.active = true)
