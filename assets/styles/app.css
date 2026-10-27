@@ -26,6 +26,9 @@ a{color:var(--band)}
 .btn-block{width:100%}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
+/* L'attribut hidden doit l'emporter sur les règles display (.field, .actions…) */
+[hidden]{display:none!important}
+
 /* —— Champs —— */
 .form{display:flex;flex-direction:column;gap:1rem;text-align:left;max-width:48rem}
 .field{display:flex;flex-direction:column;gap:.25rem}
