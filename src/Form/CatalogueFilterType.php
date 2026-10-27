@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Catalogue\CurrentSeasonProvider;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -14,8 +15,10 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 /** Formulaire de recherche du catalogue : GET, sans jeton CSRF, noms de champs nus (?q=…&category=…). */
 final class CatalogueFilterType extends AbstractType
 {
-    public function __construct(private readonly Security $security)
-    {
+    public function __construct(
+        private readonly Security $security,
+        private readonly CurrentSeasonProvider $currentSeason,
+    ) {
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -36,9 +39,11 @@ final class CatalogueFilterType extends AbstractType
             ]);
 
         if ($this->security->isGranted('ROLE_MANAGER')) {
-            $builder
-                ->add('sansCategorie', CheckboxType::class, ['label' => 'Sans catégorie', 'required' => false])
-                ->add('sansTarif', CheckboxType::class, ['label' => 'Sans tarif club', 'required' => false]);
+            $builder->add('sansCategorie', CheckboxType::class, ['label' => 'Sans catégorie', 'required' => false]);
+            // Le tarif manquant se mesure sur la saison courante : sans elle, la case serait sans effet.
+            if (null !== $this->currentSeason->get()) {
+                $builder->add('sansTarif', CheckboxType::class, ['label' => 'Sans tarif club', 'required' => false]);
+            }
         }
     }
 

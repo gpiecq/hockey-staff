@@ -86,6 +86,34 @@ final class CatalogueCompletionTest extends WebTestCase
         self::assertSelectorTextNotContains('table', 'Désignation PRICED');
     }
 
+    public function testSeasonPriceWithoutClubPriceCountsAsMissing(): void
+    {
+        $this->product('PRICED', true, [[true, 100]]);
+        $this->product('NULLCLUB', true, [[true, null, true]]);
+
+        self::assertSame(1, $this->products()->countMissingClubPrice($this->season));
+
+        $this->login(UserRole::Manager);
+        $this->client->request('GET', '/catalogue?sansTarif=1');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('table', 'Désignation NULLCLUB');
+        self::assertSelectorTextNotContains('table', 'Désignation PRICED');
+    }
+
+    public function testWithoutPriceFilterHiddenWithoutCurrentSeason(): void
+    {
+        $this->season->setCurrent(false);
+        $this->em->flush();
+        $this->login(UserRole::Manager);
+
+        $this->client->request('GET', '/catalogue');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorExists('input[name="sansCategorie"]');
+        self::assertSelectorNotExists('input[name="sansTarif"]');
+    }
+
     public function testFiltersIgnoredForNonManager(): void
     {
         $this->product('PRICED', true, [[true, 100]]);

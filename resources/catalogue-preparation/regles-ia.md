@@ -7,6 +7,24 @@ l'application ; une valeur inventée y entre comme vraie et fausse le stock.
 
 ---
 
+## 0. Méthode de travail
+
+0.1. **Traiter les fichiers par programme, pas à la main.** La base EAN compte environ 14 000 lignes : utilisez
+votre outil d'exécution de code / d'analyse de données (un script, ex. Python avec openpyxl) pour lire le tarif
+et la base EAN, appliquer les règles ci-dessous et écrire le modèle. Ne recopiez pas les lignes une par une.
+
+0.2. **Écrire le Gencode comme une cellule texte** (type chaîne, ex. `cell.value = "0123456789012"` avec le format
+`@`), jamais comme un nombre (règle 2.2).
+
+0.3. **Écrire les données à partir de la ligne 2 de l'onglet `Import`**, par adresse de cellule (ligne 2, 3, 4…),
+et non en ajoutant des lignes « à la suite » de celles qui existeraient déjà (pas d'`append` aveugle) : aucune
+ligne vide ne doit séparer l'en-tête des données.
+
+0.4. **Ne pas toucher aux autres onglets** (`Catégories`, `Correspondances`) ni à la ligne 1 : ouvrir le modèle,
+remplir `Import`, enregistrer sous un nouveau nom au format xlsx.
+
+---
+
 ## 1. Les fichiers que vous recevez
 
 1.1. **Le modèle d'import** (`modele-import-bauer.xlsx`), à remplir. Il contient 3 onglets :
@@ -61,14 +79,23 @@ catégorie vides.
 3.1. Prendre **toutes** les références de **tous** les onglets du tarif, **sauf** les onglets `SOMMAIRE` et
 `CGV`. Ne faire aucun autre tri (pas de sélection « utile pour le club »).
 
-3.2. Dans un onglet du tarif, ignorer :
-- les lignes vides ;
-- les lignes d'en-têtes de colonnes (« RÉFÉRENCE », « DÉSIGNATION », « PRIX CLUB TTC »…) ;
-- les lignes de titre de section (une ligne qui n'a pas à la fois une référence **et** une désignation). Elles
-  ne produisent aucune ligne, mais elles donnent la section des références qui suivent (règle 3.3).
+3.2. Dans un onglet du tarif, classer chaque ligne ainsi (la « 1re colonne » est la colonne des références) :
+- **ligne vide** → ignorée ;
+- **ligne d'en-têtes de colonnes** (« RÉFÉRENCE », « DÉSIGNATION », « VALEUR PRODUIT TTC », « PRIX CLUB TTC »…)
+  → ignorée ; ce n'est ni une référence ni un titre de section ;
+- **ligne de titre de section** : du texte dans la 1re colonne, **et** la colonne désignation vide, **et**
+  aucun prix. Elle ne produit aucune ligne, mais elle donne la section des références qui suivent (règle 3.3).
+  Le titre est le texte de la 1re colonne, recopié tel quel ;
+- **ligne dont la 1re colonne est vide** (notes de bas de tableau, ex. `*sans lame/avec support`, `(1) …`,
+  même si une autre colonne contient du texte) → ignorée ; ce n'est **pas** un titre de section ;
+- **ligne de référence** : une référence dans la 1re colonne **et** une désignation.
 
-3.3. La **section** d'une référence est le titre de la dernière ligne de titre de section située au-dessus
-d'elle, dans le même onglet. L'**onglet** d'une référence est le nom de l'onglet du tarif où elle se trouve.
+3.3. La **section** d'une référence est le titre de la ligne de titre de section la plus proche **au-dessus**
+d'elle, dans le même onglet (règle 3.2). Une référence située avant tout titre de section de l'onglet prend le
+**nom de l'onglet** comme section. Le titre de section ne doit **pas** être cherché dans la table
+`Correspondances` pour être reconnu : une section absente de la table reste une section (ses références ne sont
+pas rattachées à la section précédente) ; c'est seulement sa catégorie qui reste vide (règle 9.4).
+L'**onglet** d'une référence est le nom de l'onglet du tarif où elle se trouve.
 
 3.4. Une référence du tarif **sans prix** entre quand même dans le fichier, avec les prix laissés vides.
 
@@ -167,7 +194,8 @@ reconnue au ré-import, au lieu d'être créée en double.
 `PU Club TTC` = la colonne `PRIX CLUB TTC` de cette même ligne. Ne jamais échanger les deux colonnes.
 
 7.2. Écrire le prix en euros, comme un nombre, avec au plus 2 décimales, sans symbole `€` ni séparateur de
-milliers : `129.99`, `1049`, `0`.
+milliers : `129.99`, `1049`, `0`. **Arrondir au centime, comme la valeur affichée dans le tarif** : une cellule
+peut contenir un artefact de calcul (ex. `719.9920000001` affiché `719,99 €`) ; écrire `719.99`.
 
 7.3. Prix absent, vide ou non numérique (`NC`, `-`, `sur demande`…) → **laisser vide**. Ne jamais calculer,
 estimer ou reprendre un prix d'une autre référence. Certains onglets du tarif n'ont aucun prix : c'est normal,
@@ -182,6 +210,12 @@ la règle 9.1). Si la colonne `marque` de cette ligne est remplie, écrire cette
 
 8.2. Dans tous les autres cas (colonne `marque` vide, couple absent de la table) : écrire `BAUER`.
 La colonne `Marque` n'est jamais vide.
+
+8.3. **Attention : la marque change la fiche produit.** Une marque fausse écrase la marque d'un produit déjà
+connu de l'application. Ne jamais déduire une marque d'une désignation ou d'un titre de section. Quand le couple
+(onglet, section) est **inconnu** de la table, écrire `BAUER` mais signaler la référence au compte rendu, sous
+« couples inconnus » (rubrique 6), pour que la personne du club vérifie sa marque. Toute marque écrite autre que
+`BAUER` est listée au compte rendu (rubrique 7).
 
 ---
 
@@ -224,10 +258,13 @@ ordre** (écrire « aucune » quand une liste est vide) :
 5. **Lignes sans catégorie** : nombre, et la liste des références, avec la raison pour chacune : couple
    inconnu (9.4), couple ambigu non tranché (9.3), ou catégorie absente de l'onglet `Catégories` (9.5).
 6. **Couples onglet + section inconnus** : la liste des couples rencontrés absents de la table
-   `Correspondances`, avec leur nombre de références.
-7. **EAN en double** : les Gencode présents sur plusieurs lignes de la base EAN retenues, avec leurs
+   `Correspondances`, avec leur nombre de références et la liste de ces références (catégorie laissée vide,
+   marque `BAUER` écrite par défaut : à vérifier, règle 8.3).
+7. **Marques autres que BAUER** : chaque marque écrite autre que `BAUER`, avec son nombre de références et les
+   couples (onglet, section) d'où elle vient (règle 8).
+8. **EAN en double** : les Gencode présents sur plusieurs lignes de la base EAN retenues, avec leurs
    références. Ne pas supprimer ces lignes : les recopier et les signaler.
-8. **Autres points** : Gencode de longueur inhabituelle, références présentes plusieurs fois dans le tarif
+9. **Autres points** : Gencode de longueur inhabituelle, références présentes plusieurs fois dans le tarif
    (règle 3.7), toute autre difficulté. Écrire « aucun » s'il n'y en a pas.
 
 Exemple de compte rendu (chiffres fictifs) :
@@ -239,8 +276,9 @@ Exemple de compte rendu (chiffres fictifs) :
 4. Références sans EAN : 88 (…)
 5. Lignes sans catégorie : 131 — 120 couple inconnu (…), 9 ambigu non tranché (…), 2 absente de Catégories (…)
 6. Couples inconnus : ROLLER › ROLLER SENIOR (31 références), STREET › CROSSE STREET (17 références)
-7. EAN en double : 0123456789012 (références 1234567 et 1234570)
-8. Autres points : Gencode 12345678 (référence 1234590) sur 8 chiffres
+7. Marques autres que BAUER : HOWIES (12 références, CONSOMMABLE › HOWIES)
+8. EAN en double : 0123456789012 (références 1234567 et 1234570)
+9. Autres points : Gencode 12345678 (référence 1234590) sur 8 chiffres
 ```
 
 ---
@@ -284,11 +322,18 @@ Lignes à écrire dans `Import` :
 Autres cas :
 
 - Tarif, onglet `CONSOMMABLE`, section `HOWIES`, référence `HOW TEST 99` « RUBAN TEST », prix club `4,50 €`,
-  aucune ligne dans la base EAN → **une** ligne : `HOW TEST 99`, Gencode vide, désignation `RUBAN TEST`,
-  attributs vides, PU Club TTC `4.5`, catégorie `CONSOMMABLE` (table : `CONSOMMABLE;HOWIES;CONSOMMABLE;;;HOWIES;`),
-  marque `HOWIES`.
-- Tarif, onglet `ROLLER`, section `ROLLER SENIOR` (absente de la table) → lignes écrites normalement, catégorie
-  **vide**, marque `BAUER`, couple signalé au compte rendu (rubrique 6).
+  aucune ligne dans la base EAN, aucune valeur dans `VALEUR PRODUIT TTC` → **une** ligne : `HOW TEST 99`,
+  Gencode vide, désignation `RUBAN TEST`, attributs vides, PU Public TTC **vide** (absent du tarif),
+  PU Club TTC `4.5`, catégorie `CONSOMMABLE` (table : `CONSOMMABLE;HOWIES;CONSOMMABLE;;;HOWIES;`), marque
+  `HOWIES`, listée au compte rendu (rubrique 7).
+- Tarif, onglet `ROLLER` : une ligne `ROLLER SENIOR` (1re colonne remplie, désignation vide, aucun prix) est un
+  titre de section, absent de la table. La référence `1234599` « ROLLER TEST SR » placée sous ce titre est
+  écrite normalement, avec catégorie **vide** et marque `BAUER` ; elle n'est **pas** rattachée à la section
+  précédente de l'onglet. Le couple `ROLLER › ROLLER SENIOR` et son nombre de références sont signalés au compte
+  rendu (rubrique 6), pour vérifier la catégorie et la marque.
+- Tarif, onglet `PATIN`, sous les références de `PATIN SENIOR`, une ligne dont la 1re colonne est vide et qui
+  contient `*sans lame/avec support` dans une autre colonne : note de bas de tableau, **ignorée**. Ce n'est pas
+  un titre de section : les références suivantes restent dans `PATIN SENIOR` jusqu'au prochain vrai titre.
 - Tarif, onglet `TEXTILE`, section `TEE SHIRT & POLO` (ambigu) : désignation `POLO TEST SR` → `TEXTILE` /
   `POLO` ; désignation `TEST TEAM SR` (rien ne dit si c'est un tee-shirt ou un polo) → catégorie **vide**,
   signalée au compte rendu (rubrique 5).

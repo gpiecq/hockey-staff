@@ -23,8 +23,6 @@ final readonly class ImportTemplateBuilder
     public const string CORRESPONDENCES_FILE = 'bauer-correspondances.csv';
 
     /** Lignes de saisie préformatées en texte dans la colonne Gencode. */
-    private const int TEXT_ROWS = 20_000;
-
     public function __construct(
         private CategoryRepository $categories,
         #[Autowire('%kernel.project_dir%/resources/catalogue-preparation')]
@@ -48,8 +46,8 @@ final readonly class ImportTemplateBuilder
         $eanIndex = array_search('ean', array_keys($headers), true);
         if (false !== $eanIndex) {
             $letter = Coordinate::stringFromColumnIndex($eanIndex + 1);
-            $import->getStyle(\sprintf('%1$s2:%1$s%2$d', $letter, self::TEXT_ROWS + 1))
-                ->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+            // Style de colonne (<col style>) : aucune cellule créée, la feuille reste à 1 ligne pour les scripts.
+            $import->getStyle($letter.':'.$letter)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
         }
         $this->decorate($import, \count($headers));
 

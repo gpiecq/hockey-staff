@@ -143,6 +143,23 @@ final class CatalogueImportCategoryTest extends KernelTestCase
         self::assertSame('EQUIPEMENT › JOUEUR', $this->product('R1')?->getCategory()?->getPath());
     }
 
+    public function testFirstCategorizationByImportAppliesDefaultTrackingMode(): void
+    {
+        $this->categories->findOrCreatePath(['EQUIPEMENT', 'JOUEUR', 'PATIN']);
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
+        $product->setCategory(null)->setTrackingMode(TrackingMode::Quantity);
+        $this->em->flush();
+        ImportFixtures::variant($this->em, $product, '688698508062', 'SR L');
+
+        $run = $this->analyzedRun([self::row(['Catégorie' => 'EQUIPEMENT', 'sous-catégorie 1' => 'JOUEUR', 'sous-catégorie 2' => 'PATIN'])]);
+        $this->applier->apply($run);
+
+        $product = $this->product('R1');
+        self::assertNotNull($product);
+        self::assertSame('EQUIPEMENT › JOUEUR › PATIN', $product->getCategory()?->getPath());
+        self::assertSame(TrackingMode::Serialized, $product->getTrackingMode());
+    }
+
     public function testCategoryMatchIsNormalized(): void
     {
         $this->categories->findOrCreatePath(['EQUIPEMENT', 'JOUEUR', 'PATIN']);

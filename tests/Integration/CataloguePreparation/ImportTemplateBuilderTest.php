@@ -9,7 +9,10 @@ use App\Entity\SupplierImportMapping;
 use App\Repository\CategoryRepository;
 use App\Tests\Support\ImportFixtures;
 use Doctrine\ORM\EntityManagerInterface;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class ImportTemplateBuilderTest extends KernelTestCase
@@ -43,13 +46,35 @@ final class ImportTemplateBuilderTest extends KernelTestCase
         self::assertNull($sheet->getCell('O1')->getValue());
     }
 
-    public function testGencodeColumnIsText(): void
+    public function testGencodeColumnIsTextWithoutPreCreatedRows(): void
     {
         $sheet = $this->builder->build($this->mapping)->getSheetByNameOrThrow('Import');
 
-        self::assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('B2')->getNumberFormat()->getFormatCode());
-        self::assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('B20001')->getNumberFormat()->getFormatCode());
-        self::assertNotSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('A2')->getNumberFormat()->getFormatCode());
+        self::assertSame(1, $sheet->getHighestRow(), 'Aucune cellule créée sous les en-têtes.');
+        self::assertSame(1, $sheet->getHighestDataRow());
+        self::assertSame(NumberFormat::FORMAT_TEXT, self::columnFormat($sheet, 'B'));
+        self::assertNotSame(NumberFormat::FORMAT_TEXT, self::columnFormat($sheet, 'A'));
+    }
+
+    public function testSavedTemplateKeepsGencodeColumnTextAndNoEmptyRows(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
+        (new Xlsx($this->builder->build($this->mapping)))->save($path);
+
+        try {
+            $sheet = IOFactory::load($path)->getSheetByNameOrThrow('Import');
+            self::assertSame(1, $sheet->getHighestRow());
+            self::assertSame(NumberFormat::FORMAT_TEXT, self::columnFormat($sheet, 'B'));
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    private static function columnFormat(Worksheet $sheet, string $column): ?string
+    {
+        $xfIndex = (int) $sheet->getColumnDimension($column)->getXfIndex();
+
+        return $sheet->getParentOrThrow()->getCellXfByIndex($xfIndex)->getNumberFormat()->getFormatCode();
     }
 
     public function testCategoriesSheetListsCurrentTree(): void

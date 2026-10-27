@@ -222,6 +222,10 @@ final class CatalogueImportApplier
                 if (isset($changes['category']) && null !== $changes['category']['to']) {
                     $category = $categoryFor(explode(' › ', $changes['category']['to']));
                     if (null !== $category) {
+                        // Première catégorisation : même règle que la fiche produit (spec lot 7 § 7).
+                        if (null === $product->getCategory()) {
+                            $product->setTrackingMode($this->trackingModes->defaultFor($category));
+                        }
                         $product->setCategory($category);
                     }
                 }

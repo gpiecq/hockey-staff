@@ -63,10 +63,10 @@ Pour transformer les fichiers bruts du fournisseur en fichier d'import, une IA (
 
 1. **Télécharger les 3 fichiers** depuis cette page : le modèle d'import du fournisseur (xlsx), les règles pour l'IA (`regles-ia.md`) et la table de correspondance (csv, facultative : déjà dans l'onglet « Correspondances » du modèle).
 2. **Donner le tout à l'IA** : modèle, règles, base EAN et tarif club du fournisseur, en lui demandant de remplir le modèle en suivant exactement les règles.
-3. **Vérifier son compte rendu** : il doit chiffrer les références, lignes, lignes sans prix, sans EAN, sans catégorie, sections inconnues et EAN en double. S'il manque ou semble incohérent, lui demander de recommencer.
+3. **Vérifier son compte rendu** : il doit chiffrer les références, lignes, lignes sans prix, sans EAN, sans catégorie, sections inconnues, marques autres que BAUER et EAN en double. S'il manque ou semble incohérent, lui demander de recommencer. Vérifier la marque et la catégorie des références des sections inconnues (l'IA y écrit `BAUER` par défaut).
 4. **Importer le fichier** rendu par l'IA via « Nouvel import », contrôler l'aperçu (marques créées, « N produits sans catégorie »), puis appliquer.
 
-L'import ne crée jamais de catégorie : une catégorie vide ou inconnue laisse le produit sans catégorie.
+L'import ne crée jamais de catégorie. Une catégorie vide ou inconnue dans le fichier laisse un **nouveau** produit sans catégorie ; un produit **existant** garde sa catégorie actuelle. De même, un prix vide crée la variante sans tarif pour un nouveau produit et conserve le prix existant d'une variante déjà tarifée. Un produit existant encore sans catégorie qui en reçoit une par l'import prend le mode de suivi par défaut de cette catégorie.
 
 Après l'import, le tableau de bord affiche deux cards :
 
