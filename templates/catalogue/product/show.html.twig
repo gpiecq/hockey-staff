@@ -29,7 +29,7 @@
     {% else %}
         <table class="table">
             <thead>
-                <tr><th>Variante</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix club HT</th><th class="num">Prix public TTC</th>{% if is_granted('CATALOGUE_EDIT') %}<th></th>{% endif %}</tr>
+                <tr><th>Variante</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix club HT</th><th class="num">Prix public TTC</th><th class="num">Stock</th>{% if is_granted('CATALOGUE_EDIT') %}<th></th>{% endif %}</tr>
             </thead>
             <tbody>
                 {% for variant in variants %}
@@ -47,6 +47,20 @@
                         {% else %}
                             <td colspan="3" class="muted">Tarif absent</td>
                         {% endif %}
+                        {% set vstock = stock[variant.id]|default({levels: [], items: []}) %}
+                        {% set qty = vstock.items|length %}
+                        {% for level in vstock.levels %}{% set qty = qty + level.quantity %}{% endfor %}
+                        <td class="num" data-label="Stock">
+                            <strong>{{ qty }}</strong>
+                            {% if qty > 0 %}
+                                <small class="muted">
+                                    {% for level in vstock.levels %}{{ level.location.name }} : {{ level.quantity }}{% if not loop.last or vstock.items is not empty %} · {% endif %}{% endfor %}
+                                    {% set byLocation = {} %}
+                                    {% for item in vstock.items %}{% set byLocation = byLocation|merge({(item.location.name): (byLocation[item.location.name]|default(0)) + 1}) %}{% endfor %}
+                                    {% for name, n in byLocation %}{{ name }} : {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+                                </small>
+                            {% endif %}
+                        </td>
                         {% if is_granted('CATALOGUE_EDIT') %}
                             <td>
                                 <a href="{{ path('catalogue_variant_edit', {id: variant.id}) }}">Modifier</a>
@@ -54,6 +68,28 @@
                                 <a href="{{ path('catalogue_variant_delete', {id: variant.id}) }}">Supprimer</a>
                             </td>
                         {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% set pieces = [] %}
+    {% for entry in stock %}{% set pieces = pieces|merge(entry.items) %}{% endfor %}
+    {% if pieces is not empty %}
+        <h2>Pièces en stock</h2>
+        <table class="table">
+            <thead>
+                <tr><th>Code</th><th>Variante</th><th>Lieu</th><th>État</th><th>N° de série</th></tr>
+            </thead>
+            <tbody>
+                {% for item in pieces %}
+                    <tr>
+                        <td><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
+                        <td data-label="Variante">{{ item.variant.label ?: 'Unique' }}</td>
+                        <td data-label="Lieu">{{ item.location.name }}</td>
+                        <td data-label="État">{{ item.condition.label }}</td>
+                        <td data-label="N° de série">{{ item.serialNumber ?? '—' }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

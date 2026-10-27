@@ -1,0 +1,70 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Stock{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Stock</h1>
+        {% if is_granted('STOCK_MOVE') %}
+            <span class="actions">
+                <a class="btn" href="{{ path('stock_entry_new', {type: 'achat'}) }}">Achat</a>
+                <a class="btn" href="{{ path('stock_entry_new', {type: 'dotation'}) }}">Dotation</a>
+                <a class="btn" href="{{ path('stock_out_new') }}">Sortie</a>
+                <a class="btn" href="{{ path('stock_transfer_new') }}">Transfert</a>
+            </span>
+        {% endif %}
+    </div>
+
+    <p class="stock-total"><strong>Valeur du stock : {{ total|euros }} HT</strong>{% if location %} · {{ location.name }}{% endif %}</p>
+
+    <form method="get" action="{{ path('stock_index') }}" class="filters">
+        <div class="field">
+            <label for="stock-q">Recherche</label>
+            <input type="search" id="stock-q" name="q" value="{{ search }}" placeholder="Désignation, référence ou EAN">
+        </div>
+        <div class="field">
+            <label for="stock-lieu">Lieu</label>
+            <select id="stock-lieu" name="lieu">
+                <option value="">Tous les lieux</option>
+                {% for l in locations %}<option value="{{ l.id }}"{% if location and location.id == l.id %} selected{% endif %}>{{ l.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="field">
+            <label for="stock-categorie">Catégorie</label>
+            <select id="stock-categorie" name="categorie">
+                <option value="">Toutes les catégories</option>
+                {% for c in categories %}<option value="{{ c.id }}"{% if categoryId == c.id %} selected{% endif %}>{{ c.path }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="field-wide actions">
+            <button type="submit" class="btn btn-primary">Filtrer</button>
+            <a class="btn" href="{{ path('stock_index') }}">Réinitialiser</a>
+        </div>
+    </form>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucun article en stock.</p>
+    {% else %}
+        {% set names = {} %}
+        {% for l in locations %}{% set names = names|merge({(l.id): l.name}) %}{% endfor %}
+        <table class="table stock-table">
+            <thead>
+                <tr><th>Référence</th><th>Désignation</th><th>Variante</th><th class="num">Quantité</th><th>Lieux</th><th class="num">Valeur HT</th></tr>
+            </thead>
+            <tbody>
+                {% for row in page.items %}
+                    <tr>
+                        <td data-label="Référence">{{ row.variant.product.reference }}</td>
+                        <td><a href="{{ path('catalogue_product_show', {id: row.variant.product.id}) }}">{{ row.variant.product.designation }}</a></td>
+                        <td data-label="Variante">{{ row.variant.label ?: 'Unique' }}{% if not row.variant.active %} <span class="badge badge-warn">Plus au catalogue</span>{% endif %}</td>
+                        <td class="num" data-label="Quantité">{{ row.quantity }}</td>
+                        <td data-label="Lieux">{% for id, qty in row.quantityByLocation %}{{ names[id]|default('?') }} : {{ qty }}{% if not loop.last %} · {% endif %}{% endfor %}</td>
+                        <td class="num" data-label="Valeur HT">{{ row.valueHt|euros }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'articles'} %}
+{% endblock %}

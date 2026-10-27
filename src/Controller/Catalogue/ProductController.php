@@ -18,6 +18,7 @@ use App\Form\ProductPriceType;
 use App\Form\ProductType;
 use App\Repository\SeasonPriceRepository;
 use App\Repository\VariantRepository;
+use App\Stock\StockQuery;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -69,10 +70,12 @@ final class ProductController extends AbstractController
         VariantRepository $variants,
         SeasonPriceRepository $prices,
         CurrentSeasonProvider $currentSeason,
+        StockQuery $stock,
     ): Response {
         $season = $currentSeason->get();
 
         return $this->render('catalogue/product/show.html.twig', [
+            'stock' => $stock->byVariant($product),
             'product' => $product,
             'season' => $season,
             'variants' => $variants->findLiveByProduct($product),

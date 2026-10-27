@@ -1,0 +1,51 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Pièce {{ item.code }}{% endblock %}
+
+{% block body %}
+    {% set product = item.variant.product %}
+    <a class="back" href="{{ path('stock_index') }}">‹ Stock</a>
+    <div class="page-head">
+        <h1>Pièce {{ item.code }}</h1>
+        {% if is_granted('STOCK_MOVE') and item.status.value == 'in_stock' %}
+            <span class="actions">
+                <a class="btn" href="{{ path('stock_out_new', {item: item.code}) }}">Sortie</a>
+                <a class="btn" href="{{ path('stock_transfer_new', {item: item.code}) }}">Transfert</a>
+            </span>
+        {% endif %}
+    </div>
+
+    <dl class="product-meta">
+        <dt>Produit</dt><dd><a href="{{ path('catalogue_product_show', {id: product.id}) }}">{{ product.reference }} — {{ product.designation }}</a></dd>
+        <dt>Variante</dt><dd>{{ item.variant.label ?: 'Unique' }}</dd>
+        <dt>Statut</dt><dd>{{ item.status.label }}</dd>
+        <dt>État</dt><dd>{{ item.condition.label }}</dd>
+        <dt>Lieu</dt><dd>{{ item.location.name }}</dd>
+        <dt>Prix d'achat</dt><dd>{{ item.purchaseCostHt|euros }} HT</dd>
+        <dt>N° de série</dt><dd>{{ item.serialNumber ?? '—' }}</dd>
+    </dl>
+
+    <h2>Historique</h2>
+    {% if movements is empty %}
+        <p class="empty">Aucun mouvement.</p>
+    {% else %}
+        <table class="table history">
+            <thead>
+                <tr><th>Date</th><th>Type</th><th>Origine</th><th>Destination</th><th>Auteur</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for movement in movements %}
+                    {% set operation = movement.operation %}
+                    <tr>
+                        <td data-label="Date">{{ operation.occurredAt|date('d/m/Y H:i') }}</td>
+                        <td data-label="Type">{{ operation.type.label }}</td>
+                        <td data-label="Origine">{{ operation.source ? operation.source.name : '—' }}</td>
+                        <td data-label="Destination">{{ operation.destination ? operation.destination.name : '—' }}</td>
+                        <td data-label="Auteur">{{ operation.createdBy ? operation.createdBy.userIdentifier : '—' }}</td>
+                        <td><a href="{{ path('stock_operation_show', {id: operation.id}) }}">Voir l'opération</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

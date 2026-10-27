@@ -13,6 +13,7 @@
         {label: 'Tableau de bord', route: 'app_dashboard', main: true},
     ]},
     {title: 'Stock', role: 'ROLE_VIEWER', items: [
+        {label: 'Stock', route: 'stock_index', prefix: 'stock_index', main: true},
         {label: 'Nouvel achat', route: 'stock_entry_new', params: {type: 'achat'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
         {label: 'Nouvelle dotation', route: 'stock_entry_new', params: {type: 'dotation'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
         {label: 'Sortie de stock', route: 'stock_out_new', prefix: 'stock_out', role: 'ROLE_STOCK'},
