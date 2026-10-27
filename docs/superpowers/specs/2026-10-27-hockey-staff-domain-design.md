@@ -202,7 +202,7 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    Catégorie, Produit/Variante/Tarif saison, import Bauer (mapping colonnes, rapport d'anomalies, ré-import
    saison suivante = mise à jour des tarifs), recherche/consultation catalogue (par EAN, désignation, catégorie),
    CRUD manuel produit/variante.
-2. **Stock & mouvements** — lieux, entrées achat/dotation, sorties, transferts, pièces sérialisées, CUMP,
+2. **Stock & mouvements** — **LIVRÉ** (recette manuelle à faire, voir les décisions du lot) — lieux, entrées achat/dotation, sorties, transferts, pièces sérialisées, CUMP,
    historique, étiquettes internes PDF. *Design détaillé : `2026-10-27-lot2-stock-mouvements-design.md` ; les
    étiquettes passent au lot 8, ordre retenu lot 2 → lot 8 → lot 3.*
 3. **Scan & Hotwire Native** — coques iOS/Android, bridge scanner, flux « scanner → action », scan web de secours.
