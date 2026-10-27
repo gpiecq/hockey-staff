@@ -239,9 +239,62 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
 
         $diff = $this->analyze([self::row()]);
 
+        // Les index uniques sont partiels (deleted_at IS NULL) : un EAN de variante supprimée ne peut pas entrer en collision.
         self::assertSame([], $diff->rejectedLines);
+        self::assertSame([], $diff->anomalies);
         self::assertCount(1, $diff->newVariants);
         self::assertSame($product->getId(), $diff->newVariants[0]['productId']);
+    }
+
+    public function testEanOfLiveVariantOfSoftDeletedProductIsRejected(): void
+    {
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
+        ImportFixtures::variant($this->em, $product, '688698508062', 'SR L');
+        $this->em->remove($product);
+        $this->em->flush();
+
+        $diff = $this->analyze([self::row()]);
+
+        self::assertSame([2], $diff->rejectedLines);
+        self::assertSame([ImportAnomalyCode::EanHeldByDeletedProduct->value], self::codes($diff));
+        self::assertStringContainsString('R1', $diff->anomalies[0]['message']);
+        self::assertSame([], $diff->newVariants);
+        self::assertSame([], $diff->newProducts);
+    }
+
+    public function testAttributeChangeCollidingWithSiblingMatchKeyIsRejected(): void
+    {
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
+        $changing = ImportFixtures::variant($this->em, $product, '688698508062', 'SR L', season: $this->season, club: 25000, public: 30000);
+        ImportFixtures::variant($this->em, $product, '688698508079', 'SR M', season: $this->season, club: 25000, public: 30000);
+
+        $diff = $this->analyze([
+            self::row(['Gencode' => '688698508062', 'Taille' => 'SR M']),
+            self::row(['Gencode' => '688698508079', 'Taille' => 'SR M']),
+        ]);
+
+        self::assertSame([2], $diff->rejectedLines);
+        self::assertSame([ImportAnomalyCode::VariantKeyCollision->value], self::codes($diff));
+        self::assertSame([], $diff->changedVariants);
+        self::assertNotContains($changing->getId(), $diff->deactivatedVariantIds);
+        self::assertSame([], $diff->deactivatedVariantIds);
+    }
+
+    public function testRejectedRowStillMarksItsVariantPresent(): void
+    {
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
+        ImportFixtures::variant($this->em, $product, '688698508062', 'SR L', season: $this->season, club: 25000, public: 30000);
+        ImportFixtures::variant($this->em, $product, null, 'SR M', season: $this->season, club: 25000, public: 30000);
+
+        $diff = $this->analyze([
+            self::row(['Désignation' => null]),
+            self::row(['Gencode' => null, 'Taille' => 'SR M', 'Désignation' => null]),
+        ]);
+
+        self::assertSame([2, 3], $diff->rejectedLines);
+        self::assertSame([], $diff->deactivatedVariantIds);
+        self::assertSame([], $diff->changedVariants);
+        self::assertSame([], $diff->newVariants);
     }
 
     public function testSameReferenceAndAttributesWithDifferentEanIsRejectedAsEanChanged(): void
