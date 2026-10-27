@@ -240,6 +240,32 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
         self::assertSame(2, $diff->newVariants[0]['line']);
     }
 
+    public function testTwelveDigitEanMatchesExistingThirteenDigitVariant(): void
+    {
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1', 'Patin Vapor');
+        $variant = ImportFixtures::variant($this->em, $product, '0123456789012', 'SR L', season: $this->season, club: 25000, public: 30000);
+
+        $diff = $this->analyze([self::row(['Gencode' => '123456789012'])]);
+
+        self::assertSame([], $diff->newVariants);
+        self::assertSame([], $diff->newProducts);
+        self::assertSame([], $diff->rejectedLines);
+        self::assertNotContains(ImportAnomalyCode::EanChanged->value, self::codes($diff));
+        self::assertSame([], $diff->deactivatedVariantIds);
+        self::assertSame('0123456789012', $variant->getEan());
+    }
+
+    public function testTwelveDigitDuplicateInFileIsDetected(): void
+    {
+        $diff = $this->analyze([
+            self::row(['Gencode' => '0123456789012', 'Taille' => 'SR L']),
+            self::row(['Gencode' => '123456789012', 'Taille' => 'SR M']),
+        ]);
+
+        self::assertSame([3], $diff->rejectedLines);
+        self::assertContains(ImportAnomalyCode::EanDuplicateInFile->value, self::codes($diff));
+    }
+
     public function testEanOfAnotherSupplierRejectsLine(): void
     {
         $other = ImportFixtures::supplierWithMapping($this->em, 'Warrior');

@@ -79,6 +79,16 @@ final class ProductBrowseTest extends WebTestCase
         self::assertResponseRedirects('/catalogue/'.$product->getId());
     }
 
+    public function testSearchByEanMatchesLeadingZeroVariant(): void
+    {
+        $product = $this->product('1028478', 'JUGULAIRE 2 PARTIES');
+        $this->variant($product, '0123456789012');
+
+        $this->client->request('GET', '/catalogue', ['q' => '123456789012']);
+
+        self::assertResponseRedirects('/catalogue/'.$product->getId());
+    }
+
     public function testUnknownEanFallsBackToSearch(): void
     {
         $this->product('1028478', 'JUGULAIRE 2 PARTIES');

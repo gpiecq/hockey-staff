@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Import;
 
+use App\Catalogue\Ean;
 use App\Entity\Category;
 use App\Entity\ImportRun;
 use App\Entity\Product;
@@ -96,7 +97,7 @@ final class CatalogueImportAnalyzer
         $variantByKey = [];
         foreach ($variants as $variant) {
             if (null !== $variant->getEan()) {
-                $variantByEan[$variant->getEan()] = $variant;
+                $variantByEan[Ean::key($variant->getEan())] = $variant;
             }
             $variantByKey[$variant->getProduct()?->getReference().'|'.$variant->getMatchKey()] = $variant;
         }
@@ -118,7 +119,7 @@ final class CatalogueImportAnalyzer
             'SELECT v.ean AS ean FROM App\Entity\Variant v JOIN v.product p
              WHERE p.supplier != :supplier AND v.ean IS NOT NULL',
         )->setParameter('supplier', $supplier)->getArrayResult();
-        $otherSupplierEans = array_fill_keys(array_column($otherRows, 'ean'), true);
+        $otherSupplierEans = array_fill_keys(array_map(Ean::key(...), array_column($otherRows, 'ean')), true);
 
         // Les index uniques sont partiels (deleted_at IS NULL) : seules les variantes vivantes d'un produit
         // supprimé (invisibles via le filtre softdeleteable) peuvent encore détenir un EAN. Requête DBAL : pas de filtre.
@@ -129,7 +130,7 @@ final class CatalogueImportAnalyzer
         );
         foreach ($holderRows as $holderRow) {
             \assert(\is_string($holderRow['ean']) && \is_string($holderRow['reference']));
-            $deletedHolders[$holderRow['ean']] = $holderRow['reference'];
+            $deletedHolders[Ean::key($holderRow['ean'])] = $holderRow['reference'];
         }
 
         $builder = new ImportDiffBuilder();
@@ -149,7 +150,7 @@ final class CatalogueImportAnalyzer
             }
             if ($row->isRejected()) {
                 $builder->reject($row->line);
-                $identified = (null !== $row->ean ? ($variantByEan[$row->ean] ?? null) : null)
+                $identified = (null !== $row->ean ? ($variantByEan[Ean::key($row->ean)] ?? null) : null)
                     ?? ('' !== $row->reference ? ($variantByKey[$row->reference.'|'.$row->matchKey()] ?? null) : null);
                 if (null !== $identified) {
                     $present[(int) $identified->getId()] = true;
@@ -158,23 +159,24 @@ final class CatalogueImportAnalyzer
             }
 
             $ean = $row->ean;
+            $eanKey = null !== $ean ? Ean::key($ean) : '';
             $key = $row->reference.'|'.$row->matchKey();
             $byKey = $variantByKey[$key] ?? null;
 
-            if (null !== $ean && isset($seenEans[$ean])) {
+            if (null !== $ean && isset($seenEans[$eanKey])) {
                 $builder->rejectWith($row->line, ImportAnomalyCode::EanDuplicateInFile, \sprintf(
-                    'Gencode « %s » déjà présent à la ligne %d : ligne ignorée.', $ean, $seenEans[$ean],
+                    'Gencode « %s » déjà présent à la ligne %d : ligne ignorée.', $ean, $seenEans[$eanKey],
                 ));
                 continue;
             }
             if (null !== $ean) {
-                $seenEans[$ean] = $row->line;
+                $seenEans[$eanKey] = $row->line;
             }
 
             $matched = null;
             if (null === $ean) {
                 $matched = $byKey;
-            } elseif (null !== ($byEan = $variantByEan[$ean] ?? null)) {
+            } elseif (null !== ($byEan = $variantByEan[$eanKey] ?? null)) {
                 $existingReference = $byEan->getProduct()?->getReference();
                 if ($existingReference !== $row->reference) {
                     $present[(int) $byEan->getId()] = true;
@@ -185,7 +187,7 @@ final class CatalogueImportAnalyzer
                     continue;
                 }
                 $matched = $byEan;
-            } elseif (isset($otherSupplierEans[$ean])) {
+            } elseif (isset($otherSupplierEans[$eanKey])) {
                 if (null !== $byKey) {
                     $present[(int) $byKey->getId()] = true;
                 }
@@ -193,13 +195,13 @@ final class CatalogueImportAnalyzer
                     'Le gencode « %s » est déjà rattaché à un autre fournisseur : ligne ignorée.', $ean,
                 ));
                 continue;
-            } elseif (isset($deletedHolders[$ean])) {
+            } elseif (isset($deletedHolders[$eanKey])) {
                 if (null !== $byKey) {
                     $present[(int) $byKey->getId()] = true;
                 }
                 $builder->rejectWith($row->line, ImportAnomalyCode::EanHeldByDeletedProduct, \sprintf(
                     'Le gencode « %s » est encore porté par une variante du produit supprimé « %s » : ligne ignorée (restaurer ou nettoyer ce produit).',
-                    $ean, $deletedHolders[$ean],
+                    $ean, $deletedHolders[$eanKey],
                 ));
                 continue;
             } elseif (null !== $byKey) {

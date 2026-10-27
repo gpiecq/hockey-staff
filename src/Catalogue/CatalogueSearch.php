@@ -83,8 +83,8 @@ final readonly class CatalogueSearch
         $variant = $this->variants->createQueryBuilder('v')
             ->addSelect('p')
             ->join('v.product', 'p')
-            ->where('v.ean = :ean')
-            ->setParameter('ean', $ean)
+            ->where('v.ean IN (:candidates)')
+            ->setParameter('candidates', Ean::candidates($ean))
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
