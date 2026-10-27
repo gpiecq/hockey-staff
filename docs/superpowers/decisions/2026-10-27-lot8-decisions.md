@@ -18,9 +18,12 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 - **R3 — `LogicException` quand une variante sans EAN utilisable n'a pas de code `HV-`.** Cas non prévu par le plan ;
   il ne doit pas arriver, car tout code est attribué à la création (migration comprise). Coût si faux : un message
   utilisateur à la place de l'exception.
-- **R4 — Code-barres PNG étiré à une largeur fixe (50 mm, 52 mm selon le format), quelle que soit la symbologie.**
-  Les proportions horizontales des barres sont conservées, donc lisible en théorie, mais les modules Code128 sont plus
-  larges que ceux de l'EAN. Coût si faux : ajuster la largeur par symbologie après essai de scan réel (voir la recette).
+- **R4 — Largeur du code-barres selon le format.** A4 : largeur fixe de 50 mm (module ≈ 0,53 mm pour UPC-A/EAN-13,
+  zone blanche mesurée ≈ 6,7 mm de chaque côté pour 5,8 mm requis). Rouleau 62 mm : largeur = nombre de modules × 0,45 mm,
+  plafonnée à 52 mm (UPC-A/EAN-13, 95 modules : 42,8 mm, zone blanche ≈ 9,6 mm pour 11X = 5,0 mm ; Code128 `HV-000001`,
+  ≈ 146 modules : plafond 52 mm, X ≈ 0,36 mm, zone blanche ≈ 5,8 mm pour 10X = 3,6 mm). Une première version à 52 mm fixes
+  étirait l'EAN à X ≈ 0,55 mm et ne laissait que 4,65 mm, sous le minimum de 11X : corrigé. Coût si faux : ajuster
+  `ROLL_MODULE_MM` après essai de scan réel (voir la recette).
 - **R5 — Règle globale `[hidden] { display: none !important }`** dans `assets/styles/app.css`. Le champ « première
   case » restait visible pour le format rouleau, car `.field { display: flex }` l'emportait sur l'attribut `hidden`.
   Aucune autre règle CSS ne dépend du comportement inverse. Coût si faux : cibler seulement ce champ.
@@ -51,14 +54,16 @@ Faite : la vérification navigateur décrite en R11.
 1. Imprimer une planche A4 et une étiquette 62 × 29 mm.
 2. Les scanner à la douchette USB et à l'appareil photo d'un téléphone, pour les trois symbologies : UPC-A, EAN-13,
    Code128.
-3. Caler les marges de la planche L7160 sur l'imprimante du club.
-4. Corriger l'EAN `876369003339` (clé invalide) depuis la fiche variante : correction de données, hors lot.
+3. Imprimer une étiquette rouleau UPC-A/EAN-13 collée sur une surface sombre (zone blanche réduite) et la scanner.
+4. Caler les marges de la planche L7160 sur l'imprimante du club.
+5. Corriger l'EAN `876369003339` (clé invalide) depuis la fiche variante : correction de données, hors lot.
 
 ## Points connus / reportés
 
 - **Désignation tronquée sans ellipse** (R2) ; le test de non-débordement ne peut pas échouer (cellules en position
   absolue) ; un mot unique très long peut déborder horizontalement (masqué).
-- **Largeur de code-barres fixe** (R4), échelle PNG non entière, image non mise en cache par valeur.
+- **Largeur de code-barres** : fixe en A4, par nombre de modules sur le rouleau (R4) ; l'étiquette rouleau coupait les
+  jambages de la 2e ligne de désignation (hauteur 6,4 mm, portée à 6,9 mm), corrigé. Échelle PNG non entière, image non mise en cache par valeur.
 - **Variante dont le produit est supprimé** : une recherche `HV-` redirige vers une fiche produit en 404, sans garde ni
   test. Une variante supprimée garde son code, sans test.
 - **Fiche produit** : les variantes inactives ou archivées sans stock sont cochées mais ne produisent aucune étiquette.
@@ -68,6 +73,7 @@ Faite : la vérification navigateur décrite en R11.
 - **Contrôleur d'impression** : ré-expansion manuelle des produits, `LabelLineBuilder::forProducts` inutilisé en
   production ; un paramètre de requête falsifié (scalaire ou tableau) donne un 400 ; l'erreur 422 ré-affiche l'écran
   sans le choix de mode.
+- **Recherche `HS-`** sans droit STOCK_VIEW : le repli n'est pas testé (aucun rôle n'en est privé aujourd'hui).
 - **Tests manquants** : règle « étiquetable » sur les lignes postées, paramètres `produits[]`, `operation`,
   `sans_ean`, `retirer`, pièce en POST, bornes (`total` = 500), cas limites de la recherche de code (`HV-12A`,
   14 chiffres, préfixe seul), EAN de 11/14 chiffres ou vides, dotation et opérations multi-produits.
