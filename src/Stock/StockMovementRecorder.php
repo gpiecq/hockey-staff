@@ -171,10 +171,16 @@ final readonly class StockMovementRecorder
                 throw new StockException('La quantité doit être au moins 1.');
             }
             if (TrackingMode::Serialized !== $line->variant->getProduct()?->getTrackingMode()) {
+                if (null !== $line->item) {
+                    throw new StockException(\sprintf('« %s » est suivi en quantité : n\'indiquez pas de pièce.', $this->label($line->variant)));
+                }
                 continue;
             }
             if (null === $line->item) {
                 throw new StockException(\sprintf('Indiquez la pièce (code HS-) pour « %s ».', $this->label($line->variant)));
+            }
+            if ($line->item->getVariant()->getId() !== $line->variant->getId()) {
+                throw new StockException(\sprintf('La pièce %s ne correspond pas à « %s ».', $line->item->getCode(), $this->label($line->variant)));
             }
             if (1 !== $line->quantity) {
                 throw new StockException(\sprintf('La quantité de la pièce %s doit être 1.', $line->item->getCode()));
