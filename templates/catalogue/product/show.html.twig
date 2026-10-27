@@ -60,6 +60,7 @@
                                     {% for name, n in byLocation %}{{ name }} : {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
                                 </small>
                             {% endif %}
+                            <small><a href="{{ path('stock_operation_index', {variante: variant.id}) }}">Historique</a></small>
                         </td>
                         {% if is_granted('CATALOGUE_EDIT') %}
                             <td>

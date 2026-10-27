@@ -3,27 +3,42 @@
 {% block title %}{{ operation.type.label }} n° {{ operation.id }}{% endblock %}
 
 {% block body %}
-    <h1>{{ operation.type.label }} n° {{ operation.id }}</h1>
+    <div class="page-head">
+        <h1>{{ operation.type.label }} n° {{ operation.id }}</h1>
+        <span class="actions"><a class="btn" href="{{ path('stock_operation_index') }}">Toutes les opérations</a></span>
+    </div>
 
     <dl class="product-meta">
         <dt>Date</dt><dd>{{ operation.occurredAt|date('d/m/Y H:i') }}</dd>
+        <dt>Auteur</dt><dd>{{ operation.createdBy ? operation.createdBy.fullName : '—' }}</dd>
         {% if operation.source %}<dt>Origine</dt><dd>{{ operation.source.name }}</dd>{% endif %}
         {% if operation.destination %}<dt>Destination</dt><dd>{{ operation.destination.name }}</dd>{% endif %}
+        {% if operation.outReason %}<dt>Motif</dt><dd>{{ operation.outReason.label }}</dd>{% endif %}
         {% if operation.documentReference %}<dt>Document</dt><dd>{{ operation.documentReference }}</dd>{% endif %}
         {% if operation.comment %}<dt>Commentaire</dt><dd>{{ operation.comment }}</dd>{% endif %}
     </dl>
 
     <table class="table">
         <thead>
-            <tr><th>Article</th><th>Pièce</th><th class="num">Quantité</th><th class="num">Coût unitaire HT</th></tr>
+            <tr>
+                <th>Article</th><th>Pièce</th><th class="num">Quantité</th><th class="num">Coût unitaire HT</th>
+                {% if operation.type.value == 'donation_in' %}<th class="num">Valeur catalogue HT</th>{% endif %}
+            </tr>
         </thead>
         <tbody>
             {% for movement in operation.movements %}
+                {% set variant = movement.variant %}
                 <tr>
-                    <td>{{ movement.variant.product.reference }} — {{ movement.variant.product.designation }}{% if movement.variant.label %} — {{ movement.variant.label }}{% endif %}</td>
-                    <td>{{ movement.item ? movement.item.code : '' }}</td>
-                    <td class="num">{{ movement.quantity }}</td>
-                    <td class="num">{{ (movement.unitCostHt / 100)|number_format(2, ',', ' ') }} €</td>
+                    <td data-label="Article">
+                        <a href="{{ path('catalogue_product_show', {id: variant.product.id}) }}">{{ variant.product.reference }} — {{ variant.product.designation }}</a>{% if variant.label %} — {{ variant.label }}{% endif %}
+                        {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}
+                    </td>
+                    <td data-label="Pièce">{% if movement.item %}<a href="{{ path('stock_item_show', {code: movement.item.code}) }}">{{ movement.item.code }}</a>{% else %}—{% endif %}</td>
+                    <td class="num" data-label="Quantité">{{ movement.quantity }}</td>
+                    <td class="num" data-label="Coût unitaire HT">{{ movement.unitCostHt|euros }}</td>
+                    {% if operation.type.value == 'donation_in' %}
+                        <td class="num" data-label="Valeur catalogue HT">{{ movement.catalogueValueHt is null ? '—' : movement.catalogueValueHt|euros }}</td>
+                    {% endif %}
                 </tr>
             {% endfor %}
         </tbody>

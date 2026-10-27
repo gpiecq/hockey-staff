@@ -100,7 +100,7 @@ final class EntryControllerTest extends WebTestCase
         self::assertSame(3750, $level->getValueHt());
         $client->followRedirect();
         self::assertSelectorTextContains('.flash-success', 'Entrée enregistrée.');
-        self::assertSelectorTextContains('.table', '12,50 €');
+        self::assertSelectorTextContains('.table', "12,50\u{00A0}€");
     }
 
     public function testSerializedPurchaseShowsCreatedCodes(): void

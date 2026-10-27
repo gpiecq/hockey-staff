@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Opérations de stock{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Opérations de stock</h1>
+    </div>
+
+    {% if variant %}
+        <p class="muted">Variante : {{ variant.product.reference }} — {{ variant.product.designation }}{% if variant.label %} — {{ variant.label }}{% endif %}
+            · <a href="{{ path('stock_operation_index') }}">Toutes les opérations</a></p>
+    {% endif %}
+
+    {{ form_start(form, {action: path('stock_operation_index'), attr: {class: 'filters'}}) }}
+        <div class="field">{{ form_label(form.type) }}{{ form_widget(form.type) }}</div>
+        <div class="field">{{ form_label(form.lieu) }}{{ form_widget(form.lieu) }}</div>
+        <div class="field">{{ form_label(form.du) }}{{ form_widget(form.du) }}</div>
+        <div class="field">{{ form_label(form.au) }}{{ form_widget(form.au) }}</div>
+        {{ form_widget(form.variante) }}
+        <div class="field-wide actions">
+            <button type="submit" class="btn btn-primary">Filtrer</button>
+            <a class="btn" href="{{ path('stock_operation_index') }}">Réinitialiser</a>
+        </div>
+    {{ form_end(form, {render_rest: false}) }}
+
+    {% if page.items is empty %}
+        <p class="empty">Aucune opération.</p>
+    {% else %}
+        <table class="table operations">
+            <thead>
+                <tr><th>Date</th><th>Type</th><th>Lieu(x)</th><th class="num">Lignes</th><th>Auteur</th><th>Document</th></tr>
+            </thead>
+            <tbody>
+                {% for operation in page.items %}
+                    <tr>
+                        <td data-label="Date"><a href="{{ path('stock_operation_show', {id: operation.id}) }}">{{ operation.occurredAt|date('d/m/Y H:i') }}</a></td>
+                        <td data-label="Type">{{ operation.type.label }}</td>
+                        <td data-label="Lieu(x)">{% if operation.source and operation.destination %}{{ operation.source.name }} → {{ operation.destination.name }}{% else %}{{ (operation.source ?? operation.destination).name }}{% endif %}</td>
+                        <td class="num" data-label="Lignes">{{ counts[operation.id]|default(0) }}</td>
+                        <td data-label="Auteur">{{ operation.createdBy ? operation.createdBy.fullName : '—' }}</td>
+                        <td data-label="Document">{{ operation.documentReference ?? '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'opérations'} %}
+{% endblock %}
