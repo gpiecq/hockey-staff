@@ -1,0 +1,51 @@
+---
+# Production environment override
+services:
+  php:
+    image: ${IMAGES_PREFIX:-}hockey-staff-php-prod
+    build:
+      context: .
+      target: frankenphp_prod
+    environment:
+      APP_SECRET: ${APP_SECRET}
+      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET}
+      MERCURE_JWT_ISSUER: ${CADDY_MERCURE_JWT_ISSUER}
+
+  worker:
+    image: ${IMAGES_PREFIX:-}hockey-staff-php-prod
+    build:
+      context: .
+      target: frankenphp_prod
+    restart: unless-stopped
+    # The image healthcheck probes FrankenPHP, which the worker does not run
+    healthcheck:
+      disable: true
+    depends_on:
+      php:
+        condition: service_started
+      hockey-staff-database:
+        condition: service_healthy
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hockey_staff}:${POSTGRES_PASSWORD:-hockey_staff}@${POSTGRES_HOST:-hockey-staff-database}:5432/${POSTGRES_DB:-hockey_staff}?serverVersion=${POSTGRES_VERSION:-18}&charset=${POSTGRES_CHARSET:-utf8}
+      MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL}
+      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET}
+      MERCURE_JWT_ISSUER: ${CADDY_MERCURE_JWT_ISSUER}
+    volumes:
+      - app_storage:/app/var/storage
+      - app_log:/app/var/log
+    networks:
+      - ced4it-network
+    command:
+      - php
+      - -d
+      - memory_limit=512M
+      - bin/console
+      - messenger:consume
+      - async
+      - scheduler_default
+      - --time-limit=3600
+      - --memory-limit=512M

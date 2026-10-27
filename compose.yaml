@@ -1,0 +1,85 @@
+---
+name: hockey-staff
+
+# Traefik is managed externally on ced4it-network (ports 80/443/8080)
+# The php service connects to it via labels
+services:
+  php:
+    image: ${IMAGES_PREFIX:-}hockey-staff-php
+    restart: unless-stopped
+    depends_on:
+      hockey-staff-database:
+        condition: service_healthy
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-hockey-staff.localhost}, php:80
+      DEFAULT_URI: https://${SERVER_NAME:-hockey-staff.localhost}
+      APP_ENV: ${APP_ENV:-dev}
+      APP_SECRET: ${APP_SECRET:-ChangeThisSecretKeyToSomethingUniqueAndRandom}
+      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hockey_staff}:${POSTGRES_PASSWORD:-hockey_staff}@${POSTGRES_HOST:-hockey-staff-database}:5432/${POSTGRES_DB:-hockey_staff}?serverVersion=${POSTGRES_VERSION:-18}&charset=${POSTGRES_CHARSET:-utf8}
+      MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-hockey-staff.localhost}/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_JWT_ISSUER: ${CADDY_MERCURE_JWT_ISSUER:-https://${SERVER_NAME:-hockey-staff.localhost}}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - app_storage:/app/var/storage
+      - app_log:/app/var/log
+    networks:
+      - ced4it-network
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ced4it-network
+      # HTTP Router (redirect to HTTPS)
+      traefik.http.routers.hockey-staff-http.rule: Host(`${SERVER_NAME:-hockey-staff.localhost}`)
+      traefik.http.routers.hockey-staff-http.entrypoints: web
+      traefik.http.routers.hockey-staff-http.middlewares: hockey-staff-redirect-https
+      traefik.http.routers.hockey-staff-http.service: hockey-staff
+      # HTTPS Router
+      traefik.http.routers.hockey-staff-https.rule: Host(`${SERVER_NAME:-hockey-staff.localhost}`)
+      traefik.http.routers.hockey-staff-https.entrypoints: websecure
+      traefik.http.routers.hockey-staff-https.tls: "true"
+      traefik.http.routers.hockey-staff-https.service: hockey-staff
+      # Service configuration (use HTTP backend, TLS termination is at Traefik level)
+      traefik.http.services.hockey-staff.loadbalancer.server.port: "80"
+      traefik.http.services.hockey-staff.loadbalancer.server.scheme: http
+      # Middleware for HTTPS redirect
+      traefik.http.middlewares.hockey-staff-redirect-https.redirectscheme.scheme: https
+      traefik.http.middlewares.hockey-staff-redirect-https.redirectscheme.permanent: "true"
+
+  hockey-staff-database:
+    image: postgres:${POSTGRES_VERSION:-18}-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hockey_staff}
+      POSTGRES_USER: ${POSTGRES_USER:-hockey_staff}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hockey_staff}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-hockey_staff}", "-U", "${POSTGRES_USER:-hockey_staff}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      # Postgres 18+ stores data under /var/lib/postgresql/<major>/docker
+      - db_data:/var/lib/postgresql:rw
+    networks:
+      - ced4it-network
+
+# Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
+###> symfony/mercure-bundle ###
+###< symfony/mercure-bundle ###
+
+volumes:
+  caddy_data:
+  caddy_config:
+  db_data:
+  # Shared /app/var/storage so the worker sees files uploaded by php (imports, etc.)
+  app_storage:
+  # Shared /app/var/log so fluent-bit ingests logs from both php and worker containers
+  app_log:
+
+networks:
+  ced4it-network:
+    external: true
