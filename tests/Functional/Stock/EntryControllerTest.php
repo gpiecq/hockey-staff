@@ -147,6 +147,23 @@ final class EntryControllerTest extends WebTestCase
         self::assertSame(0, $this->rows($client, StockOperation::class));
     }
 
+    public function testRerenderAfterErrorKeepsLineIndexesUnique(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $location = StockFixtures::location($this->em($client));
+        $variant = $this->variant($client);
+
+        $crawler = $client->request('GET', '/stock/entree/achat');
+        $payload = $this->payload($location, $variant, 1);
+        $payload['lines'][2] = $payload['lines'][0];
+        $this->submit($client, $crawler, $payload);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorExists('[name="stock_entry[lines][2][quantity]"]');
+        self::assertSame('3', $client->getCrawler()->filter('[data-controller="form-collection"]')->attr('data-form-collection-index-value'));
+    }
+
     public function testNoActiveLocationShowsHint(): void
     {
         $client = static::createClient();
