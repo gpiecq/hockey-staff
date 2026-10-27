@@ -6,13 +6,16 @@ namespace App\Controller\Catalogue;
 
 use App\Catalogue\CatalogueSearch;
 use App\Catalogue\CatalogueSearchCriteria;
+use App\Catalogue\CodeResolver;
 use App\Catalogue\CurrentSeasonProvider;
 use App\Catalogue\TrackingModeResolver;
 use App\Entity\Brand;
 use App\Entity\Category;
+use App\Entity\Item;
 use App\Entity\Product;
 use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
+use App\Entity\Variant;
 use App\Form\CatalogueFilterType;
 use App\Form\ProductPriceType;
 use App\Form\ProductType;
@@ -32,7 +35,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class ProductController extends AbstractController
 {
     #[Route('', name: 'catalogue_product_index', methods: ['GET'])]
-    public function index(Request $request, CatalogueSearch $search, CurrentSeasonProvider $currentSeason): Response
+    public function index(Request $request, CatalogueSearch $search, CurrentSeasonProvider $currentSeason, CodeResolver $resolver): Response
     {
         $form = $this->createForm(CatalogueFilterType::class);
         $form->handleRequest($request);
@@ -41,9 +44,13 @@ final class ProductController extends AbstractController
         \assert(\is_array($data));
         $query = \is_string($data['q'] ?? null) ? trim($data['q']) : '';
 
-        // Un EAN exact d'une variante vivante mène directement à sa fiche produit.
-        if ('' !== $query && null !== ($variant = $search->findVariantByEan($query)) && null !== $variant->getProduct()) {
-            return $this->redirectToRoute('catalogue_product_show', ['id' => $variant->getProduct()->getId()]);
+        // Un code scanné (EAN, HV-…, HS-…) mène directement à la fiche produit ou à la fiche pièce.
+        $found = '' !== $query ? $resolver->resolve($query) : null;
+        if ($found instanceof Variant && null !== $found->getProduct()) {
+            return $this->redirectToRoute('catalogue_product_show', ['id' => $found->getProduct()->getId()]);
+        }
+        if ($found instanceof Item && $this->isGranted('STOCK_VIEW')) {
+            return $this->redirectToRoute('stock_item_show', ['code' => $found->getCode()]);
         }
 
         $category = $data['category'] ?? null;

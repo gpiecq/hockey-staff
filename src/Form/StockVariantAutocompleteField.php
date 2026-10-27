@@ -52,9 +52,10 @@ final class StockVariantAutocompleteField extends AbstractType
                 if ('' === $query) {
                     return;
                 }
-                $qb->andWhere('LOWER(UNACCENT(p.designation)) LIKE LOWER(UNACCENT(:like)) OR LOWER(p.reference) LIKE LOWER(:like) OR v.ean IN (:eans)')
+                $qb->andWhere('LOWER(UNACCENT(p.designation)) LIKE LOWER(UNACCENT(:like)) OR LOWER(p.reference) LIKE LOWER(:like) OR v.ean IN (:eans) OR v.code = :code')
                     ->setParameter('like', '%'.addcslashes($query, '%_\\').'%')
-                    ->setParameter('eans', Ean::candidates($query));
+                    ->setParameter('eans', Ean::candidates($query))
+                    ->setParameter('code', strtoupper($query));
             },
         ]);
         $resolver->setAllowedTypes('movable_only', 'bool');

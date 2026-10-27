@@ -209,4 +209,19 @@ final class EntryControllerTest extends WebTestCase
         self::assertStringContainsString('REF-OK', $body);
         self::assertStringNotContainsString('REF-ARCH', $body);
     }
+
+    public function testStockAutocompleteFindsVariantByCode(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $variant = $this->variant($client, TrackingMode::Quantity, null, 'REF-OK');
+        $this->variant($client, TrackingMode::Quantity, null, 'REF-OTHER');
+
+        $client->request('GET', '/autocomplete/stock_variant_autocomplete_field?query='.strtolower((string) $variant->getCode()));
+
+        self::assertResponseIsSuccessful();
+        $body = (string) $client->getResponse()->getContent();
+        self::assertStringContainsString('REF-OK', $body);
+        self::assertStringNotContainsString('REF-OTHER', $body);
+    }
 }
