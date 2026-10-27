@@ -10,6 +10,7 @@ use App\Pagination\Page;
 use App\Repository\LocationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -52,10 +53,15 @@ final class LocationController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'stock_location_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function edit(Location $location, Request $request, EntityManagerInterface $em): Response
+    public function edit(Location $location, Request $request, EntityManagerInterface $em, LocationRepository $locations): Response
     {
+        $wasActive = $location->isActive();
         $form = $this->createForm(LocationType::class, $location);
         $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid() && $wasActive && !$location->isActive() && $locations->hasStock($location)) {
+            $form->get('active')->addError(new FormError('Ce lieu contient du stock : videz-le avant de le désactiver.'));
+        }
 
         if ($form->isSubmitted() && $form->isValid()) {
             $em->flush();
@@ -72,11 +78,17 @@ final class LocationController extends AbstractController
 
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/{id}/delete', name: 'stock_location_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function delete(Location $location, Request $request, EntityManagerInterface $em): Response
+    public function delete(Location $location, Request $request, EntityManagerInterface $em, LocationRepository $locations): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('location_delete_'.$location->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            if ($locations->hasMovements($location)) {
+                $this->addFlash('error', 'Ce lieu a des mouvements : désactivez-le plutôt.');
+
+                return $this->redirectToRoute('stock_location_index');
             }
 
             $em->remove($location);
