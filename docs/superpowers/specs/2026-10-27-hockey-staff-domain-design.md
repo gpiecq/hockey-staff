@@ -228,7 +228,8 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    - Pré-requis : fichier Bauer brut multi-onglets fourni par l'utilisateur ; référentiel de catégories maison
      stabilisé.
 8. **Codes-barres et étiquettes** — *ajouté le 2026-10-27 à la demande de l'utilisateur, position dans l'ordre des
-   lots : après le lot 2, avant le lot 3 (décidé avec le design du lot 2).*
+   lots : après le lot 2, avant le lot 3 (décidé avec le design du lot 2). Design détaillé :
+   `2026-10-27-lot8-codes-barres-etiquettes-design.md` (il tranche les questions ouvertes ci-dessous).*
    - **Génération de codes-barres** pour chaque variante : à partir de l'**EAN** fournisseur quand il existe
      (symbologie EAN-13 / UPC-A), sinon de la **référence fournisseur** (+ attributs) ou du code interne `HS-`
      (Code128 / QR). But : rendre les mouvements de stock au téléphone plus rapides et fiables (scan au lieu de
