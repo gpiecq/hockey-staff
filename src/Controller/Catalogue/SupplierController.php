@@ -7,6 +7,7 @@ namespace App\Controller\Catalogue;
 use App\Entity\Supplier;
 use App\Form\SupplierType;
 use App\Pagination\Page;
+use App\Repository\ProductRepository;
 use App\Repository\SupplierRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -75,11 +76,17 @@ final class SupplierController extends AbstractController
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/{id}/delete', name: 'catalogue_supplier_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted('CATALOGUE_EDIT')]
-    public function delete(Supplier $supplier, Request $request, EntityManagerInterface $em): Response
+    public function delete(Supplier $supplier, Request $request, EntityManagerInterface $em, ProductRepository $products): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('supplier_delete_'.$supplier->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            if ($products->existsForSupplier($supplier)) {
+                $this->addFlash('error', 'Ce fournisseur a encore des produits : suppression impossible.');
+
+                return $this->redirectToRoute('catalogue_supplier_index');
             }
 
             $em->remove($supplier);

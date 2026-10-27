@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Brand;
 use App\Entity\Product;
 use App\Entity\Season;
 use App\Entity\SeasonPrice;
+use App\Entity\Supplier;
 use App\Entity\Variant;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
@@ -23,6 +25,30 @@ class ProductRepository extends ServiceEntityRepository
     }
 
     /** Produits non supprimés (filtre softdeleteable) sans catégorie. */
+    /** Produits non supprimés uniquement (filtre softdeleteable). */
+    public function existsForSupplier(Supplier $supplier): bool
+    {
+        return null !== $this->createQueryBuilder('p')
+            ->select('p.id')
+            ->where('p.supplier = :supplier')
+            ->setParameter('supplier', $supplier)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /** Produits non supprimés uniquement (filtre softdeleteable). */
+    public function existsForBrand(Brand $brand): bool
+    {
+        return null !== $this->createQueryBuilder('p')
+            ->select('p.id')
+            ->where('p.brand = :brand')
+            ->setParameter('brand', $brand)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function countWithoutCategory(): int
     {
         return (int) $this->createQueryBuilder('p')

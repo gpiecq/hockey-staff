@@ -8,6 +8,7 @@ use App\Entity\Brand;
 use App\Form\BrandType;
 use App\Pagination\Page;
 use App\Repository\BrandRepository;
+use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -75,11 +76,17 @@ final class BrandController extends AbstractController
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/{id}/delete', name: 'catalogue_brand_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted('CATALOGUE_EDIT')]
-    public function delete(Brand $brand, Request $request, EntityManagerInterface $em): Response
+    public function delete(Brand $brand, Request $request, EntityManagerInterface $em, ProductRepository $products): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('brand_delete_'.$brand->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            if ($products->existsForBrand($brand)) {
+                $this->addFlash('error', 'Cette marque a encore des produits : suppression impossible.');
+
+                return $this->redirectToRoute('catalogue_brand_index');
             }
 
             $em->remove($brand);

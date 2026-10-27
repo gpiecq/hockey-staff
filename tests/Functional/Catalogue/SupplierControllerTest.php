@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Catalogue;
 
 use App\Entity\Supplier;
 use App\Enum\UserRole;
+use App\Tests\Support\ImportFixtures;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -152,6 +153,47 @@ final class SupplierControllerTest extends WebTestCase
         $deletedAt = $this->em($client)->getConnection()->fetchOne('SELECT deleted_at FROM supplier WHERE id = ?', [$entity->getId()]);
         self::assertNotFalse($deletedAt);
         self::assertNotNull($deletedAt);
+    }
+
+    private function postDelete(KernelBrowser $client, Supplier $entity): void
+    {
+        $client->request('GET', '/fournisseurs/'.$entity->getId().'/delete');
+        $client->submit($client->getCrawler()->selectButton('Confirmer la suppression')->form());
+    }
+
+    private function isDeleted(KernelBrowser $client, Supplier $entity): bool
+    {
+        return false !== $this->em($client)->getConnection()->fetchOne('SELECT 1 FROM supplier WHERE id = ? AND deleted_at IS NOT NULL', [$entity->getId()]);
+    }
+
+    public function testDeleteIsRefusedWhileProductsExist(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $entity = $this->add($client, 'Alpha');
+        $product = ImportFixtures::product($this->em($client), $entity, 'REF-1');
+
+        $this->postDelete($client, $entity);
+
+        self::assertResponseRedirects('/fournisseurs');
+        $client->followRedirect();
+        self::assertSelectorTextContains('.flash-error', 'Ce fournisseur a encore des produits : suppression impossible.');
+        self::assertFalse($this->isDeleted($client, $entity));
+    }
+
+    public function testDeleteIsAllowedWhenOnlySoftDeletedProductsRemain(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $entity = $this->add($client, 'Alpha');
+        $product = ImportFixtures::product($this->em($client), $entity, 'REF-1');
+        $this->em($client)->remove($product);
+        $this->em($client)->flush();
+
+        $this->postDelete($client, $entity);
+
+        self::assertResponseRedirects('/fournisseurs');
+        self::assertTrue($this->isDeleted($client, $entity));
     }
 
     public function testDeleteRejectsInvalidCsrfToken(): void

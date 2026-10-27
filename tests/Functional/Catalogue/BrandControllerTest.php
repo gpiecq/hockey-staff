@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Catalogue;
 
 use App\Entity\Brand;
 use App\Enum\UserRole;
+use App\Tests\Support\ImportFixtures;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -152,6 +153,51 @@ final class BrandControllerTest extends WebTestCase
         $deletedAt = $this->em($client)->getConnection()->fetchOne('SELECT deleted_at FROM brand WHERE id = ?', [$entity->getId()]);
         self::assertNotFalse($deletedAt);
         self::assertNotNull($deletedAt);
+    }
+
+    private function postDelete(KernelBrowser $client, Brand $entity): void
+    {
+        $client->request('GET', '/marques/'.$entity->getId().'/delete');
+        $client->submit($client->getCrawler()->selectButton('Confirmer la suppression')->form());
+    }
+
+    private function isDeleted(KernelBrowser $client, Brand $entity): bool
+    {
+        return false !== $this->em($client)->getConnection()->fetchOne('SELECT 1 FROM brand WHERE id = ? AND deleted_at IS NOT NULL', [$entity->getId()]);
+    }
+
+    public function testDeleteIsRefusedWhileProductsExist(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $entity = $this->add($client, 'Alpha');
+        $supplier = ImportFixtures::supplierWithMapping($this->em($client));
+        $product = ImportFixtures::product($this->em($client), $supplier, 'REF-1', brand: 'Alpha');
+        self::assertSame($entity->getId(), $product->getBrand()?->getId());
+
+        $this->postDelete($client, $entity);
+
+        self::assertResponseRedirects('/marques');
+        $client->followRedirect();
+        self::assertSelectorTextContains('.flash-error', 'Cette marque a encore des produits : suppression impossible.');
+        self::assertFalse($this->isDeleted($client, $entity));
+    }
+
+    public function testDeleteIsAllowedWhenOnlySoftDeletedProductsRemain(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $entity = $this->add($client, 'Alpha');
+        $supplier = ImportFixtures::supplierWithMapping($this->em($client));
+        $product = ImportFixtures::product($this->em($client), $supplier, 'REF-1', brand: 'Alpha');
+        self::assertSame($entity->getId(), $product->getBrand()?->getId());
+        $this->em($client)->remove($product);
+        $this->em($client)->flush();
+
+        $this->postDelete($client, $entity);
+
+        self::assertResponseRedirects('/marques');
+        self::assertTrue($this->isDeleted($client, $entity));
     }
 
     public function testDeleteRejectsInvalidCsrfToken(): void
