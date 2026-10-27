@@ -4,7 +4,7 @@
         {label: 'Produits', route: 'catalogue_product_index', prefix: 'catalogue_product', main: true},
     ]}
   - title : intitulé de groupe (null = sans intitulé) ; role : rôle requis pour voir le groupe
-  - route : route du lien ; prefix : préfixe de route pour l'entrée active (défaut = route)
+  - route : route du lien ; params : paramètres de route (optionnel) ; prefix : préfixe de route pour l'entrée active (défaut = route)
   - role (item, optionnel) : rôle requis pour cette entrée, en plus de celui du groupe
   - main : entrée affichée directement dans le menu bas mobile (les autres vont dans « Plus »)
 #}
@@ -13,6 +13,8 @@
         {label: 'Tableau de bord', route: 'app_dashboard', main: true},
     ]},
     {title: 'Stock', role: 'ROLE_VIEWER', items: [
+        {label: 'Nouvel achat', route: 'stock_entry_new', params: {type: 'achat'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
+        {label: 'Nouvelle dotation', route: 'stock_entry_new', params: {type: 'dotation'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
         {label: 'Lieux', route: 'stock_location_index', prefix: 'stock_location', role: 'ROLE_MANAGER'},
     ]},
     {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
@@ -36,7 +38,7 @@
 
 {% macro entry(item, current_route) %}
     {% set prefix = item.prefix|default(item.route) %}
-    <a href="{{ path(item.route) }}"{% if current_route starts with prefix %} aria-current="page"{% endif %}>{{ item.label }}</a>
+    <a href="{{ path(item.route, item.params|default({})) }}"{% if current_route starts with prefix %} aria-current="page"{% endif %}>{{ item.label }}</a>
 {% endmacro %}
 
 <nav class="sidebar" aria-label="Menu principal">

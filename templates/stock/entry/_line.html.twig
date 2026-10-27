@@ -1,0 +1,32 @@
+<div class="entry-line" data-form-collection-item>
+    <div class="field">
+        {{ form_label(line.variant) }}
+        {{ form_widget(line.variant) }}
+        {% for error in line.variant.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+    </div>
+    <div class="entry-line-grid">
+        <div class="field">
+            {{ form_label(line.quantity) }}
+            {{ form_widget(line.quantity) }}
+            {% for error in line.quantity.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+        {% if line.unitCostHt is defined %}
+            <div class="field">
+                {{ form_label(line.unitCostHt) }}
+                {{ form_widget(line.unitCostHt) }}
+                {{ form_help(line.unitCostHt) }}
+                {% for error in line.unitCostHt.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        <div class="field">
+            {{ form_label(line.condition) }}
+            {{ form_widget(line.condition) }}
+        </div>
+    </div>
+    <div class="field">
+        {{ form_label(line.serialNumbers) }}
+        {{ form_widget(line.serialNumbers) }}
+        {{ form_help(line.serialNumbers) }}
+    </div>
+    <button type="button" class="btn" data-action="form-collection#remove">Retirer la ligne</button>
+</div>

@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ operation.type.label }} n° {{ operation.id }}{% endblock %}
+
+{% block body %}
+    <h1>{{ operation.type.label }} n° {{ operation.id }}</h1>
+
+    <dl class="product-meta">
+        <dt>Date</dt><dd>{{ operation.occurredAt|date('d/m/Y H:i') }}</dd>
+        {% if operation.source %}<dt>Origine</dt><dd>{{ operation.source.name }}</dd>{% endif %}
+        {% if operation.destination %}<dt>Destination</dt><dd>{{ operation.destination.name }}</dd>{% endif %}
+        {% if operation.documentReference %}<dt>Document</dt><dd>{{ operation.documentReference }}</dd>{% endif %}
+        {% if operation.comment %}<dt>Commentaire</dt><dd>{{ operation.comment }}</dd>{% endif %}
+    </dl>
+
+    <table class="table">
+        <thead>
+            <tr><th>Article</th><th>Pièce</th><th class="num">Quantité</th><th class="num">Coût unitaire HT</th></tr>
+        </thead>
+        <tbody>
+            {% for movement in operation.movements %}
+                <tr>
+                    <td>{{ movement.variant.product.reference }} — {{ movement.variant.product.designation }}{% if movement.variant.label %} — {{ movement.variant.label }}{% endif %}</td>
+                    <td>{{ movement.item ? movement.item.code : '' }}</td>
+                    <td class="num">{{ movement.quantity }}</td>
+                    <td class="num">{{ (movement.unitCostHt / 100)|number_format(2, ',', ' ') }} €</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
