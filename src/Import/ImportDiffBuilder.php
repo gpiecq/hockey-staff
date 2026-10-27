@@ -28,6 +28,8 @@ final class ImportDiffBuilder
     /** @var list<int> */
     private array $deactivated = [];
     /** @var list<int> */
+    private array $archived = [];
+    /** @var list<int> */
     private array $reactivated = [];
     /** @var list<int> */
     private array $rejectedLines = [];
@@ -124,6 +126,11 @@ final class ImportDiffBuilder
         $this->deactivated[] = $variantId;
     }
 
+    public function archive(int $variantId): void
+    {
+        $this->archived[] = $variantId;
+    }
+
     public function reactivate(int $variantId): void
     {
         $this->reactivated[] = $variantId;
@@ -141,6 +148,7 @@ final class ImportDiffBuilder
             $this->rejectedLines,
             $this->anomalies,
             array_map('strval', array_keys($this->newBrands)),
+            $this->archived,
         );
     }
 }

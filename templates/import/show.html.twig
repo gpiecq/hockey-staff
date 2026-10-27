@@ -49,6 +49,7 @@
             <li>{{ summary.changedVariants }} variantes modifiées</li>
             <li>{{ summary.priceChanges }} changements de prix</li>
             <li>{{ summary.deactivated }} variantes désactivées</li>
+            <li>{{ summary.archived }} variantes archivées</li>
             <li>{{ summary.reactivated }} variantes réactivées</li>
             <li>{{ summary.rejected }} lignes rejetées</li>
             <li>{{ summary.anomalies }} anomalies</li>
@@ -156,13 +157,18 @@
 
         <section id="desactivations">
             <h2>Désactivations</h2>
-            {% if diff.deactivatedVariantIds is empty and diff.reactivatedVariantIds is empty %}
-                <p class="empty">Aucune variante désactivée ni réactivée.</p>
+            {% if diff.deactivatedVariantIds is empty and diff.archivedVariantIds is empty and diff.reactivatedVariantIds is empty %}
+                <p class="empty">Aucune variante désactivée, archivée ni réactivée.</p>
             {% endif %}
             {% if diff.deactivatedVariantIds is not empty %}
-                <h3>Absentes du fichier : désactivées ({{ diff.deactivatedVariantIds|length }})</h3>
+                <h3>Absentes du fichier, en stock : désactivées ({{ diff.deactivatedVariantIds|length }})</h3>
                 <ul>{% for id in diff.deactivatedVariantIds|slice(0, limit) %}<li>{{ labels[id]|default('#' ~ id) }}</li>{% endfor %}</ul>
                 {{ _self.more(0, diff.deactivatedVariantIds|length, limit) }}
+            {% endif %}
+            {% if diff.archivedVariantIds is not empty %}
+                <h3>Absentes du fichier, sans stock : archivées ({{ diff.archivedVariantIds|length }})</h3>
+                <ul>{% for id in diff.archivedVariantIds|slice(0, limit) %}<li>{{ labels[id]|default('#' ~ id) }}</li>{% endfor %}</ul>
+                {{ _self.more(0, diff.archivedVariantIds|length, limit) }}
             {% endif %}
             {% if diff.reactivatedVariantIds is not empty %}
                 <h3>De retour dans le fichier : réactivées ({{ diff.reactivatedVariantIds|length }})</h3>

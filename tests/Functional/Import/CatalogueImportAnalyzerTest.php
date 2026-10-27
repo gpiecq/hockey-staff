@@ -110,7 +110,7 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
         self::assertNull($diff->newVariants[0]['productId']);
         self::assertTrue($diff->hasChanges());
         self::assertSame(
-            ['newProducts' => 2, 'newVariants' => 3, 'changedVariants' => 0, 'priceChanges' => 3, 'deactivated' => 0, 'reactivated' => 0, 'rejected' => 0, 'anomalies' => 0],
+            ['newProducts' => 2, 'newVariants' => 3, 'changedVariants' => 0, 'priceChanges' => 3, 'deactivated' => 0, 'archived' => 0, 'reactivated' => 0, 'rejected' => 0, 'anomalies' => 0],
             $diff->summary(),
         );
     }
@@ -200,7 +200,7 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
         self::assertSame(3, $diff->newVariants[0]['line']);
     }
 
-    public function testMissingVariantIsDeactivatedAndInactivePresentOneReactivated(): void
+    public function testMissingVariantWithoutStockIsArchivedAndInactivePresentOneReactivated(): void
     {
         $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
         $absent = ImportFixtures::variant($this->em, $product, '688698508079', 'SR M', season: $this->season, club: 25000, public: 30000);
@@ -209,9 +209,10 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
 
         $diff = $this->analyze([self::row()]);
 
-        self::assertSame([$absent->getId()], $diff->deactivatedVariantIds);
+        // Sans stock : archivée ; la variante déjà inactive (avant l'archivage) est rattrapée.
+        self::assertSame([], $diff->deactivatedVariantIds);
+        self::assertSame([$absent->getId(), $alreadyInactiveAbsent->getId()], $diff->archivedVariantIds);
         self::assertSame([$inactive->getId()], $diff->reactivatedVariantIds);
-        self::assertNotContains($alreadyInactiveAbsent->getId(), $diff->deactivatedVariantIds);
         self::assertTrue($diff->hasChanges());
     }
 

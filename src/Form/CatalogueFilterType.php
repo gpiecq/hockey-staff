@@ -36,6 +36,10 @@ final class CatalogueFilterType extends AbstractType
             ->add('includeInactive', CheckboxType::class, [
                 'label' => 'Inclure les produits retirés du catalogue',
                 'required' => false,
+            ])
+            ->add('includeArchived', CheckboxType::class, [
+                'label' => 'Archivés',
+                'required' => false,
             ]);
 
         if ($this->security->isGranted('ROLE_MANAGER')) {

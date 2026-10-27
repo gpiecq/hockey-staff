@@ -12,6 +12,7 @@ use App\Entity\Variant;
 use App\Enum\ImportAnomalyCode;
 use App\Import\Reader\SpreadsheetReader;
 use App\Repository\SupplierImportMappingRepository;
+use App\Stock\StockPresence;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -33,6 +34,7 @@ final class CatalogueImportAnalyzer
         private readonly SpreadsheetReader $reader,
         private readonly RowNormalizer $normalizer,
         private readonly SupplierImportMappingRepository $mappings,
+        private readonly StockPresence $stockPresence,
         /** Dossier racine de ImportRun::getStoredPath(). */
         #[Autowire('%app.imports_dir%')]
         private readonly string $importsDir,
@@ -141,6 +143,8 @@ final class CatalogueImportAnalyzer
         /** @var array<string, array{variantId: int, line: int}> $movedKeys */
         $movedKeys = [];
         $newReferences = [];
+        /** @var array<string, true> $lockChecked */
+        $lockChecked = [];
         /** @var array<string, NormalizedRow> $firstByReference */
         $firstByReference = [];
 
@@ -295,10 +299,20 @@ final class CatalogueImportAnalyzer
                 if (null === $byKey) {
                     $movedKeys[$key] = ['variantId' => $matchedId, 'line' => $row->line];
                 }
-                if (!$matched->isActive()) {
+                if (!$matched->isActive() || $matched->isArchived()) {
                     $builder->reactivate($matchedId);
                 }
                 $changes = $this->changes($matched, $row, $first);
+                if (isset($changes['category']) && null === $matched->getProduct()?->getCategory()
+                    && !isset($lockChecked[$row->reference])) {
+                    // Première catégorisation : le mode de suivi ne bouge plus dès que le produit a des mouvements.
+                    $lockChecked[$row->reference] = true;
+                    if (null !== $matched->getProduct() && $this->stockPresence->productHasMovements($matched->getProduct())) {
+                        $builder->anomaly($row->line, ImportAnomalyCode::TrackingModeLocked, \sprintf(
+                            'Produit %s : mode de suivi conservé, le produit a des mouvements de stock.', $row->reference,
+                        ));
+                    }
+                }
                 if ([] !== $changes) {
                     $builder->changed($matchedId, $row->line, $changes);
                     $newBrand = $changes['brand']['to'] ?? null;
@@ -324,9 +338,22 @@ final class CatalogueImportAnalyzer
             $builder->price(null, $row, null, null);
         }
 
+        // Absentes du fichier : désactivées si elles ont du stock, archivées sinon (y compris les variantes
+        // désactivées avant l'archivage) ; les variantes déjà archivées restent telles quelles.
+        $absent = [];
         foreach ($variants as $variant) {
-            if ($variant->isActive() && !isset($present[(int) $variant->getId()])) {
-                $builder->deactivate((int) $variant->getId());
+            if (!isset($present[(int) $variant->getId()]) && !$variant->isArchived()) {
+                $absent[(int) $variant->getId()] = $variant;
+            }
+        }
+        $inStock = $this->stockPresence->variantIdsInStock(array_keys($absent));
+        foreach ($absent as $id => $variant) {
+            if (isset($inStock[$id])) {
+                if ($variant->isActive()) {
+                    $builder->deactivate($id);
+                }
+            } else {
+                $builder->archive($id);
             }
         }
 

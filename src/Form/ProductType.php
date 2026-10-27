@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Catalogue\TrackingModeResolver;
 use App\Entity\Product;
 use App\Enum\TrackingMode;
+use App\Stock\StockPresence;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -16,12 +17,17 @@ use Symfony\Component\Validator\Constraints\NotNull;
 
 final class ProductType extends AbstractType
 {
-    public function __construct(private readonly TrackingModeResolver $trackingModes)
-    {
+    public function __construct(
+        private readonly TrackingModeResolver $trackingModes,
+        private readonly StockPresence $stockPresence,
+    ) {
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        $product = $options['data'] ?? null;
+        $locked = $product instanceof Product && $this->stockPresence->productHasMovements($product);
+
         $builder
             ->add('supplier', SupplierFilterAutocompleteField::class, [
                 'label' => 'Fournisseur',
@@ -47,6 +53,8 @@ final class ProductType extends AbstractType
                 'expanded' => true,
                 'required' => false,
                 'placeholder' => false,
+                'disabled' => $locked,
+                'help' => $locked ? 'Le produit a des mouvements de stock : le mode de suivi ne peut plus changer.' : null,
                 'choice_label' => static fn (TrackingMode $mode): string => match ($mode) {
                     TrackingMode::Serialized => 'Sérialisé',
                     TrackingMode::Quantity => 'Quantité',

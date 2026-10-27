@@ -109,6 +109,7 @@ final class ImportController extends AbstractController
         if (null !== $diff) {
             $ids = array_values(array_unique([
                 ...\array_slice($diff->deactivatedVariantIds, 0, self::PREVIEW_LIMIT),
+                ...\array_slice($diff->archivedVariantIds, 0, self::PREVIEW_LIMIT),
                 ...\array_slice($diff->reactivatedVariantIds, 0, self::PREVIEW_LIMIT),
                 ...array_map(static fn (array $c): int => $c['variantId'], \array_slice($diff->changedVariants, 0, self::PREVIEW_LIMIT)),
                 ...array_filter(array_map(static fn (array $p): ?int => $p['variantId'], \array_slice($diff->priceChanges, 0, self::PREVIEW_LIMIT))),
@@ -168,7 +169,7 @@ final class ImportController extends AbstractController
             'Import appliqué : %d créations, %d modifications, %d désactivations.',
             \count($applied->newProducts) + \count($applied->newVariants),
             \count($touched),
-            \count($applied->deactivatedVariantIds),
+            \count($applied->deactivatedVariantIds) + \count($applied->archivedVariantIds),
         ));
 
         return $this->redirectToRoute('import_show', ['id' => $id]);

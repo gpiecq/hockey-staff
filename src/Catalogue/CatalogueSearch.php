@@ -63,8 +63,13 @@ final readonly class CatalogueSearch
 
         if (!$criteria->includeInactive) {
             // masqué seulement s'il a au moins une variante vivante et qu'aucune n'est active
-            $qb->andWhere('EXISTS (SELECT 1 FROM '.Variant::class.' va WHERE va.product = p AND va.active = true)
-                OR NOT EXISTS (SELECT 1 FROM '.Variant::class.' vl WHERE vl.product = p)');
+            $visible = 'EXISTS (SELECT 1 FROM '.Variant::class.' va WHERE va.product = p AND va.active = true)
+                OR NOT EXISTS (SELECT 1 FROM '.Variant::class.' vl WHERE vl.product = p)';
+            if ($criteria->includeArchived) {
+                // Case « Archivés » : montre aussi les produits qui ont des variantes archivées.
+                $visible .= ' OR EXISTS (SELECT 1 FROM '.Variant::class.' vr WHERE vr.product = p AND vr.archivedAt IS NOT NULL)';
+            }
+            $qb->andWhere($visible);
         }
 
         /** @var Page<Product> $page */

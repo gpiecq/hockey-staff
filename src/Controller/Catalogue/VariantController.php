@@ -11,6 +11,7 @@ use App\Entity\Variant;
 use App\Form\SeasonPriceType;
 use App\Form\VariantType;
 use App\Repository\SeasonPriceRepository;
+use App\Stock\StockPresence;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -62,13 +63,19 @@ final class VariantController extends AbstractController
 
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/variantes/{id}/delete', name: 'catalogue_variant_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function delete(Variant $variant, Request $request, EntityManagerInterface $em): Response
+    public function delete(Variant $variant, Request $request, EntityManagerInterface $em, StockPresence $stockPresence): Response
     {
         $product = $this->productOf($variant);
 
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('variant_delete_'.$variant->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            if ([] !== $stockPresence->variantIdsWithMovements([(int) $variant->getId()])) {
+                $this->addFlash('error', 'Cette variante a des mouvements de stock : elle ne peut pas être supprimée.');
+
+                return $this->redirectToRoute('catalogue_product_show', ['id' => $product->getId()]);
             }
 
             $em->remove($variant);

@@ -17,6 +17,7 @@ use App\Enum\TrackingMode;
 use App\Import\Exception\ImportNotApplicableException;
 use App\Import\Exception\StaleImportException;
 use App\Repository\CategoryRepository;
+use App\Stock\StockPresence;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -34,6 +35,7 @@ final class CatalogueImportApplier
         private readonly CatalogueImportAnalyzer $analyzer,
         private readonly CategoryRepository $categories,
         private readonly TrackingModeResolver $trackingModes,
+        private readonly StockPresence $stockPresence,
         #[Autowire('%app.imports_dir%')]
         private readonly string $importsDir,
     ) {
@@ -223,7 +225,7 @@ final class CatalogueImportApplier
                     $category = $categoryFor(explode(' › ', $changes['category']['to']));
                     if (null !== $category) {
                         // Première catégorisation : même règle que la fiche produit (spec lot 7 § 7).
-                        if (null === $product->getCategory()) {
+                        if (null === $product->getCategory() && !$this->stockPresence->productHasMovements($product)) {
                             $product->setTrackingMode($this->trackingModes->defaultFor($category));
                         }
                         $product->setCategory($category);
@@ -269,8 +271,15 @@ final class CatalogueImportApplier
             ($variants[$id] ?? throw new \LogicException(\sprintf('Variante %d introuvable.', $id)))->setActive(false);
             $tick();
         }
+        // Le stock est relu ici (une requête) : une variante qui en a reçu depuis l'analyse n'est que désactivée.
+        $inStock = $this->stockPresence->variantIdsInStock($diff->archivedVariantIds);
+        foreach ($diff->archivedVariantIds as $id) {
+            $variant = $variants[$id] ?? throw new \LogicException(\sprintf('Variante %d introuvable.', $id));
+            isset($inStock[$id]) ? $variant->setActive(false) : $variant->archive();
+            $tick();
+        }
         foreach ($diff->reactivatedVariantIds as $id) {
-            ($variants[$id] ?? throw new \LogicException(\sprintf('Variante %d introuvable.', $id)))->setActive(true);
+            ($variants[$id] ?? throw new \LogicException(\sprintf('Variante %d introuvable.', $id)))->unarchive();
             $tick();
         }
 

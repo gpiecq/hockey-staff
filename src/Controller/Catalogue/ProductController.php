@@ -18,6 +18,7 @@ use App\Form\ProductPriceType;
 use App\Form\ProductType;
 use App\Repository\SeasonPriceRepository;
 use App\Repository\VariantRepository;
+use App\Stock\StockPresence;
 use App\Stock\StockQuery;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -54,6 +55,7 @@ final class ProductController extends AbstractController
             supplierId: $supplier instanceof Supplier ? $supplier->getId() : null,
             brandId: $brand instanceof Brand ? $brand->getId() : null,
             includeInactive: true === ($data['includeInactive'] ?? false),
+            includeArchived: true === ($data['includeArchived'] ?? false),
             withoutCategory: true === ($data['sansCategorie'] ?? false),
             missingPriceSeasonId: true === ($data['sansTarif'] ?? false) ? $currentSeason->get()?->getId() : null,
             page: ctype_digit($rawPage = $request->query->getString('page')) ? max(1, (int) $rawPage) : 1,
@@ -109,8 +111,9 @@ final class ProductController extends AbstractController
 
     #[Route('/{id}/edit', name: 'catalogue_product_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted('CATALOGUE_EDIT')]
-    public function edit(Product $product, Request $request, EntityManagerInterface $em, TrackingModeResolver $trackingModes): Response
+    public function edit(Product $product, Request $request, EntityManagerInterface $em, TrackingModeResolver $trackingModes, StockPresence $stockPresence): Response
     {
+        $locked = $stockPresence->productHasMovements($product);
         $hadCategory = null !== $product->getCategory();
         $originalMode = $product->getTrackingMode();
         $form = $this->createForm(ProductType::class, $product);
@@ -119,7 +122,7 @@ final class ProductController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             // Première catégorisation : le mode par défaut de la catégorie s'applique, sauf si l'utilisateur l'a modifié.
             $category = $product->getCategory();
-            if (!$hadCategory && null !== $category && $product->getTrackingMode() === $originalMode) {
+            if (!$locked && !$hadCategory && null !== $category && $product->getTrackingMode() === $originalMode) {
                 $product->setTrackingMode($trackingModes->defaultFor($category));
             }
             $em->flush();
@@ -200,11 +203,17 @@ final class ProductController extends AbstractController
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/{id}/delete', name: 'catalogue_product_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted('CATALOGUE_EDIT')]
-    public function delete(Product $product, Request $request, EntityManagerInterface $em): Response
+    public function delete(Product $product, Request $request, EntityManagerInterface $em, StockPresence $stockPresence): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('product_delete_'.$product->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            if ($stockPresence->productHasMovements($product)) {
+                $this->addFlash('error', 'Ce produit a des mouvements de stock : il ne peut pas être supprimé.');
+
+                return $this->redirectToRoute('catalogue_product_show', ['id' => $product->getId()]);
             }
 
             $em->remove($product);

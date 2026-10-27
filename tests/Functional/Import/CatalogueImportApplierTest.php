@@ -176,7 +176,7 @@ final class CatalogueImportApplierTest extends KernelTestCase
         self::assertNotNull($this->variantByEan('688698508062'));
     }
 
-    public function testAbsentVariantsAreDeactivatedNeverDeleted(): void
+    public function testAbsentVariantsWithoutStockAreArchivedNeverDeleted(): void
     {
         $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
         $kept = ImportFixtures::variant($this->em, $product, '688698508062', 'SR L', season: $this->season, club: 25000, public: 30000);
@@ -186,11 +186,13 @@ final class CatalogueImportApplierTest extends KernelTestCase
 
         self::assertTrue($kept->isActive());
         self::assertFalse($absent->isActive());
+        self::assertTrue($absent->isArchived());
         self::assertNull($absent->getDeletedAt());
         $this->em->clear();
         $reloaded = $this->em->getRepository(Variant::class)->findOneBy(['ean' => '688698508079']);
         self::assertNotNull($reloaded);
         self::assertFalse($reloaded->isActive());
+        self::assertTrue($reloaded->isArchived());
     }
 
     public function testPresentInactiveVariantIsReactivated(): void

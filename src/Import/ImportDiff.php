@@ -24,7 +24,9 @@ namespace App\Import;
  * - priceChanges : une entrée si au moins un des deux prix change (un prix nul du fichier n'efface jamais
  *   le prix stocké : from = to = stocké) ; variantId null pour une nouvelle variante (retrouvée par ligne)
  *   {variantId, line, club: {from, to}, public: {from, to}}
- * - deactivatedVariantIds / reactivatedVariantIds : identifiants de variantes
+ * - deactivatedVariantIds : variantes absentes du fichier qui ont du stock (désactivées, pas archivées)
+ * - archivedVariantIds : variantes absentes du fichier sans stock (archivées) ; absent d'un diff stocké avant le lot 2 : []
+ * - reactivatedVariantIds : variantes de retour dans le fichier (réactivées, désarchivées)
  * - rejectedLines : numéros de ligne Excel ignorés par l'application
  * - anomalies : {line, code (ImportAnomalyCode::value), message}
  * - newBrands : noms normalisés des marques inconnues du catalogue que l'application créera (nouveaux produits
@@ -49,6 +51,7 @@ final readonly class ImportDiff
      * @param list<PriceChange>    $priceChanges
      * @param list<int>            $deactivatedVariantIds
      * @param list<int>            $reactivatedVariantIds
+     * @param list<int>            $archivedVariantIds
      * @param list<int>            $rejectedLines
      * @param list<Anomaly>        $anomalies
      * @param list<string>         $newBrands
@@ -63,6 +66,7 @@ final readonly class ImportDiff
         public array $rejectedLines = [],
         public array $anomalies = [],
         public array $newBrands = [],
+        public array $archivedVariantIds = [],
     ) {
     }
 
@@ -75,6 +79,7 @@ final readonly class ImportDiff
             'changedVariants' => \count($this->changedVariants),
             'priceChanges' => \count($this->priceChanges),
             'deactivated' => \count($this->deactivatedVariantIds),
+            'archived' => \count($this->archivedVariantIds),
             'reactivated' => \count($this->reactivatedVariantIds),
             'rejected' => \count($this->rejectedLines),
             'anomalies' => \count($this->anomalies),
@@ -95,6 +100,7 @@ final readonly class ImportDiff
             || [] !== $this->changedVariants
             || [] !== $this->priceChanges
             || [] !== $this->deactivatedVariantIds
+            || [] !== $this->archivedVariantIds
             || [] !== $this->reactivatedVariantIds;
     }
 
@@ -111,6 +117,7 @@ final readonly class ImportDiff
             'rejectedLines' => $this->rejectedLines,
             'anomalies' => $this->anomalies,
             'newBrands' => $this->newBrands,
+            'archivedVariantIds' => $this->archivedVariantIds,
         ];
     }
 
@@ -120,7 +127,7 @@ final readonly class ImportDiff
     public static function fromArray(array $data): self
     {
         // Contenu écrit par toArray() : les formes sont garanties par l'écriture, pas revalidées.
-        /** @var array{newProducts?: list<NewProduct>, newVariants?: list<NewVariant>, changedVariants?: list<ChangedVariant>, priceChanges?: list<PriceChange>, deactivatedVariantIds?: list<int>, reactivatedVariantIds?: list<int>, rejectedLines?: list<int>, anomalies?: list<Anomaly>, newBrands?: list<string>} $typed */
+        /** @var array{newProducts?: list<NewProduct>, newVariants?: list<NewVariant>, changedVariants?: list<ChangedVariant>, priceChanges?: list<PriceChange>, deactivatedVariantIds?: list<int>, reactivatedVariantIds?: list<int>, rejectedLines?: list<int>, anomalies?: list<Anomaly>, newBrands?: list<string>, archivedVariantIds?: list<int>} $typed */
         $typed = $data;
 
         return new self(
@@ -133,6 +140,7 @@ final readonly class ImportDiff
             $typed['rejectedLines'] ?? [],
             $typed['anomalies'] ?? [],
             $typed['newBrands'] ?? [],
+            $typed['archivedVariantIds'] ?? [],
         );
     }
 }
