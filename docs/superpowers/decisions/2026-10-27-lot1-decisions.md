@@ -31,6 +31,13 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 | R13 | 7 | Message d'EAN en doublon : « Ce code EAN est déjà utilisé. » (texte du plan). | La Task 5 avait repris une formulation différente. | Une chaîne. |
 | R14 | 7 | Mode de suivi pré-rempli côté serveur : radios vides à la création, valeur par défaut selon la catégorie si rien n'est choisi ; modifiable ensuite. | Pas de JS requis ; la catégorie n'est connue qu'à la soumission. | Un petit contrôleur Stimulus pour présélectionner. |
 | R15 | 7 | Langue par défaut de l'application passée en `fr`. | Saisie « 12,50 » et messages de validation Symfony en français. | Une ligne de configuration. |
+| R16 | 8 | La migration Bauer réutilise un fournisseur `BAUER` existant (non supprimé) ou le crée ; le mapping n'est inséré que s'il n'en a pas ; `down()` ne retire que le mapping. | Protège les données de dev, migration rejouable. | Modifier la migration. |
+| R17 | 8 | Prix lus depuis la chaîne sans float : espaces retirés, un séparateur `,` ou `.`, 2 décimales max → centimes ; sinon `PriceInvalid`. | Règle « jamais de float ». | Ajuster l'analyseur. |
+| R18 | 9 | Le rapprochement ignore produits et variantes supprimés : un EAN qui n'appartient qu'à une variante supprimée donne une nouvelle variante. | La suppression reste un geste volontaire que l'import ne défait pas. | Logique de réactivation en Task 10. |
+| R19 | 9 | EAN connu chez ce fournisseur mais référence différente → ligne rejetée (`EanChanged`) ; une ligne rejetée qui désigne une variante existante compte comme présente (pas de désactivation). | Rien de silencieux, pas de déplacement de variante entre produits en lot 1. | Gérer les déplacements plus tard. |
+| R20 | 9 | Un prix absent du fichier n'efface jamais un prix enregistré ; une variation de tarif n'est listée que si un montant change. | Spec : « tarif absent signalé », pas effacé. | Ajuster la sémantique du diff. |
+| R21 | 9 | L'analyse ne crée rien : marque et catégorie comparées en texte (nom, chemin « A › B › C ») ; création à l'application (Task 10). | Spec : analyse en lecture seule. | Aucun. |
+| R22 | 9 | Codes d'anomalie ajoutés `VariantDuplicateInFile`, `ProductFieldsConflict` (la 1ʳᵉ ligne l'emporte) et clé `ean` dans les changements de variante. | Aucun code du plan ne convenait ; rien de silencieux. | Renommer les codes. |
 
 ## Points mineurs reportés (à trier en revue finale du lot)
 
@@ -67,3 +74,10 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 - Task 7 — un tarif peut être enregistré sans aucun montant (la fiche affiche des tirets au lieu de « Tarif absent ») ;
   en édition, un POST sans mode de suivi retombe sur la valeur par défaut ; changement de fournisseur non testé ;
   taux de TVA non modifiable dans l'interface (20 %).
+- Task 8 — catégorie avec niveau intermédiaire vide (sous-cat. 1 vide, sous-cat. 2 remplie) ramenée à 2 niveaux sans
+  anomalie (à corriger : « jamais silencieux ») ; lecteur acceptant CSV/HTML/XML (restreindre à XLSX/XLS en Task 11) ;
+  prix à très nombreux chiffres → débordement (500) ; en-têtes en double ignorés ; casse des couleurs non aliasées
+  conservée ; migration Bauer ignorée en environnement de test.
+- Task 9 (R22) — ajout des codes `VariantDuplicateInFile` et `ProductFieldsConflict` et d'une clé `ean` dans les
+  changements de variante. À traiter en Task 10 : collisions à l'application (clé de correspondance d'une variante
+  sœur, EAN d'une variante d'un produit supprimé) ; mémoire du worker sur un fichier complet.
