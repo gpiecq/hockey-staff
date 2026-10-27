@@ -1,0 +1,51 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Préparer un import{% endblock %}
+
+{% block body %}
+    <a class="back" href="{{ path('import_index') }}">‹ Imports</a>
+    <h1>Préparer un import</h1>
+    <p class="lead">
+        Une IA (Claude, Gemini, Copilot…) peut construire le fichier d'import à partir des deux fichiers bruts du
+        fournisseur. Suivez ces 4 étapes ; ce que l'IA n'a pas pu remplir se complète ensuite dans l'appli.
+    </p>
+
+    <ol class="prepare-steps">
+        <li>
+            <h2>Télécharger les 3 fichiers</h2>
+            <ul class="downloads">
+                {% for supplier in suppliers %}
+                    <li><a href="{{ path('import_prepare_template', {supplier: supplier.id}) }}">Modèle d'import {{ supplier.name }} (xlsx)</a> : le fichier que l'IA doit remplir.</li>
+                {% else %}
+                    <li class="empty">Aucun fournisseur n'a de mapping d'import : pas de modèle disponible.</li>
+                {% endfor %}
+                <li><a href="{{ path('import_prepare_rules') }}">Règles pour l'IA (regles-ia.md)</a> : les instructions de remplissage.</li>
+                <li><a href="{{ path('import_prepare_correspondences') }}">Table de correspondance (csv)</a> : facultative, elle est déjà dans le modèle (onglet « Correspondances »).</li>
+            </ul>
+        </li>
+        <li>
+            <h2>Donner le tout à l'IA</h2>
+            <p>
+                Ouvrez une conversation avec votre IA et joignez : le modèle d'import, les règles, la <strong>base EAN</strong>
+                et le <strong>tarif club</strong> du fournisseur. Écrivez par exemple :
+                « Remplis le modèle d'import en suivant exactement les règles jointes, puis rends-moi le fichier xlsx et le compte rendu. »
+            </p>
+        </li>
+        <li>
+            <h2>Vérifier son compte rendu</h2>
+            <p>
+                L'IA doit terminer par un compte rendu chiffré (références, lignes, lignes sans prix, sans EAN, sans
+                catégorie, sections inconnues, EAN en double). S'il manque ou paraît incohérent, demandez-lui de
+                recommencer en respectant les règles.
+            </p>
+        </li>
+        <li>
+            <h2>Importer le fichier</h2>
+            <p>
+                Déposez le fichier rendu par l'IA via <a href="{{ path('import_new') }}">Nouvel import</a>, contrôlez
+                l'aperçu, puis validez. Les produits restés sans prix ou sans catégorie apparaissent ensuite sur le
+                tableau de bord.
+            </p>
+        </li>
+    </ol>
+{% endblock %}

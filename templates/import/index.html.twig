@@ -5,7 +5,10 @@
 {% block body %}
     <div class="page-head">
         <h1>Imports</h1>
-        <a class="btn btn-primary" href="{{ path('import_new') }}">Nouvel import</a>
+        <div class="actions">
+            <a class="btn" href="{{ path('import_prepare') }}">Préparer un import</a>
+            <a class="btn btn-primary" href="{{ path('import_new') }}">Nouvel import</a>
+        </div>
     </div>
 
     {% if page.items is empty %}

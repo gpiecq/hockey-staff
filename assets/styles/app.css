@@ -160,6 +160,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
 .stat-value{font-size:1.5rem;font-weight:800;color:var(--navy)}
 .panel{margin:0 0 1.5rem;padding:1rem;background:var(--surface);border-radius:.5rem}
 .panel h2{margin-top:0}
+.prepare-steps{padding-left:1.25rem;max-width:48rem}
+.prepare-steps>li{margin:0 0 1.25rem}
+.prepare-steps h2{font-size:1.1rem;margin:0 0 .4rem}
+.prepare-steps .downloads{padding-left:1rem;margin:0}
+.prepare-steps .downloads li{margin:.25rem 0}
 .shortcuts{margin-top:1rem}
 .summary{display:grid;gap:.25rem 1.5rem;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));margin:0 0 1.5rem;padding:1rem 1rem 1rem 2rem;background:var(--surface);border-radius:.5rem;font-weight:700}
 .import-actions{margin:0 0 1.5rem}
