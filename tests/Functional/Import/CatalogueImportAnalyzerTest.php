@@ -67,6 +67,24 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
         return array_map(static fn (array $a): string => $a['code'], $diff->anomalies);
     }
 
+    public function testSkippedCategoryLevelIsReportedWithLineAndRowIsStillImported(): void
+    {
+        $diff = $this->analyze([self::row(['sous-catégorie 1' => null, 'sous-catégorie 2' => 'GARDIEN'])]);
+
+        self::assertCount(1, $diff->newVariants);
+        self::assertSame(['category_level_missing'], self::codes($diff));
+        self::assertSame(2, $diff->anomalies[0]['line']);
+    }
+
+    public function testTooLongValueRejectsTheLineWithItsAnomaly(): void
+    {
+        $diff = $this->analyze([self::row(['Désignation' => str_repeat('D', 256)])]);
+
+        self::assertSame([], $diff->newVariants);
+        self::assertSame(['value_too_long'], self::codes($diff));
+        self::assertSame(2, $diff->anomalies[0]['line']);
+    }
+
     public function testEmptyCatalogueCreatesProductsVariantsAndPrices(): void
     {
         $diff = $this->analyze([

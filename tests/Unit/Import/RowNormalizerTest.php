@@ -239,4 +239,68 @@ final class RowNormalizerTest extends TestCase
         self::assertSame('SR L|FIT2|LFT||NOIR', $this->normalize(['size' => 'SR L', 'fit' => 'FIT2', 'side' => 'LFT', 'color' => 'NOIR'])->matchKey());
         self::assertSame('||||', $this->normalize()->matchKey());
     }
+
+    public function testSkippedMiddleCategoryLevelIsCollapsedWithAnomaly(): void
+    {
+        $row = $this->normalize(['category1' => 'A', 'category2' => null, 'category3' => 'C']);
+
+        self::assertSame(['A', 'C'], $row->categoryPath);
+        self::assertSame(['CategoryLevelMissing'], $this->codes($row));
+        self::assertSame(7, $row->anomalies[0]->line);
+        self::assertStringContainsString('« A › C »', $row->anomalies[0]->message);
+        self::assertFalse($row->isRejected());
+    }
+
+    public function testMissingRootCategoryWithDeeperLevelsIsRejectedAsMissingRequired(): void
+    {
+        $row = $this->normalize(['category1' => null, 'category2' => 'B', 'category3' => 'C']);
+
+        self::assertSame([], $row->categoryPath);
+        self::assertSame(['MissingRequired'], $this->codes($row));
+        self::assertTrue($row->isRejected());
+    }
+
+    /** @param array<string, ?string> $override */
+    #[DataProvider('tooLongValues')]
+    public function testTooLongValueRejectsRow(array $override, string $column, int $max): void
+    {
+        $row = $this->normalize($override);
+
+        self::assertSame(['ValueTooLong'], $this->codes($row));
+        self::assertTrue($row->isRejected());
+        self::assertStringContainsString($column, $row->anomalies[0]->message);
+        self::assertStringContainsString((string) $max, $row->anomalies[0]->message);
+        self::assertSame(7, $row->anomalies[0]->line);
+    }
+
+    /** @return iterable<string, array{array<string, ?string>, string, int}> */
+    public static function tooLongValues(): iterable
+    {
+        yield 'reference' => [['reference' => str_repeat('R', 101)], 'Référence', 100];
+        yield 'designation' => [['designation' => str_repeat('D', 256)], 'Désignation', 255];
+        yield 'size' => [['size' => str_repeat('S', 51)], 'Taille', 50];
+        yield 'fit' => [['fit' => str_repeat('S', 51)], 'Coupe', 50];
+        yield 'side' => [['side' => str_repeat('S', 51)], 'Côté', 50];
+        yield 'width' => [['width' => str_repeat('S', 51)], 'Largeur', 50];
+        yield 'color' => [['color' => str_repeat('S', 51)], 'Couleur', 50];
+        yield 'brand' => [['brand' => str_repeat('B', 151)], 'Marque', 150];
+        yield 'category1' => [['category1' => str_repeat('C', 151)], 'Catégorie', 150];
+        yield 'category2' => [['category2' => str_repeat('C', 151)], 'Sous-catégorie 1', 150];
+        yield 'category3' => [['category2' => 'B', 'category3' => str_repeat('C', 151)], 'Sous-catégorie 2', 150];
+    }
+
+    public function testValuesAtExactLimitAreAccepted(): void
+    {
+        $row = $this->normalize(['reference' => str_repeat('é', 100), 'designation' => str_repeat('D', 255), 'color' => str_repeat('C', 50)]);
+
+        self::assertSame([], $row->anomalies);
+    }
+
+    public function testHugePriceIsInvalidInsteadOfOverflowing(): void
+    {
+        $row = $this->normalize(['clubPriceTtc' => str_repeat('9', 30)]);
+
+        self::assertNull($row->clubPriceTtc);
+        self::assertSame(['PriceInvalid'], $this->codes($row));
+    }
 }

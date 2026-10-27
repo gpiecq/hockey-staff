@@ -50,7 +50,7 @@ final readonly class NormalizedRow
     public function isRejected(): bool
     {
         foreach ($this->anomalies as $anomaly) {
-            if (ImportAnomalyCode::MissingRequired === $anomaly->code) {
+            if (ImportAnomalyCode::MissingRequired === $anomaly->code || ImportAnomalyCode::ValueTooLong === $anomaly->code) {
                 return true;
             }
         }

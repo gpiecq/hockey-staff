@@ -19,6 +19,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['name'], message: 'Ce nom est déjà utilisé.')]
 class Brand
 {
+    public const int NAME_MAX_LENGTH = 150;
+
     use TimestampableBlameableTrait;
 
     #[ORM\Id]
@@ -27,9 +29,9 @@ class Brand
     // @phpstan-ignore property.unusedType (assigné par Doctrine)
     private ?int $id = null;
 
-    #[ORM\Column(length: 150)]
+    #[ORM\Column(length: self::NAME_MAX_LENGTH)]
     #[Assert\NotBlank(message: 'Le nom est obligatoire.')]
-    #[Assert\Length(max: 150, maxMessage: 'Le nom ne peut pas dépasser {{ limit }} caractères.')]
+    #[Assert\Length(max: self::NAME_MAX_LENGTH, maxMessage: 'Le nom ne peut pas dépasser {{ limit }} caractères.')]
     private string $name = '';
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]

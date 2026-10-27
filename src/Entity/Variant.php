@@ -20,6 +20,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['product', 'matchKey'], message: 'Cette variante existe déjà pour ce produit.', errorPath: 'size')]
 class Variant
 {
+    /** Longueur max des colonnes taille, coupe, côté, largeur et couleur. */
+    public const int ATTRIBUTE_MAX_LENGTH = 50;
+
     use TimestampableBlameableTrait;
 
     #[ORM\Id]
@@ -37,24 +40,24 @@ class Variant
     #[Assert\Length(max: 20, maxMessage: 'L\'EAN ne peut pas dépasser {{ limit }} caractères.')]
     private ?string $ean = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
-    #[Assert\Length(max: 50, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
+    #[ORM\Column(length: self::ATTRIBUTE_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::ATTRIBUTE_MAX_LENGTH, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
     private ?string $size = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
-    #[Assert\Length(max: 50, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
+    #[ORM\Column(length: self::ATTRIBUTE_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::ATTRIBUTE_MAX_LENGTH, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
     private ?string $fit = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
-    #[Assert\Length(max: 50, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
+    #[ORM\Column(length: self::ATTRIBUTE_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::ATTRIBUTE_MAX_LENGTH, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
     private ?string $side = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
-    #[Assert\Length(max: 50, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
+    #[ORM\Column(length: self::ATTRIBUTE_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::ATTRIBUTE_MAX_LENGTH, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
     private ?string $width = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
-    #[Assert\Length(max: 50, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
+    #[ORM\Column(length: self::ATTRIBUTE_MAX_LENGTH, nullable: true)]
+    #[Assert\Length(max: self::ATTRIBUTE_MAX_LENGTH, maxMessage: 'Cette valeur ne peut pas dépasser {{ limit }} caractères.')]
     private ?string $color = null;
 
     /** @var array<string, string> */

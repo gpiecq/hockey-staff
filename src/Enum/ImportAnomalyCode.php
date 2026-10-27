@@ -21,4 +21,6 @@ enum ImportAnomalyCode: string
     case ProductFieldsConflict = 'product_fields_conflict';
     case EanHeldByDeletedProduct = 'ean_held_by_deleted_product';
     case VariantKeyCollision = 'variant_key_collision';
+    case CategoryLevelMissing = 'category_level_missing';
+    case ValueTooLong = 'value_too_long';
 }

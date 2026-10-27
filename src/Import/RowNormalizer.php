@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Import;
 
 use App\Catalogue\NameNormalizer;
+use App\Entity\Brand;
+use App\Entity\Category;
+use App\Entity\Product;
 use App\Entity\SupplierImportMapping;
+use App\Entity\Variant;
 use App\Enum\ImportAnomalyCode;
 
 final class RowNormalizer
@@ -65,13 +69,44 @@ final class RowNormalizer
 
         // Chemin = niveaux non vides ; vide si la catégorie racine manque (ligne rejetée de toute façon).
         $path = [];
+        $levels = [];
         if (null !== $category1) {
             $path[] = $category1;
-            foreach (['category2', 'category3'] as $field) {
-                $name = self::name($raw[$field] ?? null);
-                if (null !== $name) {
-                    $path[] = $name;
-                }
+            $levels['Catégorie'] = $category1;
+            $category2 = self::name($raw['category2'] ?? null);
+            $category3 = self::name($raw['category3'] ?? null);
+            if (null !== $category2) {
+                $path[] = $category2;
+                $levels['Sous-catégorie 1'] = $category2;
+            }
+            if (null !== $category3) {
+                $path[] = $category3;
+                $levels['Sous-catégorie 2'] = $category3;
+            }
+            if (null === $category2 && null !== $category3) {
+                $add(ImportAnomalyCode::CategoryLevelMissing, \sprintf(
+                    'Sous-catégorie 1 vide alors que la sous-catégorie 2 est renseignée : catégorie rattachée à « %s ».',
+                    implode(' › ', $path),
+                ));
+            }
+        }
+
+        $limits = [
+            'Référence' => [$reference, Product::REFERENCE_MAX_LENGTH],
+            'Désignation' => [$designation, Product::DESIGNATION_MAX_LENGTH],
+            'Taille' => [$size, Variant::ATTRIBUTE_MAX_LENGTH],
+            'Coupe' => [self::text($raw['fit'] ?? null), Variant::ATTRIBUTE_MAX_LENGTH],
+            'Côté' => [self::text($raw['side'] ?? null), Variant::ATTRIBUTE_MAX_LENGTH],
+            'Largeur' => [self::text($raw['width'] ?? null), Variant::ATTRIBUTE_MAX_LENGTH],
+            'Couleur' => [$color, Variant::ATTRIBUTE_MAX_LENGTH],
+            'Marque' => [$brand, Brand::NAME_MAX_LENGTH],
+        ];
+        foreach ($levels as $label => $value) {
+            $limits[$label] = [$value, Category::NAME_MAX_LENGTH];
+        }
+        foreach ($limits as $label => [$value, $max]) {
+            if (null !== $value && mb_strlen($value) > $max) {
+                $add(ImportAnomalyCode::ValueTooLong, \sprintf('Valeur trop longue pour la colonne %s (%d caractères, maximum %d) : ligne ignorée.', $label, mb_strlen($value), $max));
             }
         }
 
@@ -132,6 +167,13 @@ final class RowNormalizer
         }
         if (1 !== preg_match('/^(\d+)(?:[.,](\d{1,2}))?$/', $price, $m)) {
             $add(ImportAnomalyCode::PriceInvalid, \sprintf('Prix %s « %s » invalide : ignoré.', $label, $price));
+
+            return null;
+        }
+
+        // Au-delà de 9 chiffres entiers, l'entier saturerait (et dépasse de toute façon la colonne).
+        if (\strlen(ltrim($m[1], '0')) > 9) {
+            $add(ImportAnomalyCode::PriceInvalid, \sprintf('Prix %s « %s » invalide (trop grand) : ignoré.', $label, $price));
 
             return null;
         }

@@ -21,6 +21,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['supplier', 'reference'], message: 'Cette référence existe déjà chez ce fournisseur.', errorPath: 'reference')]
 class Product
 {
+    public const int REFERENCE_MAX_LENGTH = 100;
+    public const int DESIGNATION_MAX_LENGTH = 255;
+
     use TimestampableBlameableTrait;
 
     #[ORM\Id]
@@ -34,14 +37,14 @@ class Product
     #[Assert\NotNull(message: 'Le fournisseur est obligatoire.')]
     private ?Supplier $supplier = null;
 
-    #[ORM\Column(length: 100)]
+    #[ORM\Column(length: self::REFERENCE_MAX_LENGTH)]
     #[Assert\NotBlank(message: 'La référence est obligatoire.')]
-    #[Assert\Length(max: 100, maxMessage: 'La référence ne peut pas dépasser {{ limit }} caractères.')]
+    #[Assert\Length(max: self::REFERENCE_MAX_LENGTH, maxMessage: 'La référence ne peut pas dépasser {{ limit }} caractères.')]
     private string $reference = '';
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: self::DESIGNATION_MAX_LENGTH)]
     #[Assert\NotBlank(message: 'La désignation est obligatoire.')]
-    #[Assert\Length(max: 255, maxMessage: 'La désignation ne peut pas dépasser {{ limit }} caractères.')]
+    #[Assert\Length(max: self::DESIGNATION_MAX_LENGTH, maxMessage: 'La désignation ne peut pas dépasser {{ limit }} caractères.')]
     private string $designation = '';
 
     #[ORM\ManyToOne]
