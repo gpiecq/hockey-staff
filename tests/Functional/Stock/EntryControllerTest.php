@@ -52,7 +52,7 @@ final class EntryControllerTest extends WebTestCase
         return (int) $this->em($client)->createQuery('SELECT COUNT(e.id) FROM '.$class.' e')->getSingleScalarResult();
     }
 
-    /** @return array<string, mixed> */
+    /** @return array{location: string, documentReference: string, comment: string, lines: array<int, array<string, string>>} */
     private function payload(Location $location, Variant $variant, int $quantity, ?string $cost = null, string $serials = ''): array
     {
         $line = ['variant' => (string) $variant->getId(), 'quantity' => (string) $quantity, 'condition' => 'new', 'serialNumbers' => $serials];
