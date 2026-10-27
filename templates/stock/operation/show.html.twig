@@ -5,7 +5,12 @@
 {% block body %}
     <div class="page-head">
         <h1>{{ operation.type.label }} n° {{ operation.id }}</h1>
-        <span class="actions"><a class="btn" href="{{ path('stock_operation_index') }}">Toutes les opérations</a></span>
+        <span class="actions">
+            {% if operation.type.value in ['purchase_in', 'donation_in'] and is_granted('STOCK_MOVE') %}
+                <a class="btn" href="{{ path('label_print', {operation: operation.id}) }}">Imprimer les étiquettes</a>
+            {% endif %}
+            <a class="btn" href="{{ path('stock_operation_index') }}">Toutes les opérations</a>
+        </span>
     </div>
 
     <dl class="product-meta">

@@ -63,6 +63,7 @@ final class ProductController extends AbstractController
             brandId: $brand instanceof Brand ? $brand->getId() : null,
             includeInactive: true === ($data['includeInactive'] ?? false),
             includeArchived: true === ($data['includeArchived'] ?? false),
+            withoutValidEan: true === ($data['sansEan'] ?? false),
             withoutCategory: true === ($data['sansCategorie'] ?? false),
             missingPriceSeasonId: true === ($data['sansTarif'] ?? false) ? $currentSeason->get()?->getId() : null,
             page: ctype_digit($rawPage = $request->query->getString('page')) ? max(1, (int) $rawPage) : 1,

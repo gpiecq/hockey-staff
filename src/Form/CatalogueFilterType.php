@@ -40,7 +40,8 @@ final class CatalogueFilterType extends AbstractType
             ->add('includeArchived', CheckboxType::class, [
                 'label' => 'Archivés',
                 'required' => false,
-            ]);
+            ])
+            ->add('sansEan', CheckboxType::class, ['label' => 'Sans EAN', 'required' => false]);
 
         if ($this->security->isGranted('ROLE_MANAGER')) {
             $builder->add('sansCategorie', CheckboxType::class, ['label' => 'Sans catégorie', 'required' => false]);

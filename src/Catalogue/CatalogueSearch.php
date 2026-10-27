@@ -61,6 +61,15 @@ final readonly class CatalogueSearch
             $this->products->andMissingClubPrice($qb, 'p', $criteria->missingPriceSeasonId);
         }
 
+        if ($criteria->withoutValidEan) {
+            $productIds = [];
+            foreach ($this->variants->findLabelableWithoutValidEan() as $variant) {
+                $productIds[(int) $variant->getProduct()?->getId()] = true;
+            }
+            $qb->andWhere('p.id IN (:withoutEanProducts)')
+                ->setParameter('withoutEanProducts', [] === $productIds ? [0] : array_keys($productIds));
+        }
+
         if (!$criteria->includeInactive) {
             // masqué seulement s'il a au moins une variante vivante et qu'aucune n'est active
             $visible = 'EXISTS (SELECT 1 FROM '.Variant::class.' va WHERE va.product = p AND va.active = true)

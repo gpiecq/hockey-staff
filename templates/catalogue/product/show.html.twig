@@ -27,6 +27,8 @@
     {% if variants is empty %}
         <p class="empty">Aucune variante.</p>
     {% else %}
+        {% set printable = is_granted('STOCK_MOVE') %}
+        {% if printable %}<form method="get" action="{{ path('label_print') }}" data-turbo-frame="_top">{% endif %}
         <table class="table">
             <thead>
                 <tr><th>Variante</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix club HT</th><th class="num">Prix public TTC</th><th class="num">Stock</th>{% if is_granted('CATALOGUE_EDIT') %}<th></th>{% endif %}</tr>
@@ -36,9 +38,10 @@
                     {% set price = prices[variant.id]|default(null) %}
                     <tr>
                         <td>
+                            {% if printable %}<input type="checkbox" name="variantes[]" value="{{ variant.id }}" checked aria-label="Imprimer une étiquette pour {{ variant.label ?: 'Unique' }}">{% endif %}
                             <strong>{{ variant.label ?: 'Unique' }}</strong>
                             {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}
-                            <small class="muted">{{ variant.code }}</small>
+                            <small class="muted block">{{ variant.code }}</small>
                         </td>
                         <td data-label="EAN">{{ variant.ean ?? '—' }}</td>
                         {% if price %}
@@ -74,6 +77,10 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% if printable %}
+            <p><button type="submit" class="btn">Imprimer des étiquettes</button></p>
+            </form>
+        {% endif %}
     {% endif %}
 
     {% set pieces = [] %}

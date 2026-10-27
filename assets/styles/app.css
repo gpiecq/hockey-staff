@@ -17,6 +17,7 @@ h2{font-weight:800;font-size:1.125rem;margin:1.5rem 0 .5rem}
 a{color:var(--band)}
 .lead{color:var(--muted);margin:0 0 1rem}
 .muted{color:var(--muted)}
+.block{display:block}
 :focus-visible{outline:3px solid var(--light);outline-offset:2px}
 
 /* —— Boutons —— */

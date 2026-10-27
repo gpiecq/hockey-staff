@@ -16,6 +16,7 @@ final readonly class CatalogueSearchCriteria
         public bool $withoutCategory = false,
         public ?int $missingPriceSeasonId = null,
         public bool $includeArchived = false,
+        public bool $withoutValidEan = false,
     ) {
     }
 }
