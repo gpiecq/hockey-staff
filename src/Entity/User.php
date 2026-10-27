@@ -8,13 +8,14 @@ use App\Enum\UserRole;
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\EquatableInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'app_user')]
 #[UniqueEntity(fields: ['email'], message: 'Cet email est déjà utilisé.')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -146,6 +147,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         \assert('' !== $this->email);
 
         return $this->email;
+    }
+
+    /**
+     * Appelé avec l'utilisateur rafraîchi depuis la base : un compte désactivé ferme la session ouverte.
+     * Le hash en session est un crc32c (voir __serialize) ; sinon mêmes critères que le comportement par défaut.
+     */
+    public function isEqualTo(UserInterface $user): bool
+    {
+        if (!$user instanceof self || !$user->isEnabled()) {
+            return false;
+        }
+
+        $passwordUnchanged = $this->password === $user->getPassword()
+            || (8 === \strlen($this->password) && hash('crc32c', $user->getPassword()) === $this->password);
+
+        return $passwordUnchanged
+            && $this->email === $user->getUserIdentifier()
+            && $this->getRoles() === $user->getRoles();
     }
 
     /**

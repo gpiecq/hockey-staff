@@ -115,4 +115,34 @@ final class LoginTest extends WebTestCase
         $storage->setToken(new UsernamePasswordToken($stock, 'main', $stock->getRoles()));
         self::assertFalse($checker->isGranted('ROLE_MANAGER'));
     }
+
+    public function testUserDisabledDuringSessionIsLoggedOut(): void
+    {
+        $client = static::createClient();
+        $em = $this->em($client);
+        $user = UserFactory::create($em, UserRole::Viewer);
+
+        $this->submitLogin($client, 'user@example.test', 'password123');
+        $client->request('GET', '/');
+        self::assertResponseIsSuccessful();
+
+        // Écriture directe : le client redémarre le noyau à chaque requête, l'EM d'origine est périmé.
+        $client->getKernel()->boot();
+        $this->em($client)->getConnection()->executeStatement('UPDATE app_user SET enabled = false WHERE id = ?', [$user->getId()]);
+
+        $client->request('GET', '/');
+        self::assertResponseRedirects('/login');
+    }
+
+    public function testEnabledUserKeepsSessionAcrossRequests(): void
+    {
+        $client = static::createClient();
+        UserFactory::create($this->em($client), UserRole::Viewer);
+
+        $this->submitLogin($client, 'user@example.test', 'password123');
+        $client->request('GET', '/');
+        $client->request('GET', '/');
+
+        self::assertResponseIsSuccessful();
+    }
 }
