@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+    <h1>{{ title }}</h1>
+
+    {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate'}}) }}
+        {% for name in ['email', 'firstName', 'lastName'] %}
+            <div class="field">
+                {{ form_label(form[name]) }}
+                {{ form_widget(form[name]) }}
+                {% for error in form[name].vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+
+        <fieldset class="field">
+            <legend>Rôle</legend>
+            <div class="tiles">
+                {% for choice in form.role %}
+                    <label class="tile">{{ form_widget(choice) }}<span>{{ choice.vars.label }}</span></label>
+                {% endfor %}
+            </div>
+            {% for error in form.role.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </fieldset>
+
+        <div class="field">
+            <label class="check">{{ form_widget(form.enabled) }} {{ form.enabled.vars.label }}</label>
+            {% for error in form.enabled.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+
+        <div class="field">
+            {{ form_label(form.plainPassword) }}
+            {{ form_widget(form.plainPassword) }}
+            {% if form.plainPassword.vars.help %}<p class="help">{{ form.plainPassword.vars.help }}</p>{% endif %}
+            {% for error in form.plainPassword.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+
+        {% for error in form.vars.errors %}<p class="form-error">{{ error.message }}</p>{% endfor %}
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a class="btn" href="{{ path('admin_user_index') }}">Annuler</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}

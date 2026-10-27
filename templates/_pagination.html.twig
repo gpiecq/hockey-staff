@@ -1,0 +1,26 @@
+{#
+  Pagination réutilisable. Usage : {% include '_pagination.html.twig' with {page: page, noun: 'utilisateurs'} %}
+  `page` est un App\Pagination\Page ; les paramètres de requête courants sont conservés.
+#}
+{% set last = page.lastPage %}
+{% set params = app.request.query.all %}
+{% set numbers = [1, last, page.page - 1, page.page, page.page + 1]|filter(n => n >= 1 and n <= last)|sort|reduce((carry, n) => n in carry ? carry : carry|merge([n]), []) %}
+<div class="pager">
+    <p class="pagination-count">{{ page.firstIndex }}–{{ page.lastIndex }} sur {{ page.total }} {{ noun }}</p>
+    {% if last > 1 %}
+        <nav class="pagination" aria-label="Pagination">
+            {% if page.page > 1 %}
+                <a href="{{ path(app.current_route, app.request.attributes.get('_route_params')|merge(params)|merge({page: page.page - 1})) }}" rel="prev" aria-label="Page précédente">‹</a>
+            {% endif %}
+            {% set previous = 0 %}
+            {% for n in numbers %}
+                {% if n - previous > 1 %}<span class="gap" aria-hidden="true">…</span>{% endif %}
+                <a href="{{ path(app.current_route, app.request.attributes.get('_route_params')|merge(params)|merge({page: n})) }}"{% if n == page.page %} aria-current="page"{% endif %} aria-label="Page {{ n }}">{{ n }}</a>
+                {% set previous = n %}
+            {% endfor %}
+            {% if page.page < last %}
+                <a href="{{ path(app.current_route, app.request.attributes.get('_route_params')|merge(params)|merge({page: page.page + 1})) }}" rel="next" aria-label="Page suivante">›</a>
+            {% endif %}
+        </nav>
+    {% endif %}
+</div>

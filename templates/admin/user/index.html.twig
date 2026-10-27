@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Utilisateurs{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Utilisateurs</h1>
+        <a class="btn btn-primary" href="{{ path('admin_user_new') }}">Nouvel utilisateur</a>
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucun utilisateur.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Nom</th><th>E-mail</th><th>Rôle</th><th>Statut</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for user in page.items %}
+                    <tr>
+                        <td>{{ user.fullName }}</td>
+                        <td data-label="E-mail">{{ user.email }}</td>
+                        <td data-label="Rôle">{{ user.role.label }}</td>
+                        <td data-label="Statut">{% if user.enabled %}<span class="badge badge-strong">Actif</span>{% else %}<span class="badge">Désactivé</span>{% endif %}</td>
+                        <td>{% if is_granted('USER_EDIT', user) %}<a href="{{ path('admin_user_edit', {id: user.id}) }}">Modifier</a>{% endif %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'utilisateurs'} %}
+{% endblock %}

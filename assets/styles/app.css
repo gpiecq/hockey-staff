@@ -115,3 +115,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
     .topbar{min-height:3rem;margin-top:0;padding:0 1.5rem;font-size:1rem}
     .content{max-width:72rem;padding:2rem 1.5rem}
 }
+
+/* —— Pagination —— */
+.pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;margin-top:1rem}
+.pagination-count{margin:0;color:var(--muted);font-weight:700}
+.pagination{display:flex;flex-wrap:wrap;gap:.25rem;align-items:center}
+.pagination a,.pagination span{display:inline-flex;align-items:center;justify-content:center;min-width:2.75rem;min-height:2.75rem;padding:0 .5rem;border-radius:.5rem;font-weight:800;text-decoration:none}
+.pagination a{background:var(--surface);border:2px solid var(--line);color:var(--band)}
+.pagination a[aria-current=page]{background:var(--blue);border-color:var(--blue);color:#fff}
+.pagination .gap{color:var(--muted);min-width:1.5rem}
+.page-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem}
+.help{color:var(--muted);font-size:.875rem;margin:0}
+.actions{display:flex;gap:.75rem;flex-wrap:wrap}
