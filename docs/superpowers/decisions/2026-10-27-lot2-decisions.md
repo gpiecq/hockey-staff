@@ -68,6 +68,7 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 - **R10 — Historique et variantes supprimées.** Aucune correction à la tâche historique : les entrées refusent déjà
   les variantes supprimées, et la garde de suppression (variantes et produits avec mouvements) empêche toute variante
   à historique d'être supprimée. Seules d'éventuelles données antérieures au lot pourraient poser problème.
+  Coût si faux : une 500 sur la page d'historique ; vérifié en revue finale, aucun écart.
 - **R11 — Revue finale : suppression fournisseur/marque et sorties d'articles retirés du catalogue.**
   (a) Supprimer un fournisseur ou une marque est refusé tant qu'il reste des produits non supprimés (message
   d'erreur, redirection, rien de supprimé), comme les gardes lieu/produit/variante. Sans cela, les produits
@@ -76,7 +77,6 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
   catalogue » reste sortable et transférable. Les entrées gardent le filtre actif seul et le recorder continue de
   les refuser. (c) Le total de la page Stock est libellé « hors filtres catégorie et recherche ». Coût si faux :
   libellés et un filtre de requête.
-  Coût si faux : une 500 sur la page d'historique, à vérifier en revue finale.
 
 ## Import
 
