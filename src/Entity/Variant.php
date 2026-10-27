@@ -13,6 +13,7 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: VariantRepository::class)]
+#[ORM\UniqueConstraint(name: 'uniq_variant_code', columns: ['code'])]
 #[ORM\UniqueConstraint(name: 'uniq_variant_ean', columns: ['ean'], options: ['where' => '(deleted_at IS NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_variant_product_match_key', columns: ['product_id', 'match_key'], options: ['where' => '(deleted_at IS NULL)'])]
 #[Gedmo\SoftDeleteable(fieldName: 'deletedAt')]
@@ -29,6 +30,10 @@ class Variant
     #[ORM\Column]
     // @phpstan-ignore property.unusedType (assigné par Doctrine)
     private ?int $id = null;
+
+    /** Code interne HV-nnnnnn, posé au premier persist par VariantCodeListener et jamais modifié ensuite. */
+    #[ORM\Column(length: 20)]
+    private ?string $code = null;
 
     #[ORM\ManyToOne(inversedBy: 'variants')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
@@ -79,6 +84,19 @@ class Variant
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getCode(): ?string
+    {
+        return $this->code;
+    }
+
+    public function assignCode(string $code): void
+    {
+        if (null !== $this->code) {
+            throw new \LogicException('Le code interne de la variante est déjà attribué.');
+        }
+        $this->code = $code;
     }
 
     public function getProduct(): ?Product

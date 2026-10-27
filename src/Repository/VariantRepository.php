@@ -20,6 +20,23 @@ class VariantRepository extends ServiceEntityRepository
         parent::__construct($registry, Variant::class);
     }
 
+    public function nextCode(): string
+    {
+        $next = $this->getEntityManager()->getConnection()->fetchOne("SELECT nextval('variant_code_seq')");
+
+        return \sprintf('HV-%06d', is_numeric($next) ? (int) $next : throw new \LogicException('variant_code_seq indisponible.'));
+    }
+
+    /**
+     * Variante par code HV-… (espaces ignorés, insensible à la casse), y compris supprimée si le filtre est désactivé.
+     */
+    public function findOneByCode(string $code): ?Variant
+    {
+        $variant = $this->findOneBy(['code' => strtoupper(trim($code))]);
+
+        return $variant instanceof Variant ? $variant : null;
+    }
+
     /** Variantes actives dont le produit n'est pas supprimé (le filtre softdeleteable s'applique à la jointure). */
     public function countActiveOfLiveProducts(): int
     {

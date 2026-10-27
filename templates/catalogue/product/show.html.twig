@@ -38,6 +38,7 @@
                         <td>
                             <strong>{{ variant.label ?: 'Unique' }}</strong>
                             {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}
+                            <small class="muted">{{ variant.code }}</small>
                         </td>
                         <td data-label="EAN">{{ variant.ean ?? '—' }}</td>
                         {% if price %}
