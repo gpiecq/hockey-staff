@@ -7,6 +7,7 @@ namespace App\Controller\Catalogue;
 use App\Catalogue\CatalogueSearch;
 use App\Catalogue\CatalogueSearchCriteria;
 use App\Catalogue\CurrentSeasonProvider;
+use App\Catalogue\TrackingModeResolver;
 use App\Entity\Brand;
 use App\Entity\Category;
 use App\Entity\Product;
@@ -101,12 +102,19 @@ final class ProductController extends AbstractController
 
     #[Route('/{id}/edit', name: 'catalogue_product_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted('CATALOGUE_EDIT')]
-    public function edit(Product $product, Request $request, EntityManagerInterface $em): Response
+    public function edit(Product $product, Request $request, EntityManagerInterface $em, TrackingModeResolver $trackingModes): Response
     {
+        $hadCategory = null !== $product->getCategory();
+        $originalMode = $product->getTrackingMode();
         $form = $this->createForm(ProductType::class, $product);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Première catégorisation : le mode par défaut de la catégorie s'applique, sauf si l'utilisateur l'a modifié.
+            $category = $product->getCategory();
+            if (!$hadCategory && null !== $category && $product->getTrackingMode() === $originalMode) {
+                $product->setTrackingMode($trackingModes->defaultFor($category));
+            }
             $em->flush();
             $this->addFlash('success', 'Produit modifié.');
 

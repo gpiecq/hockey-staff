@@ -8,6 +8,7 @@ use App\Entity\Product;
 use App\Entity\Supplier;
 use App\Enum\TrackingMode;
 use App\Enum\UserRole;
+use App\Repository\CategoryRepository;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -67,5 +68,66 @@ final class ProductUncategorizedTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertSelectorTextContains('.field-error', 'La catégorie est obligatoire.');
+    }
+
+    public function testFirstCategoryAppliesDefaultTrackingMode(): void
+    {
+        $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], null);
+
+        self::assertSame(TrackingMode::Serialized, $this->reload()->getTrackingMode());
+    }
+
+    public function testUserChangedTrackingModeWinsOnFirstCategory(): void
+    {
+        $this->product->setTrackingMode(TrackingMode::Serialized);
+        $this->em->flush();
+
+        $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], TrackingMode::Quantity);
+
+        self::assertSame(TrackingMode::Quantity, $this->reload()->getTrackingMode());
+    }
+
+    public function testCategoryChangeOnCategorizedProductKeepsMode(): void
+    {
+        $this->product->setCategory($this->categories()->findOrCreatePath(['CONSOMMABLE', 'TAPE']));
+        $this->em->flush();
+
+        $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], null);
+
+        self::assertSame(TrackingMode::Quantity, $this->reload()->getTrackingMode());
+    }
+
+    private function categories(): CategoryRepository
+    {
+        $categories = $this->client->getContainer()->get(CategoryRepository::class);
+        \assert($categories instanceof CategoryRepository);
+
+        return $categories;
+    }
+
+    private function reload(): Product
+    {
+        $this->em->clear();
+        $product = $this->em->find(Product::class, $this->product->getId());
+        \assert($product instanceof Product);
+
+        return $product;
+    }
+
+    /** @param list<string> $path */
+    private function editWithCategory(Product $product, array $path, ?TrackingMode $mode): void
+    {
+        $category = $this->categories()->findOrCreatePath($path);
+        $this->em->flush();
+        $crawler = $this->client->request('GET', '/catalogue/'.$product->getId().'/edit');
+        $form = $crawler->selectButton('Enregistrer')->form();
+        $values = $form->getPhpValues();
+        $values['product']['category'] = (string) $category->getId();
+        if (null !== $mode) {
+            $values['product']['trackingMode'] = $mode->value;
+        }
+        $this->client->request('POST', $form->getUri(), $values);
+
+        self::assertResponseRedirects();
     }
 }
