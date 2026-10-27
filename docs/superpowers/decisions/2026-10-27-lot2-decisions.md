@@ -68,6 +68,14 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 - **R10 — Historique et variantes supprimées.** Aucune correction à la tâche historique : les entrées refusent déjà
   les variantes supprimées, et la garde de suppression (variantes et produits avec mouvements) empêche toute variante
   à historique d'être supprimée. Seules d'éventuelles données antérieures au lot pourraient poser problème.
+- **R11 — Revue finale : suppression fournisseur/marque et sorties d'articles retirés du catalogue.**
+  (a) Supprimer un fournisseur ou une marque est refusé tant qu'il reste des produits non supprimés (message
+  d'erreur, redirection, rien de supprimé), comme les gardes lieu/produit/variante. Sans cela, les produits
+  restaient orphelins et la fiche produit répondait par une 500. (b) Les lignes de sortie et de transfert utilisent
+  l'autocomplete sans filtre actif/archivé (option `movable_only`) : le stock en quantité d'une variante « Plus au
+  catalogue » reste sortable et transférable. Les entrées gardent le filtre actif seul et le recorder continue de
+  les refuser. (c) Le total de la page Stock est libellé « hors filtres catégorie et recherche ». Coût si faux :
+  libellés et un filtre de requête.
   Coût si faux : une 500 sur la page d'historique, à vérifier en revue finale.
 
 ## Import
@@ -76,8 +84,9 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
   mode de suivi n'est pas modifié (message « Produit X : mode de suivi conservé, le produit a des mouvements de
   stock. »). Le mode de suivi est verrouillé dès le premier mouvement. Coût si faux : lever le verrou et gérer la
   conversion des stocks existants.
-- **Archivage à l'import** : une variante absente du fichier sans stock est archivée ; avec du stock, elle reste
-  active. Coût si faux : archivage manuel.
+- **Archivage à l'import** : une variante absente du fichier sans stock est archivée ; avec du stock, elle est
+  désactivée (`active = false`, non archivée) et reste visible sous « Plus au catalogue ». Son stock reste sortable et
+  transférable (R11). Coût si faux : archivage manuel.
 
 ## Recette manuelle
 
@@ -108,8 +117,6 @@ sortie (5 motifs en français). Aucune erreur console.
   peut passer entre le contrôle et la désactivation.
 - **Page Stock** : pas de contrôle de tri utilisateur (la spec prévoyait un tri à l'image du catalogue) ; le total
   affiché ignore les filtres catégorie et recherche, sans l'indiquer.
-- **Suppression d'un fournisseur** : `SupplierController::delete` supprime en soft-delete sans garde sur les
-  mouvements ; cela peut masquer des produits qui ont un historique.
 - **Historique** : un champ de filtre invalide ignore silencieusement tous les filtres ; un identifiant de variante
   inconnu est ignoré.
 - **Revue finale de la branche entière** : à faire dans une nouvelle session.
