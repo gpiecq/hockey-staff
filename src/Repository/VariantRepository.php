@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Catalogue\Ean;
+use App\Entity\Item;
 use App\Entity\Product;
+use App\Entity\StockLevel;
 use App\Entity\Variant;
+use App\Enum\ItemStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -81,6 +84,46 @@ class VariantRepository extends ServiceEntityRepository
         $variants = $this->createQueryBuilder('v')
             ->where('v.ean IN (:candidates)')
             ->setParameter('candidates', Ean::candidates($criteria['ean']))
+            ->getQuery()
+            ->getResult();
+
+        return $variants;
+    }
+
+    /**
+     * Variantes étiquetables (non supprimées, actives ou en stock) dont l'EAN est absent ou n'a pas de clé de contrôle valide,
+     * triées par référence produit puis id. L'EAN est jugé en PHP sur une requête scalaire, puis la règle « étiquetable » en SQL.
+     *
+     * @return list<Variant>
+     */
+    public function findLabelableWithoutValidEan(): array
+    {
+        /** @var list<array{id: int, ean: ?string}> $rows */
+        $rows = $this->createQueryBuilder('v')
+            ->select('v.id AS id', 'v.ean AS ean')
+            ->innerJoin('v.product', 'p')
+            ->getQuery()
+            ->getArrayResult();
+        $ids = [];
+        foreach ($rows as $row) {
+            if (!Ean::hasValidCheckDigit(trim($row['ean'] ?? ''))) {
+                $ids[] = $row['id'];
+            }
+        }
+        if ([] === $ids) {
+            return [];
+        }
+
+        /** @var list<Variant> $variants */
+        $variants = $this->createQueryBuilder('v')
+            ->innerJoin('v.product', 'p')
+            ->where('v.id IN (:ids)')
+            ->andWhere('v.active = true OR EXISTS (SELECT 1 FROM '.Item::class.' i WHERE i.variant = v AND i.status = :status)'
+                .' OR EXISTS (SELECT 1 FROM '.StockLevel::class.' l WHERE l.variant = v AND l.quantity > 0)')
+            ->setParameter('ids', $ids)
+            ->setParameter('status', ItemStatus::InStock)
+            ->orderBy('p.reference')
+            ->addOrderBy('v.id')
             ->getQuery()
             ->getResult();
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Item;
+use App\Entity\Variant;
+use App\Enum\ItemStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\Query;
@@ -52,5 +54,31 @@ class ItemRepository extends ServiceEntityRepository
         \assert($fresh instanceof Item);
 
         return $fresh;
+    }
+
+    /**
+     * Pièces en stock des variantes données, triées par code (une seule requête).
+     *
+     * @param list<Variant> $variants
+     *
+     * @return list<Item>
+     */
+    public function findInStockByVariants(array $variants): array
+    {
+        if ([] === $variants) {
+            return [];
+        }
+
+        /** @var list<Item> $items */
+        $items = $this->createQueryBuilder('i')
+            ->where('i.variant IN (:variants)')
+            ->andWhere('i.status = :status')
+            ->setParameter('variants', $variants)
+            ->setParameter('status', ItemStatus::InStock)
+            ->orderBy('i.code')
+            ->getQuery()
+            ->getResult();
+
+        return $items;
     }
 }

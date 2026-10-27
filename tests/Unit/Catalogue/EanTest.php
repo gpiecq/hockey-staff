@@ -28,6 +28,7 @@ final class EanTest extends TestCase
         self::assertTrue(Ean::hasValidCheckDigit('012345678905'));
         self::assertTrue(Ean::hasValidCheckDigit('4006381333931'));
         self::assertFalse(Ean::hasValidCheckDigit('876369003339'));
+        self::assertFalse(Ean::hasValidCheckDigit("012345678905\n"));
         self::assertFalse(Ean::hasValidCheckDigit('12345'));
         self::assertFalse(Ean::hasValidCheckDigit('abcdefghijkl'));
     }

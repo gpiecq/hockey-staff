@@ -29,3 +29,7 @@ when@test:
         App\Label\LabelPdfRenderer:
             autowire: true
             public: true
+        # Retirer ce public: true quand un contrôleur injectera le builder (tâche suivante).
+        App\Label\LabelLineBuilder:
+            autowire: true
+            public: true

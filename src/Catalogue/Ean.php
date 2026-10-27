@@ -34,7 +34,7 @@ final class Ean
 
     public static function hasValidCheckDigit(string $digits): bool
     {
-        if (1 !== preg_match('/^\d{12,13}$/', $digits)) {
+        if (1 !== preg_match('/^\d{12,13}\z/', $digits)) {
             return false;
         }
 
