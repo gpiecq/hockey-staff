@@ -75,13 +75,19 @@
             {% if diff.newProducts is empty and diff.newVariants is empty %}
                 <p class="empty">Aucun nouveau produit ni nouvelle variante.</p>
             {% endif %}
+            {% if diff.newBrands is not empty %}
+                <div id="marques-creees">
+                    <h3>Marques créées ({{ diff.newBrands|length }})</h3>
+                    <ul>{% for b in diff.newBrands %}<li>{{ b }}</li>{% endfor %}</ul>
+                </div>
+            {% endif %}
             {% if diff.newProducts is not empty %}
                 <h3>Produits ({{ diff.newProducts|length }})</h3>
                 <table class="table">
                     <thead><tr><th class="num">Ligne</th><th>Référence</th><th>Désignation</th><th>Marque</th><th>Catégorie</th></tr></thead>
                     <tbody>
                         {% for p in diff.newProducts|slice(0, limit) %}
-                            <tr>{{ _self.line(p.line) }}<td data-label="Référence">{{ p.reference }}</td><td data-label="Désignation">{{ p.designation }}</td><td data-label="Marque">{{ p.brand }}</td><td data-label="Catégorie">{{ p.categoryPath|join(' › ') ?: '—' }}</td></tr>
+                            <tr>{{ _self.line(p.line) }}<td data-label="Référence">{{ p.reference }}</td><td data-label="Désignation">{{ p.designation }}</td><td data-label="Marque">{{ p.brand }}</td><td data-label="Catégorie">{{ p.categoryPath|join(' › ') ?: 'Sans catégorie' }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -115,7 +121,7 @@
                                 <td data-label="Variante">{{ labels[c.variantId]|default('#' ~ c.variantId) }}</td>
                                 <td data-label="Changements">
                                     {% for field, change in c.changes %}
-                                        <div>{{ fieldLabels[field]|default(field) }} : {{ change.from ?? '—' }} → {{ change.to ?? '—' }}</div>
+                                        <div>{{ fieldLabels[field]|default(field) }} : {{ change.from ?? (field == 'category' ? 'Sans catégorie' : '—') }} → {{ change.to ?? (field == 'category' ? 'Sans catégorie' : '—') }}</div>
                                     {% endfor %}
                                 </td>
                             </tr>

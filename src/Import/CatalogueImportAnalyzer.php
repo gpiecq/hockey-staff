@@ -55,6 +55,10 @@ final class CatalogueImportAnalyzer
             $knownPaths[$category->getPath()] = true;
         }
 
+        /** @var list<string> $brandNames */
+        $brandNames = $this->em->createQuery('SELECT b.name FROM App\Entity\Brand b')->getSingleColumnResult();
+        $knownBrands = array_fill_keys($brandNames, true);
+
         $rows = [];
         foreach ($this->reader->read($this->resolvePath($run), $mapping) as $line => $raw) {
             $row = $this->normalizer->normalize($line, $raw, $mapping);
@@ -295,6 +299,10 @@ final class CatalogueImportAnalyzer
                 $changes = $this->changes($matched, $row, $first);
                 if ([] !== $changes) {
                     $builder->changed($matchedId, $row->line, $changes);
+                    $newBrand = $changes['brand']['to'] ?? null;
+                    if (null !== $newBrand && !isset($knownBrands[$newBrand])) {
+                        $builder->newBrand($newBrand);
+                    }
                 }
                 $stored = $storedPrices[$matchedId] ?? ['club' => null, 'public' => null];
                 $builder->price($matchedId, $row, $stored['club'], $stored['public']);
@@ -306,6 +314,9 @@ final class CatalogueImportAnalyzer
             if (null === $product && !isset($newReferences[$row->reference])) {
                 $newReferences[$row->reference] = true;
                 $builder->newProduct($first);
+                if (!isset($knownBrands[$first->brand])) {
+                    $builder->newBrand($first->brand);
+                }
             }
             $builder->newVariant($row, $product?->getId());
             $builder->price(null, $row, null, null);

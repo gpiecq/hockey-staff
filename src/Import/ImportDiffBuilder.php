@@ -33,6 +33,13 @@ final class ImportDiffBuilder
     private array $rejectedLines = [];
     /** @var list<Anomaly> */
     private array $anomalies = [];
+    /** @var array<string, true> */
+    private array $newBrands = [];
+
+    public function newBrand(string $name): void
+    {
+        $this->newBrands[$name] = true;
+    }
 
     public function anomaly(int $line, ImportAnomalyCode $code, string $message): void
     {
@@ -133,6 +140,7 @@ final class ImportDiffBuilder
             $this->reactivated,
             $this->rejectedLines,
             $this->anomalies,
+            array_map('strval', array_keys($this->newBrands)),
         );
     }
 }

@@ -27,6 +27,8 @@ namespace App\Import;
  * - deactivatedVariantIds / reactivatedVariantIds : identifiants de variantes
  * - rejectedLines : numéros de ligne Excel ignorés par l'application
  * - anomalies : {line, code (ImportAnomalyCode::value), message}
+ * - newBrands : noms normalisés des marques inconnues du catalogue que l'application créera (nouveaux produits
+ *   et produits dont la marque change)
  *
  * Les anomalies seules ne sont pas des changements : hasChanges() les ignore.
  *
@@ -49,6 +51,7 @@ final readonly class ImportDiff
      * @param list<int>            $reactivatedVariantIds
      * @param list<int>            $rejectedLines
      * @param list<Anomaly>        $anomalies
+     * @param list<string>         $newBrands
      */
     public function __construct(
         public array $newProducts = [],
@@ -59,6 +62,7 @@ final readonly class ImportDiff
         public array $reactivatedVariantIds = [],
         public array $rejectedLines = [],
         public array $anomalies = [],
+        public array $newBrands = [],
     ) {
     }
 
@@ -106,6 +110,7 @@ final readonly class ImportDiff
             'reactivatedVariantIds' => $this->reactivatedVariantIds,
             'rejectedLines' => $this->rejectedLines,
             'anomalies' => $this->anomalies,
+            'newBrands' => $this->newBrands,
         ];
     }
 
@@ -115,7 +120,7 @@ final readonly class ImportDiff
     public static function fromArray(array $data): self
     {
         // Contenu écrit par toArray() : les formes sont garanties par l'écriture, pas revalidées.
-        /** @var array{newProducts?: list<NewProduct>, newVariants?: list<NewVariant>, changedVariants?: list<ChangedVariant>, priceChanges?: list<PriceChange>, deactivatedVariantIds?: list<int>, reactivatedVariantIds?: list<int>, rejectedLines?: list<int>, anomalies?: list<Anomaly>} $typed */
+        /** @var array{newProducts?: list<NewProduct>, newVariants?: list<NewVariant>, changedVariants?: list<ChangedVariant>, priceChanges?: list<PriceChange>, deactivatedVariantIds?: list<int>, reactivatedVariantIds?: list<int>, rejectedLines?: list<int>, anomalies?: list<Anomaly>, newBrands?: list<string>} $typed */
         $typed = $data;
 
         return new self(
@@ -127,6 +132,7 @@ final readonly class ImportDiff
             $typed['reactivatedVariantIds'] ?? [],
             $typed['rejectedLines'] ?? [],
             $typed['anomalies'] ?? [],
+            $typed['newBrands'] ?? [],
         );
     }
 }

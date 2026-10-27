@@ -274,14 +274,38 @@ final class ImportControllerTest extends WebTestCase
     public function testPreviewListsNewBrands(): void
     {
         $this->login();
-        $rows = $this->goodRows();
-        $rows[0]['Marque'] = 'NOUVELLE MARQUE';
-        $run = $this->analyzedRun($rows);
+        // Marque existante (BAUER) sur R1, marque inconnue sur R2 ; R3 existe déjà et change vers une autre marque inconnue.
+        $em = $this->em();
+        $supplier = ImportFixtures::supplierWithMapping($em);
+        $r3 = ImportFixtures::product($em, $supplier, 'R3', 'Patin', 'Bauer');
+        ImportFixtures::variant($em, $r3, '688698508086', 'SR L');
+        $existing = $this->goodRows('R1', '688698508062');
+        $new = $this->goodRows('R2', '688698508079');
+        $new[0]['Marque'] = 'NOUVELLE MARQUE';
+        $changed = $this->goodRows('R3', '688698508086');
+        $changed[0]['Marque'] = 'AUTRE MARQUE';
+        $run = $this->analyzedRun(array_merge($existing, $new, $changed), $supplier);
 
         $crawler = $this->client->request('GET', '/imports/'.$run->getId());
 
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('NOUVELLE MARQUE', $crawler->filter('#nouveautes')->text());
+        $list = $crawler->filter('#marques-creees');
+        self::assertCount(1, $list);
+        self::assertStringContainsString('NOUVELLE MARQUE', $list->text());
+        self::assertStringContainsString('AUTRE MARQUE', $list->text());
+        self::assertStringNotContainsString('BAUER', $list->text());
+    }
+
+    public function testPreviewShowsSansCategorieForUncategorizedProducts(): void
+    {
+        $this->login();
+        $rows = $this->goodRows();
+        $rows[0]['Catégorie'] = null;
+        $run = $this->analyzedRun($rows);
+
+        $crawler = $this->client->request('GET', '/imports/'.$run->getId());
+
+        self::assertStringContainsString('Sans catégorie', $crawler->filter('#nouveautes')->text());
     }
 
     public function testFailedRunShowsTheError(): void
