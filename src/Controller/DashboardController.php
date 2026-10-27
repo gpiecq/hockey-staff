@@ -28,7 +28,7 @@ final class DashboardController extends AbstractController
             'productCount' => $products->count([]),
             'variantCount' => $variants->countActiveOfLiveProducts(),
             'canImport' => $isManager,
-            'lastImport' => $isManager ? $imports->findOneBy([], ['id' => 'DESC']) : null,
+            'lastImport' => $isManager ? $imports->findLatestNotCancelled() : null,
         ]);
     }
 }

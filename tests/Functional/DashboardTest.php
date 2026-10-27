@@ -117,6 +117,35 @@ final class DashboardTest extends WebTestCase
         self::assertSelectorExists('main a[href="/imports/'.$run->getId().'"]');
     }
 
+    public function testLastImportSkipsCancelledRuns(): void
+    {
+        $em = $this->em();
+        $supplier = ImportFixtures::supplierWithMapping($em);
+        $season = ImportFixtures::season($em);
+        $kept = ImportFixtures::run($em, $supplier, $season, []);
+        $cancelled = ImportFixtures::run($em, $supplier, $season, [])->markCancelled();
+        $em->flush();
+        $this->login(UserRole::Manager);
+
+        $this->client->request('GET', '/');
+
+        self::assertSelectorExists('main a[href="/imports/'.$kept->getId().'"]');
+        self::assertSelectorNotExists('main a[href="/imports/'.$cancelled->getId().'"]');
+        self::assertSelectorTextNotContains('main', 'Annulé');
+    }
+
+    public function testManagerWithOnlyCancelledImportsSeesNoneYet(): void
+    {
+        $em = $this->em();
+        ImportFixtures::run($em, ImportFixtures::supplierWithMapping($em), ImportFixtures::season($em), [])->markCancelled();
+        $em->flush();
+        $this->login(UserRole::Manager);
+
+        $this->client->request('GET', '/');
+
+        self::assertSelectorTextContains('main', 'Aucun import');
+    }
+
     public function testManagerWithoutImportSeesNoneYet(): void
     {
         $this->login(UserRole::Manager);
