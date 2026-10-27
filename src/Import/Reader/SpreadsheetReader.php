@@ -7,6 +7,7 @@ namespace App\Import\Reader;
 use App\Entity\SupplierImportMapping;
 use App\Import\Exception\MissingColumnsException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Exception as ReaderException;
 use PhpOffice\PhpSpreadsheet\RichText\RichText;
 
 /**
@@ -22,10 +23,15 @@ final class SpreadsheetReader
      */
     public function read(string $path, SupplierImportMapping $mapping): array
     {
-        $reader = IOFactory::createReaderForFile($path);
-        $reader->setReadDataOnly(true);
-        $reader->setReadEmptyCells(false);
-        $spreadsheet = $reader->load($path);
+        // Lecteurs explicites (R26) : jamais CSV/HTML/XML/ODS par détection automatique.
+        try {
+            $reader = IOFactory::createReaderForFile($path, [IOFactory::READER_XLSX, IOFactory::READER_XLS]);
+            $reader->setReadDataOnly(true);
+            $reader->setReadEmptyCells(false);
+            $spreadsheet = $reader->load($path);
+        } catch (ReaderException $e) {
+            throw new \DomainException('Le fichier n\'est pas un tableur Excel valide (.xlsx).', 0, $e);
+        }
 
         try {
             /** @var array<int, array<string, mixed>> $cells */

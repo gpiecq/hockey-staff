@@ -5,4 +5,39 @@
 {% block body %}
     <h1>Tableau de bord</h1>
     <p class="lead">Bienvenue, {{ app.user.firstName }}.</p>
+
+    <div class="stats">
+        <div class="stat" data-stat="season">
+            <span class="stat-label">Saison courante</span>
+            <span class="stat-value">{{ season ? season.label : 'Aucune saison courante' }}</span>
+        </div>
+        <div class="stat" data-stat="products">
+            <span class="stat-label">Produits</span>
+            <span class="stat-value">{{ productCount }}</span>
+        </div>
+        <div class="stat" data-stat="variants">
+            <span class="stat-label">Variantes actives</span>
+            <span class="stat-value">{{ variantCount }}</span>
+        </div>
+    </div>
+
+    {% if canImport %}
+        <section class="panel" id="dernier-import">
+            <h2>Dernier import</h2>
+            {% if lastImport %}
+                <p>
+                    <a href="{{ path('import_show', {id: lastImport.id}) }}">{{ lastImport.supplier.name }} · {{ lastImport.season.label }}</a>
+                    · <span class="badge{{ lastImport.status.value in ['applied', 'analyzed'] ? ' badge-strong' : (lastImport.status.value == 'failed' ? ' badge-warn' : '') }}">{{ lastImport.status.label }}</span>
+                    · {{ lastImport.createdAt ? lastImport.createdAt|date('d/m/Y H:i') : '—' }}
+                </p>
+            {% else %}
+                <p class="empty">Aucun import pour le moment.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    <div class="actions shortcuts">
+        <a class="btn btn-primary" href="{{ path('catalogue_product_index') }}">Rechercher un produit</a>
+        {% if canImport %}<a class="btn" href="{{ path('import_new') }}">Nouvel import</a>{% endif %}
+    </div>
 {% endblock %}

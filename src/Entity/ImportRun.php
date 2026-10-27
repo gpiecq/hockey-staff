@@ -37,7 +37,7 @@ class ImportRun
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $appliedAt = null;
 
-    /** @param string $storedPath chemin relatif au dossier var/imports/ */
+    /** @param string $storedPath chemin relatif au dossier var/storage/imports/ */
     public function __construct(
         #[ORM\ManyToOne]
         #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]

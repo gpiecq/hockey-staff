@@ -111,4 +111,24 @@ final class SpreadsheetReaderTest extends TestCase
         self::assertSame('12', $row['publicPriceTtc']);
         self::assertSame('84', $row['size']);
     }
+
+    /** @return iterable<string, array{string}> */
+    public static function nonSpreadsheetContents(): iterable
+    {
+        yield 'csv' => ["Référence interne;Gencode\nR1;123\n"];
+        yield 'html' => ['<html><body><table><tr><td>Référence interne</td></tr><tr><td>R1</td></tr></table></body></html>'];
+        yield 'xml' => ['<?xml version="1.0"?><Workbook></Workbook>'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('nonSpreadsheetContents')]
+    public function testNonSpreadsheetFileRenamedXlsxIsRefusedWithAReadableError(string $content): void
+    {
+        $path = $this->files[] = tempnam(sys_get_temp_dir(), 'fake_').'.xlsx';
+        file_put_contents($path, $content);
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('tableur Excel');
+
+        (new SpreadsheetReader())->read($path, self::bauerMapping());
+    }
 }

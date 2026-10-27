@@ -147,3 +147,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
 .product-meta dd{margin:0}
 .badge-warn{background:#f7e6e8;color:var(--danger)}
 .back{display:inline-block;margin-bottom:.5rem;font-weight:700}
+
+/* —— Tableau de bord et imports —— */
+.stats{display:grid;gap:1rem;grid-template-columns:1fr;margin:0 0 1.5rem}
+@media (min-width:640px){.stats{grid-template-columns:repeat(3,1fr)}}
+.stat{display:flex;flex-direction:column;gap:.25rem;padding:1rem;background:var(--surface);border-left:4px solid var(--blue);border-radius:.5rem}
+.stat-label{color:var(--muted);font-weight:700;font-size:.875rem}
+.stat-value{font-size:1.5rem;font-weight:800;color:var(--navy)}
+.panel{margin:0 0 1.5rem;padding:1rem;background:var(--surface);border-radius:.5rem}
+.panel h2{margin-top:0}
+.shortcuts{margin-top:1rem}
+.summary{display:grid;gap:.25rem 1.5rem;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));margin:0 0 1.5rem;padding:1rem 1rem 1rem 2rem;background:var(--surface);border-radius:.5rem;font-weight:700}
+.import-actions{margin:0 0 1.5rem}
+.import-actions form{margin:0}

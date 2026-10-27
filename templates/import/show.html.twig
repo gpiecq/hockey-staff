@@ -1,0 +1,183 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Import {{ run.supplier.name }}{% endblock %}
+
+{# Analyse en cours : rafraîchissement sans JS ; "reload" empêche Turbo de court-circuiter la page. #}
+{% block head_extra %}
+    {% if run.status.value == 'pending' %}
+        <meta http-equiv="refresh" content="3">
+        <meta name="turbo-visit-control" content="reload">
+    {% endif %}
+{% endblock %}
+
+{% macro line(n) %}<td class="num" data-label="Ligne">{{ n }}</td>{% endmacro %}
+
+{% macro more(shown, total, limit) %}
+    {% if total > limit %}<p class="help">{{ limit }} premières lignes affichées sur {{ total }} : les {{ total - limit }} autres seront bien traitées.</p>{% endif %}
+{% endmacro %}
+
+{% block body %}
+    {% set fieldLabels = {designation: 'Désignation', brand: 'Marque', category: 'Catégorie', size: 'Taille', fit: 'Modèle', side: 'Côté', width: 'Largeur', color: 'Couleur', ean: 'EAN'} %}
+    <a class="back" href="{{ path('import_index') }}">‹ Imports</a>
+    <div class="page-head">
+        <h1>Import {{ run.supplier.name }} · {{ run.season.label }}</h1>
+        <span class="badge{{ run.status.value in ['applied', 'analyzed'] ? ' badge-strong' : (run.status.value == 'failed' ? ' badge-warn' : '') }}">{{ run.status.label }}</span>
+    </div>
+    <dl class="product-meta">
+        <dt>Fichier</dt><dd>{{ run.originalFilename }}</dd>
+        <dt>Déposé le</dt><dd>{{ run.createdAt ? run.createdAt|date('d/m/Y H:i') : '—' }}</dd>
+        {% if run.appliedAt %}<dt>Appliqué le</dt><dd>{{ run.appliedAt|date('d/m/Y H:i') }}</dd>{% endif %}
+    </dl>
+
+    {% if run.status.value == 'pending' %}
+        <p class="flash flash-info" role="status">Analyse en cours… Cette page se rafraîchit toute seule.</p>
+    {% elseif run.status.value == 'failed' %}
+        <p class="flash flash-error" role="alert">{{ run.error }}</p>
+        <form method="post" action="{{ path('import_cancel', {id: run.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('import_cancel_' ~ run.id) }}">
+            <button type="submit" class="btn">Abandonner cet import</button>
+        </form>
+    {% elseif run.status.value == 'cancelled' %}
+        <p class="empty">Cet import a été annulé : rien n'a été modifié dans le catalogue.</p>
+    {% elseif diff %}
+        <h2>{{ run.status.value == 'applied' ? 'Résumé de l\'import appliqué' : 'Résumé de l\'analyse' }}</h2>
+        <ul class="summary">
+            <li>{{ summary.newProducts }} nouveaux produits</li>
+            <li>{{ summary.newVariants }} nouvelles variantes</li>
+            <li>{{ summary.changedVariants }} variantes modifiées</li>
+            <li>{{ summary.priceChanges }} changements de prix</li>
+            <li>{{ summary.deactivated }} variantes désactivées</li>
+            <li>{{ summary.reactivated }} variantes réactivées</li>
+            <li>{{ summary.rejected }} lignes rejetées</li>
+            <li>{{ summary.anomalies }} anomalies</li>
+        </ul>
+
+        {% if run.status.value == 'analyzed' %}
+            {% if not diff.hasChanges %}<p class="flash flash-info" role="status">Aucun changement à appliquer : le catalogue est déjà à jour.</p>{% endif %}
+            <div class="actions import-actions">
+                {% if diff.hasChanges %}
+                    <form method="post" action="{{ path('import_apply', {id: run.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('import_apply_' ~ run.id) }}">
+                        <button type="submit" class="btn btn-primary">Appliquer l'import</button>
+                    </form>
+                {% endif %}
+                <form method="post" action="{{ path('import_cancel', {id: run.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('import_cancel_' ~ run.id) }}">
+                    <button type="submit" class="btn">Annuler l'import</button>
+                </form>
+            </div>
+        {% endif %}
+
+        <section id="nouveautes">
+            <h2>Nouveautés</h2>
+            {% if diff.newProducts is empty and diff.newVariants is empty %}
+                <p class="empty">Aucun nouveau produit ni nouvelle variante.</p>
+            {% endif %}
+            {% if diff.newProducts is not empty %}
+                <h3>Produits ({{ diff.newProducts|length }})</h3>
+                <table class="table">
+                    <thead><tr><th class="num">Ligne</th><th>Référence</th><th>Désignation</th><th>Marque</th><th>Catégorie</th></tr></thead>
+                    <tbody>
+                        {% for p in diff.newProducts|slice(0, limit) %}
+                            <tr>{{ _self.line(p.line) }}<td data-label="Référence">{{ p.reference }}</td><td data-label="Désignation">{{ p.designation }}</td><td data-label="Marque">{{ p.brand }}</td><td data-label="Catégorie">{{ p.categoryPath|join(' › ') }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {{ _self.more(0, diff.newProducts|length, limit) }}
+            {% endif %}
+            {% if diff.newVariants is not empty %}
+                <h3>Variantes ({{ diff.newVariants|length }})</h3>
+                <table class="table">
+                    <thead><tr><th class="num">Ligne</th><th>Référence</th><th>Taille</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix public TTC</th></tr></thead>
+                    <tbody>
+                        {% for v in diff.newVariants|slice(0, limit) %}
+                            <tr>{{ _self.line(v.line) }}<td data-label="Référence">{{ v.reference }}</td><td data-label="Taille">{{ [v.size, v.fit, v.side, v.width, v.color]|filter(x => x)|join(' · ') ?: '—' }}</td><td data-label="EAN">{{ v.ean ?? '—' }}</td><td class="num" data-label="Prix club TTC">{{ v.clubPriceTtc is null ? '—' : v.clubPriceTtc|euros }}</td><td class="num" data-label="Prix public TTC">{{ v.publicPriceTtc is null ? '—' : v.publicPriceTtc|euros }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {{ _self.more(0, diff.newVariants|length, limit) }}
+            {% endif %}
+        </section>
+
+        <section id="modifications">
+            <h2>Modifications</h2>
+            {% if diff.changedVariants is empty %}
+                <p class="empty">Aucune variante modifiée.</p>
+            {% else %}
+                <table class="table">
+                    <thead><tr><th class="num">Ligne</th><th>Variante</th><th>Changements</th></tr></thead>
+                    <tbody>
+                        {% for c in diff.changedVariants|slice(0, limit) %}
+                            <tr>
+                                {{ _self.line(c.line) }}
+                                <td data-label="Variante">{{ labels[c.variantId]|default('#' ~ c.variantId) }}</td>
+                                <td data-label="Changements">
+                                    {% for field, change in c.changes %}
+                                        <div>{{ fieldLabels[field]|default(field) }} : {{ change.from ?? '—' }} → {{ change.to ?? '—' }}</div>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {{ _self.more(0, diff.changedVariants|length, limit) }}
+            {% endif %}
+        </section>
+
+        <section id="prix">
+            <h2>Prix</h2>
+            {% if diff.priceChanges is empty %}
+                <p class="empty">Aucun changement de prix.</p>
+            {% else %}
+                <table class="table">
+                    <thead><tr><th class="num">Ligne</th><th>Variante</th><th class="num">Prix club TTC</th><th class="num">Prix public TTC</th></tr></thead>
+                    <tbody>
+                        {% for p in diff.priceChanges|slice(0, limit) %}
+                            <tr>
+                                {{ _self.line(p.line) }}
+                                <td data-label="Variante">{{ p.variantId ? labels[p.variantId]|default('#' ~ p.variantId) : 'Nouvelle variante' }}</td>
+                                <td class="num" data-label="Prix club TTC">{{ p.club.from is null ? '—' : p.club.from|euros }} → {{ p.club.to is null ? '—' : p.club.to|euros }}</td>
+                                <td class="num" data-label="Prix public TTC">{{ p.public.from is null ? '—' : p.public.from|euros }} → {{ p.public.to is null ? '—' : p.public.to|euros }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {{ _self.more(0, diff.priceChanges|length, limit) }}
+            {% endif %}
+        </section>
+
+        <section id="desactivations">
+            <h2>Désactivations</h2>
+            {% if diff.deactivatedVariantIds is empty and diff.reactivatedVariantIds is empty %}
+                <p class="empty">Aucune variante désactivée ni réactivée.</p>
+            {% endif %}
+            {% if diff.deactivatedVariantIds is not empty %}
+                <h3>Absentes du fichier : désactivées ({{ diff.deactivatedVariantIds|length }})</h3>
+                <ul>{% for id in diff.deactivatedVariantIds|slice(0, limit) %}<li>{{ labels[id]|default('#' ~ id) }}</li>{% endfor %}</ul>
+                {{ _self.more(0, diff.deactivatedVariantIds|length, limit) }}
+            {% endif %}
+            {% if diff.reactivatedVariantIds is not empty %}
+                <h3>De retour dans le fichier : réactivées ({{ diff.reactivatedVariantIds|length }})</h3>
+                <ul>{% for id in diff.reactivatedVariantIds|slice(0, limit) %}<li>{{ labels[id]|default('#' ~ id) }}</li>{% endfor %}</ul>
+                {{ _self.more(0, diff.reactivatedVariantIds|length, limit) }}
+            {% endif %}
+        </section>
+
+        <section id="anomalies">
+            <h2>Anomalies</h2>
+            {% if diff.anomalies is empty %}
+                <p class="empty">Aucune anomalie.</p>
+            {% else %}
+                <p class="help">Les lignes rejetées ({{ diff.rejectedLines|length }}) ne sont pas appliquées. Numéro de ligne = ligne du fichier Excel.</p>
+                <table class="table">
+                    <thead><tr><th class="num">Ligne Excel</th><th>Anomalie</th></tr></thead>
+                    <tbody>
+                        {% for a in diff.anomalies %}
+                            <tr>{{ _self.line(a.line) }}<td data-label="Anomalie">{{ a.message }}{% if a.line in diff.rejectedLines %} <span class="badge badge-warn">Ligne rejetée</span>{% endif %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </section>
+    {% endif %}
+{% endblock %}

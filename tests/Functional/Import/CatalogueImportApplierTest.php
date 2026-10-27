@@ -375,7 +375,7 @@ final class CatalogueImportApplierTest extends KernelTestCase
     public function testCancelMarksCancelledAndDeletesTheFile(): void
     {
         $run = $this->analyzedRun([self::row()]);
-        $file = \dirname(__DIR__, 3).'/var/imports/'.$run->getStoredPath();
+        $file = \dirname(__DIR__, 3).'/var/storage/imports/'.$run->getStoredPath();
         self::assertFileExists($file);
 
         $this->applier->cancel($run);

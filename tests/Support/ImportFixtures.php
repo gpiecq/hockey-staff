@@ -119,7 +119,7 @@ final class ImportFixtures
     }
 
     /**
-     * Écrit le fichier dans var/imports/ et crée le run (storedPath relatif à ce dossier).
+     * Écrit le fichier dans var/storage/imports/ et crée le run (storedPath relatif à ce dossier).
      *
      * @param list<array<string, mixed>> $rows
      * @param list<string>|null          $headers
@@ -127,7 +127,7 @@ final class ImportFixtures
     public static function run(EntityManagerInterface $em, Supplier $supplier, Season $season, array $rows, ?array $headers = null): ImportRun
     {
         $tmp = CatalogueSpreadsheetFactory::create($rows, $headers);
-        $dir = \dirname(__DIR__, 2).'/var/imports';
+        $dir = \dirname(__DIR__, 2).'/var/storage/imports';
         if (!is_dir($dir)) {
             mkdir($dir, 0o775, true);
         }
@@ -143,7 +143,7 @@ final class ImportFixtures
 
     public static function cleanup(): void
     {
-        foreach (glob(\dirname(__DIR__, 2).'/var/imports/test_*.xlsx') ?: [] as $file) {
+        foreach (glob(\dirname(__DIR__, 2).'/var/storage/imports/test_*.xlsx') ?: [] as $file) {
             @unlink($file);
         }
     }

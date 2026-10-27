@@ -5,6 +5,7 @@
     ]}
   - title : intitulé de groupe (null = sans intitulé) ; role : rôle requis pour voir le groupe
   - route : route du lien ; prefix : préfixe de route pour l'entrée active (défaut = route)
+  - role (item, optionnel) : rôle requis pour cette entrée, en plus de celui du groupe
   - main : entrée affichée directement dans le menu bas mobile (les autres vont dans « Plus »)
 #}
 {% set groups = [
@@ -17,12 +18,17 @@
         {label: 'Fournisseurs', route: 'catalogue_supplier_index', prefix: 'catalogue_supplier'},
         {label: 'Marques', route: 'catalogue_brand_index', prefix: 'catalogue_brand'},
         {label: 'Catégories', route: 'catalogue_category_index', prefix: 'catalogue_category'},
+        {label: 'Imports', route: 'import_index', prefix: 'import_', role: 'ROLE_MANAGER', main: true},
     ]},
     {title: 'Admin', role: 'ROLE_ADMIN', items: [
         {label: 'Utilisateurs', route: 'admin_user_index', prefix: 'admin_user'},
     ]},
 ] %}
-{% set visible = groups|filter(group => is_granted(group.role)) %}
+{% set visible = [] %}
+{% for group in groups|filter(group => is_granted(group.role)) %}
+    {% set items = group.items|filter(item => is_granted(item.role|default('ROLE_VIEWER'))) %}
+    {% if items is not empty %}{% set visible = visible|merge([{title: group.title, items: items}]) %}{% endif %}
+{% endfor %}
 {% set current_route = app.current_route|default('') %}
 
 {% macro entry(item, current_route) %}

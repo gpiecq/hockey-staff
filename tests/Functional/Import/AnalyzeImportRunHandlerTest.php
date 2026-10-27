@@ -79,7 +79,7 @@ final class AnalyzeImportRunHandlerTest extends KernelTestCase
     {
         $supplier = ImportFixtures::supplierWithMapping($this->em);
         $run = ImportFixtures::run($this->em, $supplier, ImportFixtures::season($this->em), $this->goodRows());
-        file_put_contents(\dirname(__DIR__, 3).'/var/imports/'.$run->getStoredPath(), 'pas un tableur');
+        file_put_contents(\dirname(__DIR__, 3).'/var/storage/imports/'.$run->getStoredPath(), 'pas un tableur');
 
         ($this->handler)(new AnalyzeImportRun((int) $run->getId()));
 

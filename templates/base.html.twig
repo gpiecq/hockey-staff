@@ -8,6 +8,7 @@
         <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icons/icon-192.png') }}">
         <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
         <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+        {% block head_extra %}{% endblock %}
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}

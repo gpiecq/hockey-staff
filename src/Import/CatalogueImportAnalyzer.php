@@ -33,7 +33,7 @@ final class CatalogueImportAnalyzer
         private readonly RowNormalizer $normalizer,
         private readonly SupplierImportMappingRepository $mappings,
         /** Dossier racine de ImportRun::getStoredPath(). */
-        #[Autowire('%kernel.project_dir%/var/imports')]
+        #[Autowire('%app.imports_dir%')]
         private readonly string $importsDir,
     ) {
     }
