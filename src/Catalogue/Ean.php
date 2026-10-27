@@ -31,4 +31,19 @@ final class Ean
 
         return [$key];
     }
+
+    public static function hasValidCheckDigit(string $digits): bool
+    {
+        if (1 !== preg_match('/^\d{12,13}$/', $digits)) {
+            return false;
+        }
+
+        $body = substr($digits, 0, -1);
+        $sum = 0;
+        for ($i = 0, $position = \strlen($body) - 1; $position >= 0; --$position, ++$i) {
+            $sum += (int) $body[$position] * (0 === $i % 2 ? 3 : 1);
+        }
+
+        return (10 - $sum % 10) % 10 === (int) $digits[\strlen($digits) - 1];
+    }
 }
