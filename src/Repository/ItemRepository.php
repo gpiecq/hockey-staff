@@ -30,6 +30,13 @@ class ItemRepository extends ServiceEntityRepository
     /**
      * Relit la pièce en base avec un verrou PESSIMISTIC_WRITE (état rafraîchi) ; à appeler dans une transaction.
      */
+    public function findOneByCode(string $code): ?Item
+    {
+        $item = $this->findOneBy(['code' => strtoupper(trim($code))]);
+
+        return $item instanceof Item ? $item : null;
+    }
+
     public function findForUpdate(Item $item): Item
     {
         $fresh = $this->createQueryBuilder('i')

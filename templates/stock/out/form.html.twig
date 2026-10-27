@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Sortie de stock{% endblock %}
+
+{% block body %}
+    <h1>Sortie de stock</h1>
+
+    {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate'}}) }}
+        {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
+
+        <div class="field">
+            {{ form_label(form.location) }}
+            {{ form_widget(form.location) }}
+            {% for error in form.location.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+        <fieldset class="field">
+            <legend>{{ form_label(form.reason) }}</legend>
+            {{ form_widget(form.reason) }}
+            {% for error in form.reason.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </fieldset>
+        <div class="field">
+            {{ form_label(form.comment) }}
+            {{ form_widget(form.comment) }}
+        </div>
+
+        {{ include('stock/_operation_lines.html.twig') }}
+
+        {{ form_rest(form) }}
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a class="btn" href="{{ path('app_dashboard') }}">Annuler</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}

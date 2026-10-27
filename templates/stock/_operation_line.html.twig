@@ -1,0 +1,19 @@
+<div class="entry-line" data-form-collection-item>
+    <div class="field">
+        {{ form_label(line.itemCode) }}
+        {{ form_widget(line.itemCode) }}
+        {{ form_help(line.itemCode) }}
+        {% for error in line.itemCode.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+    </div>
+    <div class="field">
+        {{ form_label(line.variant) }}
+        {{ form_widget(line.variant) }}
+        {% for error in line.variant.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+    </div>
+    <div class="field">
+        {{ form_label(line.quantity) }}
+        {{ form_widget(line.quantity) }}
+        {% for error in line.quantity.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+    </div>
+    <button type="button" class="btn" data-action="form-collection#remove">Retirer la ligne</button>
+</div>

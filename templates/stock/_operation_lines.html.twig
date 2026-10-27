@@ -1,0 +1,9 @@
+<div data-controller="form-collection" data-form-collection-index-value="{{ form.lines|keys|reduce((max, key) => key >= max ? key + 1 : max, 0) }}">
+    {% for error in form.lines.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+    <div class="entry-lines" data-form-collection-target="list" data-prototype="{{ include('stock/_operation_line.html.twig', {line: form.lines.vars.prototype})|e('html_attr') }}">
+        {% for line in form.lines %}
+            {{ include('stock/_operation_line.html.twig', {line: line}) }}
+        {% endfor %}
+    </div>
+    <button type="button" class="btn" data-action="form-collection#add">Ajouter une ligne</button>
+</div>
