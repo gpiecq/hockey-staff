@@ -158,6 +158,15 @@ final class LabelControllerTest extends WebTestCase
         $this->post($client, $token, [$valid, $ghost]);
         self::assertResponseStatusCodeSame(200);
 
+        $deleted = $this->variant($client, TrackingMode::Quantity, 'REF-B');
+        $deletedId = (string) $deleted->getId();
+        $em = $this->em($client);
+        $em->remove($deleted);
+        $em->flush();
+        $this->post($client, $token, [['type' => 'variante', 'id' => $deletedId, 'exemplaires' => '1']]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('body', 'Aucune étiquette à imprimer.');
+
         $this->post($client, $token, [$valid], ['format' => 'inconnu']);
         self::assertResponseStatusCodeSame(422);
     }

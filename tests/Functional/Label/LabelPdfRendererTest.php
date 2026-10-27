@@ -45,6 +45,18 @@ final class LabelPdfRendererTest extends KernelTestCase
         self::assertSame(1, $this->pageCount($pdf));
     }
 
+    public function testRollBarsKeepQuietZones(): void
+    {
+        // UPC-A / EAN-13: 95 modules ; Code128 HV-000001: 11 * (9 + 2) + 13 = 134 modules, 146 with start/check margin.
+        foreach ([[95, 11.0], [146, 10.0]] as [$modules, $quietModules]) {
+            $width = LabelPdfRenderer::rollBarsWidthMm($modules);
+            $module = $width / $modules;
+            self::assertGreaterThanOrEqual($quietModules * $module, (62.0 - $width) / 2, \sprintf('%d modules', $modules));
+        }
+        // Long Code128 values are capped so the bars never run to the edge.
+        self::assertSame(52.0, LabelPdfRenderer::rollBarsWidthMm(400));
+    }
+
     public function testEverySymbologyRenders(): void
     {
         $labels = [
