@@ -26,7 +26,7 @@ final class DashboardController extends AbstractController
         return $this->render('dashboard/index.html.twig', [
             'season' => $currentSeason->get(),
             'productCount' => $products->count([]),
-            'variantCount' => $variants->count(['active' => true]),
+            'variantCount' => $variants->countActiveOfLiveProducts(),
             'canImport' => $isManager,
             'lastImport' => $isManager ? $imports->findOneBy([], ['id' => 'DESC']) : null,
         ]);

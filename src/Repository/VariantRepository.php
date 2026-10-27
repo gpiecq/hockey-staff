@@ -19,6 +19,17 @@ class VariantRepository extends ServiceEntityRepository
         parent::__construct($registry, Variant::class);
     }
 
+    /** Variantes actives dont le produit n'est pas supprimé (le filtre softdeleteable s'applique à la jointure). */
+    public function countActiveOfLiveProducts(): int
+    {
+        return (int) $this->createQueryBuilder('v')
+            ->select('COUNT(v.id)')
+            ->innerJoin('v.product', 'p')
+            ->where('v.active = true')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /** @return list<Variant> variantes non supprimées du produit, actives d'abord */
     public function findLiveByProduct(Product $product): array
     {

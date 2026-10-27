@@ -66,6 +66,28 @@ final class DashboardTest extends WebTestCase
         self::assertSame('2', trim($crawler->filter('[data-stat="variants"] .stat-value')->text()));
     }
 
+    public function testVariantsOfSoftDeletedProductsAreNotCounted(): void
+    {
+        $em = $this->em();
+        $season = new Season('2026-2027', new \DateTimeImmutable('2026-07-01'), new \DateTimeImmutable('2027-06-30'));
+        $season->setCurrent(true);
+        $em->persist($season);
+        $supplier = ImportFixtures::supplierWithMapping($em);
+        $kept = ImportFixtures::product($em, $supplier, 'R1');
+        $deleted = ImportFixtures::product($em, $supplier, 'R2');
+        ImportFixtures::variant($em, $kept, '688698508062', 'M');
+        ImportFixtures::variant($em, $deleted, '688698508079', 'L');
+        ImportFixtures::variant($em, $deleted, '688698508086', 'S');
+        $em->remove($deleted);
+        $em->flush();
+        $this->login(UserRole::Viewer);
+
+        $crawler = $this->client->request('GET', '/');
+
+        self::assertSame('1', trim($crawler->filter('[data-stat="products"] .stat-value')->text()));
+        self::assertSame('1', trim($crawler->filter('[data-stat="variants"] .stat-value')->text()));
+    }
+
     public function testViewerSeesSearchShortcutButNoImportBlock(): void
     {
         $this->login(UserRole::Viewer);
