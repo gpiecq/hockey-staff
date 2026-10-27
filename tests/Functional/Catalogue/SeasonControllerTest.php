@@ -188,4 +188,20 @@ final class SeasonControllerTest extends WebTestCase
 
         self::assertArrayHasKey('softdeleteable', $this->em($client)->getFilters()->getEnabledFilters());
     }
+
+    public function testMakingTheSameSeasonCurrentTwiceKeepsItCurrent(): void
+    {
+        $client = static::createClient();
+        $client->loginUser(UserFactory::create($this->em($client), UserRole::Manager, 'm@example.test'));
+        $season = $this->addSeason($client, '2026-2027');
+
+        $crawler = $client->request('GET', '/saisons');
+        $form = $crawler->filter('form[action="/saisons/'.$season->getId().'/current"]')->form();
+        $client->submit($form);
+        $client->submit($form);
+
+        self::assertResponseRedirects('/saisons');
+        $current = $this->em($client)->getConnection()->fetchFirstColumn('SELECT label FROM season WHERE is_current = true');
+        self::assertSame(['2026-2027'], $current);
+    }
 }

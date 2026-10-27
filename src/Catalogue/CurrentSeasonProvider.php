@@ -22,7 +22,7 @@ final readonly class CurrentSeasonProvider
     }
 
     /**
-     * Une seule saison courante : réinitialise toutes les autres puis active celle-ci, en une transaction.
+     * Une seule saison courante : réinitialise toutes les autres (la cible est exclue du reset : idempotent si déjà courante) puis active celle-ci, en une transaction.
      */
     public function makeCurrent(Season $season): void
     {
@@ -31,6 +31,8 @@ final readonly class CurrentSeasonProvider
                 ->update(Season::class, 's')
                 ->set('s.isCurrent', ':no')
                 ->where('s.isCurrent = :yes')
+                ->andWhere('s != :season')
+                ->setParameter('season', $season)
                 ->setParameter('no', false)
                 ->setParameter('yes', true)
                 ->getQuery()
