@@ -1,0 +1,43 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Saisons{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Saisons</h1>
+        {% if is_granted('ROLE_MANAGER') %}<a class="btn btn-primary" href="{{ path('catalogue_season_new') }}">Nouvelle saison</a>{% endif %}
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucune saison.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Saison</th><th>Début</th><th>Fin</th><th>Statut</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for season in page.items %}
+                    <tr>
+                        <td>{{ season.label }}</td>
+                        <td data-label="Début">{{ season.startsOn|date('d/m/Y') }}</td>
+                        <td data-label="Fin">{{ season.endsOn|date('d/m/Y') }}</td>
+                        <td data-label="Statut">{% if season.current %}<span class="badge badge-strong">Courante</span>{% endif %}</td>
+                        <td>
+                            {% if is_granted('ROLE_MANAGER') %}
+                                <a href="{{ path('catalogue_season_edit', {id: season.id}) }}">Modifier</a>
+                                {% if not season.current %}
+                                    <form method="post" action="{{ path('catalogue_season_current', {id: season.id}) }}" style="display: inline">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('season_current_' ~ season.id) }}">
+                                        <button type="submit" class="btn">Rendre courante</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'saisons'} %}
+{% endblock %}
