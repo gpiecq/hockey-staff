@@ -81,3 +81,8 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 - Task 9 (R22) — ajout des codes `VariantDuplicateInFile` et `ProductFieldsConflict` et d'une clé `ean` dans les
   changements de variante. À traiter en Task 10 : collisions à l'application (clé de correspondance d'une variante
   sœur, EAN d'une variante d'un produit supprimé) ; mémoire du worker sur un fichier complet.
+- Revue finale — corrigés : catégorie à niveau intermédiaire vide (R30), session d'un utilisateur désactivé, valeurs
+  trop longues (R31), annulation pendant l'analyse, compteur de variantes du tableau de bord, débordement de prix.
+  Reportés (non bloquants) : tableau de bord affichant un import annulé comme « Dernier import » ; EAN-13 à zéro de tête
+  saisi comme nombre dans Excel (12 chiffres) → ticket lot 2 ; 4 prix texte `48.964999999999996` (lignes 1844-1847)
+  à corriger dans le fichier Bauer ; mémoire persistante du worker FrankenPHP à surveiller ; les autres mineurs ci-dessus.
