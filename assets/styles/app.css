@@ -137,3 +137,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
 .ts-dropdown .option{padding:.625rem .75rem;min-height:2.75rem;display:flex;align-items:center}
 .ts-dropdown .active,.ts-dropdown .option:hover{background:#e3edf9;color:var(--text)}
 .ts-dropdown .highlight{background:none;font-weight:800;text-decoration:underline}
+
+/* —— Catalogue : recherche et fiche produit —— */
+.filters{display:grid;gap:1rem;grid-template-columns:1fr;margin-bottom:1.5rem;padding:1rem;background:var(--surface);border-left:4px solid var(--blue);border-radius:.5rem}
+.filters .actions{align-items:center}
+@media (min-width:1024px){.filters{grid-template-columns:2fr 1fr 1fr 1fr}.filters .field-wide{grid-column:1/-1}}
+.product-meta{display:grid;gap:.25rem 1.5rem;grid-template-columns:max-content 1fr;margin:0 0 1.5rem;padding:1rem;background:var(--surface);border-radius:.5rem}
+.product-meta dt{font-weight:700;color:var(--muted)}
+.product-meta dd{margin:0}
+.badge-warn{background:#f7e6e8;color:var(--danger)}
+.back{display:inline-block;margin-bottom:.5rem;font-weight:700}

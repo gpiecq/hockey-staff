@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Produits{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Produits</h1>
+    </div>
+
+    {# Formulaire GET hors du cadre : seul le cadre de résultats est remplacé, l'URL est mise à jour (advance). #}
+    {{ form_start(form, {attr: {class: 'filters', 'data-turbo-frame': 'catalogue-results', 'data-turbo-action': 'advance'}}) }}
+        <div class="field">{{ form_label(form.q) }}{{ form_widget(form.q) }}</div>
+        <div class="field">{{ form_label(form.category) }}{{ form_widget(form.category) }}</div>
+        <div class="field">{{ form_label(form.supplier) }}{{ form_widget(form.supplier) }}</div>
+        <div class="field">{{ form_label(form.brand) }}{{ form_widget(form.brand) }}</div>
+        <div class="field-wide actions">
+            <label class="check">{{ form_widget(form.includeInactive) }}<span>{{ form.includeInactive.vars.label }}</span></label>
+            <button type="submit" class="btn btn-primary">Rechercher</button>
+            <a class="btn" href="{{ path('catalogue_product_index') }}" data-turbo-frame="_top">Réinitialiser</a>
+        </div>
+    {{ form_end(form, {render_rest: false}) }}
+
+    <turbo-frame id="catalogue-results" data-turbo-action="advance">
+        {% if page.items is empty %}
+            <p class="empty">Aucun produit.</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                    <tr><th>Référence</th><th>Désignation</th><th>Marque</th><th>Catégorie</th><th>Fournisseur</th></tr>
+                </thead>
+                <tbody>
+                    {% for product in page.items %}
+                        <tr>
+                            <td data-label="Référence">{{ product.reference }}</td>
+                            <td><a href="{{ path('catalogue_product_show', {id: product.id}) }}" data-turbo-frame="_top"><strong>{{ product.designation }}</strong></a></td>
+                            <td data-label="Marque">{{ product.brand ? product.brand.name : '—' }}</td>
+                            <td data-label="Catégorie">{{ product.category.path }}</td>
+                            <td data-label="Fournisseur">{{ product.supplier.name }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% include '_pagination.html.twig' with {page: page, noun: 'produits'} %}
+    </turbo-frame>
+{% endblock %}

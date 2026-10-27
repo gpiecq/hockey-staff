@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ product.designation }}{% endblock %}
+
+{% block body %}
+    <a class="back" href="{{ path('catalogue_product_index') }}">‹ Produits</a>
+    <div class="page-head">
+        <h1>{{ product.designation }}</h1>
+    </div>
+
+    <dl class="product-meta">
+        <dt>Référence</dt><dd>{{ product.reference }}</dd>
+        <dt>Fournisseur</dt><dd>{{ product.supplier.name }}</dd>
+        <dt>Marque</dt><dd>{{ product.brand ? product.brand.name : '—' }}</dd>
+        <dt>Catégorie</dt><dd>{{ product.category.path }}</dd>
+        <dt>Suivi</dt><dd>{{ product.trackingMode.label }}</dd>
+    </dl>
+
+    <h2>Variantes{% if season %} · tarifs {{ season.label }}{% endif %}</h2>
+    {% if variants is empty %}
+        <p class="empty">Aucune variante.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Variante</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix club HT</th><th class="num">Prix public TTC</th></tr>
+            </thead>
+            <tbody>
+                {% for variant in variants %}
+                    {% set price = prices[variant.id]|default(null) %}
+                    <tr>
+                        <td>
+                            <strong>{{ variant.label ?: 'Unique' }}</strong>
+                            {% if not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}
+                        </td>
+                        <td data-label="EAN">{{ variant.ean ?? '—' }}</td>
+                        {% if price %}
+                            <td class="num" data-label="Prix club TTC">{{ price.clubPriceTtc is null ? '—' : price.clubPriceTtc|euros }}</td>
+                            <td class="num" data-label="Prix club HT">{{ price.clubPriceHt is null ? '—' : price.clubPriceHt|euros }}</td>
+                            <td class="num" data-label="Prix public TTC">{{ price.publicPriceTtc is null ? '—' : price.publicPriceTtc|euros }}</td>
+                        {% else %}
+                            <td colspan="3" class="muted">Tarif absent</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Product;
 use App\Entity\Variant;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -16,5 +17,25 @@ class VariantRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Variant::class);
+    }
+
+    /** @return list<Variant> variantes non supprimées du produit, actives d'abord */
+    public function findLiveByProduct(Product $product): array
+    {
+        /** @var list<Variant> $variants */
+        $variants = $this->createQueryBuilder('v')
+            ->where('v.product = :product')
+            ->setParameter('product', $product)
+            ->orderBy('v.active', 'DESC')
+            ->addOrderBy('v.size')
+            ->addOrderBy('v.fit')
+            ->addOrderBy('v.side')
+            ->addOrderBy('v.width')
+            ->addOrderBy('v.color')
+            ->addOrderBy('v.id')
+            ->getQuery()
+            ->getResult();
+
+        return $variants;
     }
 }

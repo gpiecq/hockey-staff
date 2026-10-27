@@ -1,7 +1,7 @@
 {#
   Modèle du menu. Ajouter une rubrique = ajouter un bloc dans `groups` :
     {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
-        {label: 'Produits', route: 'app_product_index', prefix: 'app_product', main: true},
+        {label: 'Produits', route: 'catalogue_product_index', prefix: 'catalogue_product', main: true},
     ]}
   - title : intitulé de groupe (null = sans intitulé) ; role : rôle requis pour voir le groupe
   - route : route du lien ; prefix : préfixe de route pour l'entrée active (défaut = route)
@@ -12,6 +12,7 @@
         {label: 'Tableau de bord', route: 'app_dashboard', main: true},
     ]},
     {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
+        {label: 'Produits', route: 'catalogue_product_index', prefix: 'catalogue_product', main: true},
         {label: 'Saisons', route: 'catalogue_season_index', prefix: 'catalogue_season'},
         {label: 'Fournisseurs', route: 'catalogue_supplier_index', prefix: 'catalogue_supplier'},
         {label: 'Marques', route: 'catalogue_brand_index', prefix: 'catalogue_brand'},
