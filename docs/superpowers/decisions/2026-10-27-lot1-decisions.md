@@ -28,6 +28,9 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 | R10 | 5 | Unicités de produit/variante (EAN, référence par fournisseur, clé de correspondance par produit) limitées aux lignes non supprimées ; tarif saison : unicité simple. | Même raison que R7 ; « EAN unique globalement » compris parmi les variantes vivantes. | Une migration ; l'import (Tasks 8-9) doit décider s'il ressuscite une variante supprimée de même EAN. |
 | R11 | 6 | La liste du catalogue masque un produit seulement s'il a au moins une variante et aucune active ; un produit sans variante reste visible. | Sinon un produit saisi à la main (Task 7) disparaîtrait avant l'ajout de ses variantes. | Une clause de requête. |
 | R12 | 6 | Le filtre Catégorie du catalogue utilise un champ d'autocomplétion tous niveaux, distinct du champ « Catégorie parente » ; fournisseur et marque ont chacun leur champ. | R9 réserve le champ parent aux niveaux 1-2. | Fusion de classes plus tard. |
+| R13 | 7 | Message d'EAN en doublon : « Ce code EAN est déjà utilisé. » (texte du plan). | La Task 5 avait repris une formulation différente. | Une chaîne. |
+| R14 | 7 | Mode de suivi pré-rempli côté serveur : radios vides à la création, valeur par défaut selon la catégorie si rien n'est choisi ; modifiable ensuite. | Pas de JS requis ; la catégorie n'est connue qu'à la soumission. | Un petit contrôleur Stimulus pour présélectionner. |
+| R15 | 7 | Langue par défaut de l'application passée en `fr`. | Saisie « 12,50 » et messages de validation Symfony en français. | Une ligne de configuration. |
 
 ## Points mineurs reportés (à trier en revue finale du lot)
 
@@ -61,3 +64,6 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
   catégorie non insensibles aux accents ; filtres invalides ignorés sans message ; `?page[]=1` → 400.
 - Task 6 — à vérifier : droit `CREATE EXTENSION unaccent` en production ; Turbo Frame et Tom Select au navigateur
   (Task 12).
+- Task 7 — un tarif peut être enregistré sans aucun montant (la fiche affiche des tirets au lieu de « Tarif absent ») ;
+  en édition, un POST sans mode de suivi retombe sur la valeur par défaut ; changement de fournisseur non testé ;
+  taux de TVA non modifiable dans l'interface (20 %).
