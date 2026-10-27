@@ -25,6 +25,9 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 | R7 | 4 | Le nom d'un fournisseur ou d'une marque est unique parmi les non supprimés (index unique partiel `WHERE deleted_at IS NULL`) ; recréer un nom supprimé est permis. | La validation d'unicité ne voit pas les lignes supprimées : une unicité globale finirait en erreur 500. | Une migration. |
 | R8 | 4 | Unicité `(parent, nom)` des catégories aussi pour les racines (index partiel `WHERE parent_id IS NULL`) ; pas de suppression de catégorie en lot 1. | PostgreSQL considère les NULL distincts ; la contrainte globale ne prévoit le soft delete que sur fournisseur, marque, produit, variante. | Une migration et une action de suppression plus tard. |
 | R9 | 4 | L'autocomplétion « Catégorie parente » ne propose que les niveaux 1-2 ; le cas `pat` du plan est testé avec une catégorie de niveau 2 ; le champ produit (Task 5) aura son propre champ. | Un parent de niveau 3 violerait la profondeur max 3 ; le plan supposait PATIN proposable. | Une classe de champ ou une option en plus. |
+| R10 | 5 | Unicités de produit/variante (EAN, référence par fournisseur, clé de correspondance par produit) limitées aux lignes non supprimées ; tarif saison : unicité simple. | Même raison que R7 ; « EAN unique globalement » compris parmi les variantes vivantes. | Une migration ; l'import (Tasks 8-9) doit décider s'il ressuscite une variante supprimée de même EAN. |
+| R11 | 6 | La liste du catalogue masque un produit seulement s'il a au moins une variante et aucune active ; un produit sans variante reste visible. | Sinon un produit saisi à la main (Task 7) disparaîtrait avant l'ajout de ses variantes. | Une clause de requête. |
+| R12 | 6 | Le filtre Catégorie du catalogue utilise un champ d'autocomplétion tous niveaux, distinct du champ « Catégorie parente » ; fournisseur et marque ont chacun leur champ. | R9 réserve le champ parent aux niveaux 1-2. | Fusion de classes plus tard. |
 
 ## Points mineurs reportés (à trier en revue finale du lot)
 
@@ -51,3 +54,10 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
   habillage Tom Select non vérifié au navigateur (Task 12).
 - Incident Task 4 — la base de dev a été remise à zéro par l'implementer (utilisateurs locaux perdus, à recréer via
   `app:user:create`). Les consignes suivantes interdisent de toucher aux données de dev.
+- Task 5 — la marque d'un produit est facultative (spec muette) ; `Variant::setProduct()` ne met pas à jour
+  `Product::$variants` en mémoire ; `VatCalculator` sans garde (taux −10000 → division par zéro), `vatRate` sans
+  borne haute ; pas de test « une variante supprimée libère son EAN » (R10).
+- Task 6 — montants affichés via `$cents / 100` (float, affichage seulement) ; autocomplétions fournisseur/marque/
+  catégorie non insensibles aux accents ; filtres invalides ignorés sans message ; `?page[]=1` → 400.
+- Task 6 — à vérifier : droit `CREATE EXTENSION unaccent` en production ; Turbo Frame et Tom Select au navigateur
+  (Task 12).
