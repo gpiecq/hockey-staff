@@ -1,0 +1,280 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Import;
+
+use App\Entity\Category;
+use App\Entity\ImportRun;
+use App\Entity\Product;
+use App\Entity\Variant;
+use App\Enum\ImportAnomalyCode;
+use App\Import\Reader\SpreadsheetReader;
+use App\Repository\SupplierImportMappingRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
+/**
+ * Compare un fichier fournisseur normalisé au catalogue et produit un diff. Lecture seule : rien n'est
+ * persisté (ni produit, ni marque, ni catégorie).
+ *
+ * Rapprochement, ligne par ligne, dans l'ordre du fichier :
+ *  1. avec gencode : variante vivante du fournisseur portant ce gencode ; sa référence doit être celle de la ligne
+ *     (sinon EanChanged). Sinon, gencode d'un autre fournisseur : EanOtherSupplier. Sinon, repli sur
+ *     référence + attributs : si cette variante a un autre gencode, EanChanged.
+ *  2. sans gencode : référence + attributs (matchKey).
+ * Une ligne rejetée qui identifie une variante existante la compte comme présente (elle n'est pas désactivée).
+ */
+final class CatalogueImportAnalyzer
+{
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly SpreadsheetReader $reader,
+        private readonly RowNormalizer $normalizer,
+        private readonly SupplierImportMappingRepository $mappings,
+        /** Dossier racine de ImportRun::getStoredPath(). */
+        #[Autowire('%kernel.project_dir%/var/imports')]
+        private readonly string $importsDir,
+    ) {
+    }
+
+    /**
+     * @throws \DomainException                  mapping absent ou chemin invalide
+     * @throws Exception\MissingColumnsException en-têtes obligatoires absents
+     */
+    public function analyze(ImportRun $run): ImportDiff
+    {
+        $supplier = $run->getSupplier();
+        $mapping = $this->mappings->findOneBy(['supplier' => $supplier])
+            ?? throw new \DomainException('Aucun mapping d\'import n\'est configuré pour ce fournisseur.');
+
+        $rows = [];
+        foreach ($this->reader->read($this->resolvePath($run), $mapping) as $line => $raw) {
+            $rows[] = $this->normalizer->normalize($line, $raw, $mapping);
+        }
+
+        // Précharge les catégories pour que Category::getPath() ne déclenche aucune requête.
+        $this->em->getRepository(Category::class)->findAll();
+
+        /** @var list<Product> $products */
+        $products = $this->em->createQueryBuilder()
+            ->select('p', 'b', 'c')->from(Product::class, 'p')
+            ->leftJoin('p.brand', 'b')->join('p.category', 'c')
+            ->where('p.supplier = :supplier')->setParameter('supplier', $supplier)
+            ->getQuery()->getResult();
+        $productByReference = [];
+        foreach ($products as $product) {
+            $productByReference[$product->getReference()] = $product;
+        }
+
+        /** @var list<Variant> $variants */
+        $variants = $this->em->createQueryBuilder()
+            ->select('v', 'p')->from(Variant::class, 'v')
+            ->join('v.product', 'p')
+            ->where('p.supplier = :supplier')->setParameter('supplier', $supplier)
+            ->getQuery()->getResult();
+        $variantByEan = [];
+        $variantByKey = [];
+        foreach ($variants as $variant) {
+            if (null !== $variant->getEan()) {
+                $variantByEan[$variant->getEan()] = $variant;
+            }
+            $variantByKey[$variant->getProduct()?->getReference().'|'.$variant->getMatchKey()] = $variant;
+        }
+
+        /** @var array<int, array{club: int|null, public: int|null}> $storedPrices */
+        $storedPrices = [];
+        /** @var list<array{variantId: int, club: int|null, public: int|null}> $priceRows */
+        $priceRows = $this->em->createQuery(
+            'SELECT IDENTITY(sp.variant) AS variantId, sp.clubPriceTtc AS club, sp.publicPriceTtc AS public
+             FROM App\Entity\SeasonPrice sp JOIN sp.variant v JOIN v.product p
+             WHERE sp.season = :season AND p.supplier = :supplier',
+        )->setParameter('season', $run->getSeason())->setParameter('supplier', $supplier)->getArrayResult();
+        foreach ($priceRows as $priceRow) {
+            $storedPrices[(int) $priceRow['variantId']] = ['club' => $priceRow['club'], 'public' => $priceRow['public']];
+        }
+
+        /** @var list<array{ean: string}> $otherRows */
+        $otherRows = $this->em->createQuery(
+            'SELECT v.ean AS ean FROM App\Entity\Variant v JOIN v.product p
+             WHERE p.supplier != :supplier AND v.ean IS NOT NULL',
+        )->setParameter('supplier', $supplier)->getArrayResult();
+        $otherSupplierEans = array_fill_keys(array_column($otherRows, 'ean'), true);
+
+        $builder = new ImportDiffBuilder();
+        $present = [];
+        $claimed = [];
+        $seenEans = [];
+        $newKeys = [];
+        $newReferences = [];
+        /** @var array<string, NormalizedRow> $firstByReference */
+        $firstByReference = [];
+
+        foreach ($rows as $row) {
+            foreach ($row->anomalies as $anomaly) {
+                $builder->anomaly($anomaly->line, $anomaly->code, $anomaly->message);
+            }
+            if ($row->isRejected()) {
+                $builder->reject($row->line);
+                continue;
+            }
+
+            $ean = $row->ean;
+            $key = $row->reference.'|'.$row->matchKey();
+            $byKey = $variantByKey[$key] ?? null;
+
+            if (null !== $ean && isset($seenEans[$ean])) {
+                $builder->rejectWith($row->line, ImportAnomalyCode::EanDuplicateInFile, \sprintf(
+                    'Gencode « %s » déjà présent à la ligne %d : ligne ignorée.', $ean, $seenEans[$ean],
+                ));
+                continue;
+            }
+            if (null !== $ean) {
+                $seenEans[$ean] = $row->line;
+            }
+
+            $matched = null;
+            if (null === $ean) {
+                $matched = $byKey;
+            } elseif (null !== ($byEan = $variantByEan[$ean] ?? null)) {
+                $existingReference = $byEan->getProduct()?->getReference();
+                if ($existingReference !== $row->reference) {
+                    $present[(int) $byEan->getId()] = true;
+                    $builder->rejectWith($row->line, ImportAnomalyCode::EanChanged, \sprintf(
+                        'Le gencode « %s » appartient à la référence « %s » du catalogue, mais la ligne porte la référence « %s » : ligne ignorée.',
+                        $ean, $existingReference, $row->reference,
+                    ));
+                    continue;
+                }
+                $matched = $byEan;
+            } elseif (isset($otherSupplierEans[$ean])) {
+                if (null !== $byKey) {
+                    $present[(int) $byKey->getId()] = true;
+                }
+                $builder->rejectWith($row->line, ImportAnomalyCode::EanOtherSupplier, \sprintf(
+                    'Le gencode « %s » est déjà rattaché à un autre fournisseur : ligne ignorée.', $ean,
+                ));
+                continue;
+            } elseif (null !== $byKey) {
+                if (null !== $byKey->getEan()) {
+                    $present[(int) $byKey->getId()] = true;
+                    $builder->rejectWith($row->line, ImportAnomalyCode::EanChanged, \sprintf(
+                        'La référence « %s » avec ces attributs existe avec le gencode « %s » ; le fichier indique « %s » : conflit, ligne ignorée.',
+                        $row->reference, $byKey->getEan(), $ean,
+                    ));
+                    continue;
+                }
+                $matched = $byKey;
+            }
+
+            if (null !== $matched) {
+                if (isset($claimed[(int) $matched->getId()])) {
+                    $builder->rejectWith($row->line, ImportAnomalyCode::VariantDuplicateInFile, \sprintf(
+                        'La variante (référence « %s », attributs identiques) est déjà présente à la ligne %d : ligne ignorée.',
+                        $row->reference, $claimed[(int) $matched->getId()],
+                    ));
+                    continue;
+                }
+            } elseif (isset($newKeys[$key])) {
+                $builder->rejectWith($row->line, ImportAnomalyCode::VariantDuplicateInFile, \sprintf(
+                    'La variante (référence « %s », attributs identiques) est déjà présente à la ligne %d : ligne ignorée.',
+                    $row->reference, $newKeys[$key],
+                ));
+                continue;
+            }
+
+            // Ligne acceptée. Les champs du produit viennent de la première ligne acceptée de la référence.
+            $first = $firstByReference[$row->reference] ??= $row;
+            if ($first !== $row) {
+                $differing = [];
+                foreach ([
+                    'désignation' => $first->designation !== $row->designation,
+                    'marque' => $first->brand !== $row->brand,
+                    'catégorie' => $first->categoryPath !== $row->categoryPath,
+                ] as $label => $differs) {
+                    if ($differs) {
+                        $differing[] = $label;
+                    }
+                }
+                if ([] !== $differing) {
+                    $builder->anomaly($row->line, ImportAnomalyCode::ProductFieldsConflict, \sprintf(
+                        'Référence « %s » : %s différent(e) de la ligne %d, valeur de la première ligne conservée.',
+                        $row->reference, implode(', ', $differing), $first->line,
+                    ));
+                }
+            }
+
+            if (null !== $matched) {
+                $matchedId = (int) $matched->getId();
+                $present[$matchedId] = true;
+                $claimed[$matchedId] = $row->line;
+                if (!$matched->isActive()) {
+                    $builder->reactivate($matchedId);
+                }
+                $changes = $this->changes($matched, $row, $first);
+                if ([] !== $changes) {
+                    $builder->changed($matchedId, $row->line, $changes);
+                }
+                $stored = $storedPrices[$matchedId] ?? ['club' => null, 'public' => null];
+                $builder->price($matchedId, $row, $stored['club'], $stored['public']);
+                continue;
+            }
+
+            $newKeys[$key] = $row->line;
+            $product = $productByReference[$row->reference] ?? null;
+            if (null === $product && !isset($newReferences[$row->reference])) {
+                $newReferences[$row->reference] = true;
+                $builder->newProduct($first);
+            }
+            $builder->newVariant($row, $product?->getId());
+            $builder->price(null, $row, null, null);
+        }
+
+        foreach ($variants as $variant) {
+            if ($variant->isActive() && !isset($present[(int) $variant->getId()])) {
+                $builder->deactivate((int) $variant->getId());
+            }
+        }
+
+        return $builder->build();
+    }
+
+    /** @return array<string, array{from: string|null, to: string|null}> */
+    private function changes(Variant $variant, NormalizedRow $row, NormalizedRow $productRow): array
+    {
+        $product = $variant->getProduct();
+        $pairs = [
+            'designation' => [$product?->getDesignation(), $productRow->designation],
+            'brand' => [$product?->getBrand()?->getName(), $productRow->brand],
+            'category' => [$product?->getCategory()?->getPath(), implode(' › ', $productRow->categoryPath)],
+            'size' => [$variant->getSize(), $row->size],
+            'fit' => [$variant->getFit(), $row->fit],
+            'side' => [$variant->getSide(), $row->side],
+            'width' => [$variant->getWidth(), $row->width],
+            'color' => [$variant->getColor(), $row->color],
+        ];
+        // Gencode renseigné pour la première fois sur une variante qui n'en avait pas.
+        if (null === $variant->getEan() && null !== $row->ean) {
+            $pairs['ean'] = [null, $row->ean];
+        }
+
+        $changes = [];
+        foreach ($pairs as $field => [$from, $to]) {
+            if ($from !== $to) {
+                $changes[$field] = ['from' => $from, 'to' => $to];
+            }
+        }
+
+        return $changes;
+    }
+
+    private function resolvePath(ImportRun $run): string
+    {
+        $relative = $run->getStoredPath();
+        if ('' === $relative || str_contains($relative, '..') || str_starts_with($relative, '/')) {
+            throw new \DomainException('Chemin du fichier d\'import invalide.');
+        }
+
+        return rtrim($this->importsDir, '/').'/'.$relative;
+    }
+}

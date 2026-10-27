@@ -17,4 +17,6 @@ enum ImportAnomalyCode: string
     case ColorMovedFromSize = 'color_moved_from_size';
     case ColorAliased = 'color_aliased';
     case MissingRequired = 'missing_required';
+    case VariantDuplicateInFile = 'variant_duplicate_in_file';
+    case ProductFieldsConflict = 'product_fields_conflict';
 }

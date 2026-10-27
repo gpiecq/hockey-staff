@@ -13,6 +13,7 @@ framework:
 
         routing:
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
+            App\Import\Message\AnalyzeImportRun: async
 
 when@test:
     framework:
