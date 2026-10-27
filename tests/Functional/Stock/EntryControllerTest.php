@@ -176,6 +176,22 @@ final class EntryControllerTest extends WebTestCase
         self::assertSelectorExists('main a[href="/lieux/new"]');
     }
 
+    public function testEntryOnDeactivatedVariantIsRefused(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $location = StockFixtures::location($this->em($client));
+        $variant = $this->variant($client);
+        $variant->setActive(false);
+        $this->em($client)->flush();
+
+        $crawler = $client->request('GET', '/stock/entree/achat');
+        $this->submit($client, $crawler, $this->payload($location, $variant, 2, '10.00'));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(0, $this->rows($client, StockLevel::class));
+    }
+
     public function testAutocompleteFindsByTwelveDigitEanAndHidesArchived(): void
     {
         $client = static::createClient();

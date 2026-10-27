@@ -10,6 +10,7 @@ use App\Stock\EntryCostProvider;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\UX\Autocomplete\Form\AsEntityAutocompleteField;
 use Symfony\UX\Autocomplete\Form\BaseEntityAutocompleteType;
@@ -33,12 +34,19 @@ final class StockVariantAutocompleteField extends AbstractType
             'placeholder' => 'Référence, désignation ou EAN',
             'security' => 'ROLE_STOCK',
             'max_results' => 20,
-            'query_builder' => static fn (EntityRepository $repository): QueryBuilder => $repository->createQueryBuilder('v')
-                ->join('v.product', 'p')
-                ->where('v.active = true')
-                ->andWhere('v.archivedAt IS NULL')
-                ->orderBy('p.reference')
-                ->addOrderBy('v.id'),
+            'movable_only' => false,
+            'query_builder' => static fn (Options $options): \Closure => static function (EntityRepository $repository) use ($options): QueryBuilder {
+                $qb = $repository->createQueryBuilder('v')
+                    ->join('v.product', 'p')
+                    ->orderBy('p.reference')
+                    ->addOrderBy('v.id');
+                // Sortie / transfert : un article retiré du catalogue reste déplaçable, donc pas de filtre actif/archivé.
+                if (!$options['movable_only']) {
+                    $qb->andWhere('v.active = true')->andWhere('v.archivedAt IS NULL');
+                }
+
+                return $qb;
+            },
             'filter_query' => static function (QueryBuilder $qb, string $query, EntityRepository $repository): void {
                 $query = trim($query);
                 if ('' === $query) {
@@ -49,6 +57,7 @@ final class StockVariantAutocompleteField extends AbstractType
                     ->setParameter('eans', Ean::candidates($query));
             },
         ]);
+        $resolver->setAllowedTypes('movable_only', 'bool');
     }
 
     public function getParent(): string

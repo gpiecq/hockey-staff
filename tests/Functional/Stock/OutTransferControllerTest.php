@@ -198,6 +198,67 @@ final class OutTransferControllerTest extends WebTestCase
         self::assertSelectorTextContains('.form-error', 'Stock insuffisant');
     }
 
+    /** @return array<string, array{bool}> */
+    public static function removedFromCatalogue(): array
+    {
+        return ['deactivated by import' => [false], 'archived' => [true]];
+    }
+
+    private function leaveCatalogue(KernelBrowser $client, Variant $variant, bool $archive): void
+    {
+        $em = $this->em($client);
+        $variant = $em->getRepository(Variant::class)->find($variant->getId()) ?? $variant;
+        if ($archive) {
+            $variant->archive();
+        }
+        $variant->setActive(false);
+        $em->flush();
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('removedFromCatalogue')]
+    public function testOutOfQuantityVariantRemovedFromCatalogue(bool $archive): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $location = StockFixtures::location($this->em($client));
+        $variant = $this->receive($client, TrackingMode::Quantity, $location, 3);
+        $this->leaveCatalogue($client, $variant, $archive);
+
+        $crawler = $client->request('GET', '/stock/sortie');
+        $this->submit($client, $crawler, 'stock_out', [
+            'location' => (string) $location->getId(),
+            'reason' => 'lost',
+            'comment' => '',
+            'lines' => [['variant' => (string) $variant->getId(), 'quantity' => '2', 'itemCode' => '']],
+        ]);
+
+        self::assertResponseRedirects();
+        self::assertSame(1, $this->quantity($client, $variant, $location));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('removedFromCatalogue')]
+    public function testTransferOfQuantityVariantRemovedFromCatalogue(bool $archive): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $a = StockFixtures::location($this->em($client), 'Local A');
+        $b = StockFixtures::location($this->em($client), 'Local B');
+        $variant = $this->receive($client, TrackingMode::Quantity, $a, 3);
+        $this->leaveCatalogue($client, $variant, $archive);
+
+        $crawler = $client->request('GET', '/stock/transfert');
+        $this->submit($client, $crawler, 'stock_transfer', [
+            'from' => (string) $a->getId(),
+            'to' => (string) $b->getId(),
+            'comment' => '',
+            'lines' => [['variant' => (string) $variant->getId(), 'quantity' => '1', 'itemCode' => '']],
+        ]);
+
+        self::assertResponseRedirects();
+        self::assertSame(2, $this->quantity($client, $variant, $a));
+        self::assertSame(1, $this->quantity($client, $variant, $b));
+    }
+
     public function testTransferScreen(): void
     {
         $client = static::createClient();

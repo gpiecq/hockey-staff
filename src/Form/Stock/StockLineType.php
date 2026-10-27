@@ -27,6 +27,7 @@ final class StockLineType extends AbstractType
             ])
             ->add('variant', StockVariantAutocompleteField::class, [
                 'label' => 'Article',
+                'movable_only' => true,
                 'required' => false,
             ])
             ->add('quantity', IntegerType::class, [
