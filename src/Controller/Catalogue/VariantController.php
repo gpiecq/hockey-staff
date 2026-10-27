@@ -12,6 +12,7 @@ use App\Form\SeasonPriceType;
 use App\Form\VariantType;
 use App\Repository\SeasonPriceRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -127,7 +128,17 @@ final class VariantController extends AbstractController
 
     private function productOf(Variant $variant): Product
     {
-        return $variant->getProduct() ?? throw $this->createNotFoundException();
+        // Le produit supprimé (filtre softdeleteable) fait échouer le chargement du proxy : 404, jamais 500.
+        try {
+            $product = $variant->getProduct();
+            if (null === $product || null !== $product->getDeletedAt()) {
+                throw $this->createNotFoundException();
+            }
+        } catch (EntityNotFoundException) {
+            throw $this->createNotFoundException();
+        }
+
+        return $product;
     }
 
     private function renderForm(FormInterface $form, string $title, Product $product): Response

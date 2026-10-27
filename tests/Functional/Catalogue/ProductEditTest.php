@@ -392,6 +392,34 @@ final class ProductEditTest extends WebTestCase
         self::assertSelectorNotExists('a[href$="/tarif"]');
     }
 
+    public function testVariantRoutesOfDeletedProductAreNotFound(): void
+    {
+        $this->login(UserRole::Manager);
+        $this->currentSeason();
+        $product = $this->product('DEL1');
+        $variant = $this->variant($product, null, 'SR L');
+        $variantId = $variant->getId();
+        $productId = $product->getId();
+        $this->em->remove($product);
+        $this->em->flush();
+        $this->em->clear();
+
+        foreach (['/edit', '/delete', '/tarif'] as $suffix) {
+            $this->client->request('GET', '/catalogue/variantes/'.$variantId.$suffix);
+            self::assertResponseStatusCodeSame(404, 'GET '.$suffix);
+        }
+        $this->client->request('POST', '/catalogue/variantes/'.$variantId.'/edit', ['variant' => ['size' => 'HACK']]);
+        self::assertResponseStatusCodeSame(404);
+        $this->client->request('POST', '/catalogue/variantes/'.$variantId.'/delete', ['_token' => 'x']);
+        self::assertResponseStatusCodeSame(404);
+        $this->client->request('POST', '/catalogue/variantes/'.$variantId.'/tarif', ['season_price' => ['clubPriceTtc' => '1']]);
+        self::assertResponseStatusCodeSame(404);
+        $this->client->request('GET', '/catalogue/'.$productId.'/variantes/new');
+        self::assertResponseStatusCodeSame(404);
+
+        self::assertSame('SR L', $this->em->getConnection()->fetchOne('SELECT size FROM variant WHERE id = ?', [$variantId]));
+    }
+
     /** @return iterable<string, array{0: UserRole, 1: string, 2: string}> */
     public static function forbiddenRoutes(): iterable
     {
