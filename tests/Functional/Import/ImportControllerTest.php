@@ -349,10 +349,9 @@ final class ImportControllerTest extends WebTestCase
         $this->client->followRedirect();
         self::assertSelectorTextContains('.flash-error', 'n\'a pas pu être appliqué');
         self::assertSelectorTextContains('.flash-error', 'tableur');
-        $status = static::getContainer()->get(EntityManagerInterface::class)->getConnection()
-            ->fetchOne('SELECT status FROM import_run WHERE id = ?', [$run->getId()]);
+        $status = $this->em()->getConnection()->fetchOne('SELECT status FROM import_run WHERE id = ?', [$run->getId()]);
         self::assertSame('analyzed', $status);
-        self::assertSame(0, (int) $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM product'));
+        self::assertSame(0, $this->em()->getRepository(Product::class)->count([]));
     }
 
     public function testCancelMarksRunCancelled(): void
