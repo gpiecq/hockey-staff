@@ -16,7 +16,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\UniqueConstraint(name: 'uniq_variant_ean', columns: ['ean'], options: ['where' => '(deleted_at IS NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_variant_product_match_key', columns: ['product_id', 'match_key'], options: ['where' => '(deleted_at IS NULL)'])]
 #[Gedmo\SoftDeleteable(fieldName: 'deletedAt')]
-#[UniqueEntity(fields: ['ean'], message: 'Ce code EAN est déjà utilisé.', errorPath: 'ean')]
+#[UniqueEntity(fields: ['ean'], message: 'Ce code EAN est déjà utilisé.', errorPath: 'ean', repositoryMethod: 'findByEanEquivalent')]
 #[UniqueEntity(fields: ['product', 'matchKey'], message: 'Cette variante existe déjà pour ce produit.', errorPath: 'size')]
 class Variant
 {

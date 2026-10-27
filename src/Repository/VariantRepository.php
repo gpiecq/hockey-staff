@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Catalogue\Ean;
 use App\Entity\Product;
 use App\Entity\Variant;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -44,6 +45,25 @@ class VariantRepository extends ServiceEntityRepository
             ->addOrderBy('v.width')
             ->addOrderBy('v.color')
             ->addOrderBy('v.id')
+            ->getQuery()
+            ->getResult();
+
+        return $variants;
+    }
+
+    /**
+     * Pour UniqueEntity : variantes vivantes (filtre softdeleteable) portant le même code, 12 ou 13 chiffres.
+     *
+     * @param array{ean: string} $criteria
+     *
+     * @return list<Variant>
+     */
+    public function findByEanEquivalent(array $criteria): array
+    {
+        /** @var list<Variant> $variants */
+        $variants = $this->createQueryBuilder('v')
+            ->where('v.ean IN (:candidates)')
+            ->setParameter('candidates', Ean::candidates($criteria['ean']))
             ->getQuery()
             ->getResult();
 
