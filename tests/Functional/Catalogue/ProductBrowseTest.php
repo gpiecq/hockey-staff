@@ -307,6 +307,31 @@ final class ProductBrowseTest extends WebTestCase
         self::assertSame('Plus', trim($crawler->filter('nav.bottombar summary')->text()));
     }
 
+    /** @return iterable<string, array{string, string}> */
+    public static function malformedInputs(): iterable
+    {
+        yield 'page too high' => ['page=999', '31–35 sur 35 produits'];
+        yield 'page not numeric' => ['page=abc', '1–30 sur 35 produits'];
+        yield 'page zero' => ['page=0', '1–30 sur 35 produits'];
+        yield 'category not numeric' => ['category=abc', '1–30 sur 35 produits'];
+        yield 'category unknown' => ['category=999999', '1–30 sur 35 produits'];
+        yield 'supplier array' => ['supplier[]=1', '1–30 sur 35 produits'];
+        yield 'query array' => ['q[]=x', '1–30 sur 35 produits'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('malformedInputs')]
+    public function testMalformedInputsDegradeGracefully(string $queryString, string $counter): void
+    {
+        for ($i = 1; $i <= 35; ++$i) {
+            $this->product(\sprintf('R%02d', $i), \sprintf('GANT %02d', $i));
+        }
+
+        $crawler = $this->client->request('GET', '/catalogue?'.$queryString);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertStringContainsString($counter, $this->text($crawler));
+    }
+
     public function testAnonymousIsRedirectedToLogin(): void
     {
         self::ensureKernelShutdown();

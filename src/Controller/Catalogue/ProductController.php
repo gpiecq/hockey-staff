@@ -48,10 +48,12 @@ final class ProductController extends AbstractController
             supplierId: $supplier instanceof Supplier ? $supplier->getId() : null,
             brandId: $brand instanceof Brand ? $brand->getId() : null,
             includeInactive: true === ($data['includeInactive'] ?? false),
-            page: max(1, $request->query->getInt('page', 1)),
+            page: ctype_digit($rawPage = $request->query->getString('page')) ? max(1, (int) $rawPage) : 1,
         ));
 
-        return $this->render('catalogue/product/index.html.twig', ['form' => $form, 'page' => $page]);
+        // 200 même si un paramètre est invalide (valeur ignorée) : pas de 422 sur un formulaire GET
+        return $this->render('catalogue/product/index.html.twig', ['form' => $form, 'page' => $page])
+            ->setStatusCode(Response::HTTP_OK);
     }
 
     #[Route('/{id}', name: 'catalogue_product_show', requirements: ['id' => '\d+'], methods: ['GET'])]

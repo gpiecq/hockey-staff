@@ -22,10 +22,12 @@ final readonly class CatalogueSearch
     public function search(CatalogueSearchCriteria $criteria): Page
     {
         $qb = $this->products->createQueryBuilder('p')
-            ->addSelect('s', 'b', 'c')
+            ->addSelect('s', 'b', 'c', 'cp', 'cg')
             ->join('p.supplier', 's')
             ->leftJoin('p.brand', 'b')
             ->join('p.category', 'c')
+            ->leftJoin('c.parent', 'cp')
+            ->leftJoin('cp.parent', 'cg')
             ->orderBy('p.designation')
             ->addOrderBy('p.id');
 
@@ -39,9 +41,7 @@ final readonly class CatalogueSearch
 
         if (null !== $criteria->categoryId) {
             // profondeur ≤ 3 : la catégorie filtrée est la catégorie du produit, son parent ou son grand-parent
-            $qb->leftJoin('c.parent', 'cp')
-                ->leftJoin('cp.parent', 'cg')
-                ->andWhere('c.id = :category OR cp.id = :category OR cg.id = :category')
+            $qb->andWhere('c.id = :category OR cp.id = :category OR cg.id = :category')
                 ->setParameter('category', $criteria->categoryId);
         }
 
