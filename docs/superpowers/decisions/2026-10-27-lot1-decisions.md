@@ -19,4 +19,14 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
 
 ## Pendant l'exécution
 
-*(complété au fil des tâches)*
+| # | Tâche | Décision | Pourquoi | Coût si faux |
+|---|---|---|---|---|
+| R6 | 1 | Le test « `GET /favicon.ico` → 200 » est remplacé par : fichier présent et non vide + balises `<link>` présentes. | FrankenPHP sert le fichier statique sans passer par le noyau Symfony ; une route dédiée au test serait artificielle. | Aucun fonctionnel ; vérifié au navigateur en Task 12. |
+
+## Points mineurs reportés (à trier en revue finale du lot)
+
+- Task 1 — `app:user:create` : pas de validation du format email ni de passage en minuscules (unicité sensible à la
+  casse), pas de longueur minimale du mot de passe ; saisie masquée et mot de passe vide non testés.
+- Task 1 — déconnexion par lien GET sans jeton CSRF.
+- Task 1 — `access_control` `^/login` couvre aussi `/login-xxx` (préférer `^/login$`).
+- Task 1 — commentaires générés laissés dans la migration ; `UserFactory` code en dur le coût bcrypt 4.
