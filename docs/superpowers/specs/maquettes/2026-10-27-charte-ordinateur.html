@@ -1,0 +1,94 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Option B ordinateur — menu latéral, pagination, autocomplétion</title>
+<style>body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;margin:0;padding:2rem}
+.subtitle{color:#666}.cards,.options{display:flex;flex-direction:column;gap:2rem}.card-body h3,.option h3{margin:.5rem 0 .25rem}.letter{font-weight:800}</style>
+</head><body><style>
+@font-face{font-family:Montserrat;font-weight:500;src:url("montserrat-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:Montserrat;font-weight:700;src:url("montserrat-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:Montserrat;font-weight:800;src:url("montserrat-latin-800-normal.woff2") format("woff2")}
+.dk{width:100%;max-width:1000px;height:560px;margin:0 auto 1rem;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25);font-family:Montserrat,system-ui,sans-serif;font-weight:500;font-size:13px;background:#eef3f9;color:#0d1f36;display:flex;flex-direction:column}
+.dk .chrome{height:24px;background:#d9dee5;display:flex;align-items:center;gap:6px;padding:0 10px}
+.dk .chrome i{width:10px;height:10px;border-radius:50%;background:#b5bcc6;display:block}
+.dk .logo{display:flex;align-items:center;gap:.6rem;color:#fff}
+.dk .logo img{width:40px;height:40px}
+.dk .logo b{font-weight:800;text-transform:uppercase;line-height:1;font-size:15px}
+.dk .logo b span{display:block;font-size:11px;font-weight:700;opacity:.85}
+.stripe{height:6px;background:repeating-linear-gradient(90deg,#091626 0 8px,transparent 8px 13px)}
+.dk h1{font-weight:800;font-size:22px;margin:0}
+.toolbar{display:flex;gap:.6rem;align-items:center}
+.search{flex:1;min-height:42px;border-radius:8px;padding:0 .75rem;display:flex;align-items:center;background:#fff;border:2px solid #b7cbe4;color:#6b7a8c}
+.sel{min-height:42px;border-radius:8px;padding:0 .75rem;display:flex;align-items:center;background:#fff;border:2px solid #b7cbe4;color:#0d1f36;font-weight:700}
+.btn{min-height:42px;border-radius:8px;padding:0 1rem;display:flex;align-items:center;justify-content:center;font-weight:800;background:#091626;color:#fff;white-space:nowrap}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+th{background:#1c4e8b;color:#fff;text-align:left;font-weight:800;padding:.55rem .7rem;font-size:12px;text-transform:uppercase}
+td{padding:.55rem .7rem;border-bottom:1px solid #e1e8f1}
+td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+tr:hover td{background:#f5f8fc}
+.badge{font-size:11px;font-weight:800;padding:.1rem .45rem;border-radius:1rem;background:#091626;color:#fff}
+.badge.off{background:#e3e7ec;color:#5b6b7e}
+.meta{color:#5b6b7e;font-size:12px}
+.who{font-size:12px;font-weight:700;color:#fff;opacity:.9}
+
+/* 1 — barre haute */
+.top .hd{background:#2368bc;display:flex;align-items:center;gap:1.5rem;padding:.5rem 1.25rem}
+.top nav{display:flex;gap:.25rem;flex:1}
+.top nav a{color:#fff;font-weight:800;padding:.55rem .8rem;border-radius:6px;text-decoration:none}
+.top nav a.on{background:#091626}
+.top main{padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:.9rem;max-width:960px;width:100%;margin:0 auto}
+
+/* 2 — menu latéral */
+.side .body{flex:1;display:flex;min-height:0}
+.side aside{width:200px;background:#2368bc;display:flex;flex-direction:column;padding:1rem .75rem;gap:.25rem}
+.side aside .logo{margin-bottom:1rem}
+.side aside a{color:#fff;font-weight:800;padding:.6rem .7rem;border-radius:6px;text-decoration:none}
+.side aside a.on{background:#091626}
+.side aside .sep{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#cfe0f5;margin:.8rem .7rem .2rem;font-weight:700}
+.side aside .foot{margin-top:auto}
+.side .col{flex:1;display:flex;flex-direction:column;min-width:0}
+.side .tb{background:#fff;display:flex;justify-content:flex-end;align-items:center;padding:.5rem 1.25rem;border-bottom:1px solid #d6e0ec;font-weight:700;color:#1c4e8b;font-size:12px}
+.side main{padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:.9rem}
+</style><style>
+.dk{height:640px}
+.pager{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#5b6b7e;font-weight:700}
+.pager .pg{display:flex;gap:.3rem}
+.pager .pg a{min-width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:#fff;border:1px solid #b7cbe4;color:#1c4e8b;text-decoration:none;font-weight:800}
+.pager .pg a.on{background:#2368bc;border-color:#2368bc;color:#fff}
+.ac{position:relative}
+.ac .sel{border-color:#2368bc;min-width:230px}
+.ac ul{position:absolute;top:46px;left:0;right:0;margin:0;padding:.3rem;list-style:none;background:#fff;border:2px solid #2368bc;border-radius:8px;box-shadow:0 6px 18px rgba(9,22,38,.18);z-index:2}
+.ac li{padding:.45rem .55rem;border-radius:5px}
+.ac li.hl{background:#e3edf9;font-weight:700}
+.ac li mark{background:none;color:#2368bc;font-weight:800}
+.ac li small{display:block;color:#5b6b7e;font-size:11px}
+</style><h2>Menu latéral + pagination + autocomplétion</h2>
+<p class="subtitle">Toute liste paginée (compteur + pages). Toute liste déroulante = champ où l'on tape, suggestions filtrées. Ici : filtre Catégorie avec « pat » saisi.</p>
+<div class="dk side">
+  <div class="chrome"><i></i><i></i><i></i></div>
+  <div class="body">
+    <aside>
+      <div class="logo"><img src="logo.png" alt=""><b>Corsaires<span>Matériel</span></b></div>
+      <a href="#">Tableau de bord</a>
+      <span class="sep">Catalogue</span>
+      <a class="on" href="#">Produits</a><a href="#">Imports</a><a href="#">Saisons</a><a href="#">Fournisseurs</a>
+      <span class="sep">Admin</span>
+      <a href="#">Utilisateurs</a>
+      <a class="foot" href="#">Déconnexion</a>
+    </aside>
+    <div class="col">
+      <div class="tb">G. Piecq · Admin</div>
+      <main>
+        <h1>Produits <span class="meta">· saison 2026-2027</span></h1>
+        <div class="toolbar"><div class="search">EAN, référence, désignation…</div><div class="ac"><div class="sel">pat|</div><ul><li class="hl"><mark>PAT</mark>IN<small>EQUIPEMENT › JOUEUR</small></li><li><mark>PAT</mark>IN<small>EQUIPEMENT › GARDIEN</small></li><li>PROTÈGE-<mark>PAT</mark>INS<small>ACCESSOIRE</small></li></ul></div><div class="btn">+ Nouveau</div></div>
+        <table>
+          <tr><th>Référence</th><th>Désignation</th><th>Suivi</th><th style="text-align:right">Club TTC</th><th style="text-align:right">Club HT</th></tr>
+          <tr><td>1061744</td><td><b>PATIN VAPOR X5 SR</b><br><span class="meta">EQUIPEMENT › JOUEUR › PATIN</span></td><td><span class="badge">Sérialisé</span></td><td class="n">189,00 €</td><td class="n">157,50 €</td></tr>
+          <tr><td>1028478</td><td><b>JUGULAIRE 2 PARTIES</b><br><span class="meta">CONSOMMABLE</span></td><td><span class="badge off">Quantité</span></td><td class="n">3,00 €</td><td class="n">2,50 €</td></tr>
+          <tr><td>1059921</td><td><b>CASQUE RE-AKT 85</b><br><span class="meta">EQUIPEMENT › JOUEUR › CASQUE</span></td><td><span class="badge">Sérialisé</span></td><td class="n">142,00 €</td><td class="n">118,33 €</td></tr>
+        </table>
+<div class="pager"><span>31–60 sur 633 produits</span><div class="pg"><a href="#">‹</a><a href="#">1</a><a class="on" href="#">2</a><a href="#">3</a><span style="align-self:center">…</span><a href="#">22</a><a href="#">›</a></div></div>
+      </main>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</body></html>

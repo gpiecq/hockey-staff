@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Charte claire — options A/B/C (B retenue)</title>
+<style>body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;margin:0;padding:2rem}
+.subtitle{color:#666}.cards,.options{display:flex;flex-direction:column;gap:2rem}.card-body h3,.option h3{margin:.5rem 0 .25rem}.letter{font-weight:800}</style>
+</head><body><style>
+@font-face{font-family:Montserrat;font-weight:500;src:url("montserrat-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:Montserrat;font-weight:700;src:url("montserrat-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:Montserrat;font-weight:800;src:url("montserrat-latin-800-normal.woff2") format("woff2")}
+.phones{display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center}
+.ph{width:300px;height:600px;border-radius:28px;overflow:hidden;position:relative;font-family:Montserrat,system-ui,sans-serif;font-weight:500;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);display:flex;flex-direction:column}
+.ph .hd{display:flex;align-items:center;gap:.6rem;padding:.7rem .9rem}
+.ph .hd img{width:38px;height:38px}
+.ph .hd b{font-weight:800;text-transform:uppercase;line-height:1;font-size:15px}
+.ph .hd b span{display:block;font-size:11px;font-weight:700;opacity:.8}
+.ph .stripe{height:6px;background:repeating-linear-gradient(90deg,#2368bc 0 8px,transparent 8px 13px)}
+.ph main{flex:1;padding:.9rem;display:flex;flex-direction:column;gap:.6rem;overflow:hidden}
+.ph h1{font-weight:800;font-size:20px;margin:0}
+.ph .search{min-height:44px;border-radius:8px;padding:0 .75rem;display:flex;align-items:center;font-size:15px}
+.ph .item{border-radius:12px;padding:.7rem .8rem;display:flex;flex-direction:column;gap:.2rem}
+.ph .item strong{font-weight:800}
+.ph .meta{font-size:12px}
+.ph .price{display:flex;justify-content:space-between;font-weight:700;font-size:13px}
+.ph .badge{font-size:11px;font-weight:800;padding:.1rem .45rem;border-radius:1rem;align-self:flex-start}
+.ph .btn{min-height:46px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.ph nav{display:flex;font-weight:800;font-size:12px}
+.ph nav a{flex:1;min-height:52px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+
+/* A — Glace : fond clair, en-tête et menu navy */
+.a{background:#f3f6fa;color:#091626}
+.a .hd{background:#091626;color:#fff}
+.a .search{background:#fff;border:2px solid #c9d6e6;color:#6b7a8c}
+.a .item{background:#fff;border:1px solid #dde5ef}
+.a .meta{color:#5b6b7e}
+.a .badge{background:#e3edf9;color:#1c4e8b}
+.a .btn{background:#2368bc;color:#fff}
+.a nav{background:#091626;border-top:3px solid #2368bc}
+.a nav a{color:#fff}.a nav a.on{background:#2368bc}
+
+/* B — Bleu club : en-tête bleu, menu clair */
+.b{background:#eef3f9;color:#0d1f36}
+.b .hd{background:#2368bc;color:#fff}
+.b .stripe{background:repeating-linear-gradient(90deg,#091626 0 8px,transparent 8px 13px)}
+.b .search{background:#fff;border:2px solid #b7cbe4;color:#6b7a8c}
+.b .item{background:#fff;border-left:4px solid #2368bc}
+.b .meta{color:#5b6b7e}
+.b .badge{background:#091626;color:#fff}
+.b .btn{background:#091626;color:#fff}
+.b nav{background:#fff;border-top:1px solid #c9d6e6}
+.b nav a{color:#1c4e8b}.b nav a.on{color:#fff;background:#2368bc}
+
+/* C — Tout clair : blanc, accents bleus, touches noires */
+.c{background:#fff;color:#111}
+.c .hd{background:#fff;color:#091626;border-bottom:3px solid #091626}
+.c .stripe{display:none}
+.c .search{background:#f3f6fa;border:0;color:#6b7a8c}
+.c .item{background:#f7f9fc}
+.c .meta{color:#5b6b7e}
+.c .badge{background:#2368bc;color:#fff}
+.c .btn{background:#2368bc;color:#fff}
+.c nav{background:#fff;border-top:1px solid #e1e6ed}
+.c nav a{color:#5b6b7e}.c nav a.on{color:#2368bc;box-shadow:inset 0 3px 0 #2368bc}
+</style>
+
+<h2>Charte hockey-vestiaire, version claire</h2>
+<p class="subtitle">Même logo, même Montserrat, mêmes bleus (#091626 navy, #2368bc bleu, #1c4e8b, #5aa2ec). Trois dosages du sombre. Écran exemple : recherche catalogue sur mobile.</p>
+
+<div class="cards">
+<div class="card" data-choice="a">
+<div class="card-image"><div class="phones"><div class="ph a">
+  <div class="hd"><img src="logo.png" alt=""><b>Corsaires<span>Matériel</span></b></div><div class="stripe"></div>
+  <main>
+    <h1>Catalogue</h1>
+    <div class="search">EAN, référence, désignation…</div>
+    <div class="item"><strong>PATIN VAPOR X5 SR</strong><span class="meta">BAUER · EQUIPEMENT › JOUEUR › PATIN</span><span class="badge">Sérialisé</span><span class="price"><span>Club 189,00 € TTC</span><span>157,50 € HT</span></span></div>
+    <div class="item"><strong>JUGULAIRE 2 PARTIES</strong><span class="meta">BAUER · CONSOMMABLE</span><span class="price"><span>Club 3,00 € TTC</span><span>2,50 € HT</span></span></div>
+    <div class="btn">Nouveau produit</div>
+  </main>
+  <nav><a class="on">Catalogue</a><a>Imports</a><a>Saisons</a><a>Plus</a></nav>
+</div></div></div>
+<div class="card-body"><h3>A — Glace</h3><p>Fond clair, en-tête et menu bas navy comme vestiaire. Identité forte, contenu lisible.</p></div>
+</div>
+
+<div class="card" data-choice="b">
+<div class="card-image"><div class="phones"><div class="ph b">
+  <div class="hd"><img src="logo.png" alt=""><b>Corsaires<span>Matériel</span></b></div><div class="stripe"></div>
+  <main>
+    <h1>Catalogue</h1>
+    <div class="search">EAN, référence, désignation…</div>
+    <div class="item"><strong>PATIN VAPOR X5 SR</strong><span class="meta">BAUER · EQUIPEMENT › JOUEUR › PATIN</span><span class="badge">Sérialisé</span><span class="price"><span>Club 189,00 € TTC</span><span>157,50 € HT</span></span></div>
+    <div class="item"><strong>JUGULAIRE 2 PARTIES</strong><span class="meta">BAUER · CONSOMMABLE</span><span class="price"><span>Club 3,00 € TTC</span><span>2,50 € HT</span></span></div>
+    <div class="btn">Nouveau produit</div>
+  </main>
+  <nav><a class="on">Catalogue</a><a>Imports</a><a>Saisons</a><a>Plus</a></nav>
+</div></div></div>
+<div class="card-body"><h3>B — Bleu club</h3><p>En-tête bleu vif, menu bas blanc, navy réservé aux boutons et badges.</p></div>
+</div>
+
+<div class="card" data-choice="c">
+<div class="card-image"><div class="phones"><div class="ph c">
+  <div class="hd"><img src="logo.png" alt=""><b>Corsaires<span>Matériel</span></b></div><div class="stripe"></div>
+  <main>
+    <h1>Catalogue</h1>
+    <div class="search">EAN, référence, désignation…</div>
+    <div class="item"><strong>PATIN VAPOR X5 SR</strong><span class="meta">BAUER · EQUIPEMENT › JOUEUR › PATIN</span><span class="badge">Sérialisé</span><span class="price"><span>Club 189,00 € TTC</span><span>157,50 € HT</span></span></div>
+    <div class="item"><strong>JUGULAIRE 2 PARTIES</strong><span class="meta">BAUER · CONSOMMABLE</span><span class="price"><span>Club 3,00 € TTC</span><span>2,50 € HT</span></span></div>
+    <div class="btn">Nouveau produit</div>
+  </main>
+  <nav><a class="on">Catalogue</a><a>Imports</a><a>Saisons</a><a>Plus</a></nav>
+</div></div></div>
+<div class="card-body"><h3>C — Tout clair</h3><p>Blanc partout, bleu pour l'action, filet navy sous l'en-tête. Le plus léger.</p></div>
+</div>
+</div>
+</body></html>

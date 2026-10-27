@@ -74,8 +74,8 @@ Pas de chargement depuis un CDN.
 Rayures décoratives (héritées de vestiaire) : `repeating-linear-gradient(90deg, var(--navy) 0 8px, transparent 8px 13px)`,
 bande de 6 px sous l'en-tête mobile et en haut du menu latéral.
 
-Maquettes validées : `.superpowers/brainstorm/57203-1793095741/content/charte-claire.html` (option B),
-`web-b-v2.html` (ordinateur).
+Maquettes validées : `docs/superpowers/specs/maquettes/2026-10-27-charte-mobile.html` (option B retenue),
+`docs/superpowers/specs/maquettes/2026-10-27-charte-ordinateur.html` (ordinateur, menu latéral).
 
 ## 5. Mise en page
 
