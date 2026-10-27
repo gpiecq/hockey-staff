@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Location;
+use App\Entity\StockOperation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -24,5 +25,16 @@ class LocationRepository extends ServiceEntityRepository
     public function findActive(): array
     {
         return $this->findBy(['active' => true], ['name' => 'ASC', 'id' => 'ASC']);
+    }
+
+    public function hasMovements(Location $location): bool
+    {
+        return (int) $this->getEntityManager()->createQueryBuilder()
+            ->select('COUNT(o.id)')
+            ->from(StockOperation::class, 'o')
+            ->where('o.source = :location OR o.destination = :location')
+            ->setParameter('location', $location)
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
     }
 }

@@ -1,0 +1,123 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Entity\Trait\TimestampableBlameableTrait;
+use App\Enum\ItemCondition;
+use App\Enum\ItemStatus;
+use App\Repository\ItemRepository;
+use Doctrine\ORM\Mapping as ORM;
+
+/**
+ * Pièce suivie individuellement (code HS-NNNNNN).
+ */
+#[ORM\Entity(repositoryClass: ItemRepository::class)]
+#[ORM\UniqueConstraint(name: 'uniq_item_code', columns: ['code'])]
+class Item
+{
+    use TimestampableBlameableTrait;
+
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
+    // @phpstan-ignore property.unusedType (assigné par Doctrine)
+    private ?int $id = null;
+
+    #[ORM\Column(length: 20)]
+    private string $code;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    private Variant $variant;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    private Location $location;
+
+    /** Coût d'achat HT en centimes. */
+    #[ORM\Column]
+    private int $purchaseCostHt;
+
+    #[ORM\Column(length: 20, enumType: ItemCondition::class)]
+    private ItemCondition $condition;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $serialNumber;
+
+    #[ORM\Column(length: 20, enumType: ItemStatus::class)]
+    private ItemStatus $status = ItemStatus::InStock;
+
+    public function __construct(
+        string $code,
+        Variant $variant,
+        Location $location,
+        int $purchaseCostHt,
+        ItemCondition $condition = ItemCondition::New,
+        ?string $serialNumber = null,
+    ) {
+        $this->code = $code;
+        $this->variant = $variant;
+        $this->location = $location;
+        $this->purchaseCostHt = $purchaseCostHt;
+        $this->condition = $condition;
+        $this->serialNumber = $serialNumber;
+    }
+
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getCode(): string
+    {
+        return $this->code;
+    }
+
+    public function getVariant(): Variant
+    {
+        return $this->variant;
+    }
+
+    public function getLocation(): Location
+    {
+        return $this->location;
+    }
+
+    public function getPurchaseCostHt(): int
+    {
+        return $this->purchaseCostHt;
+    }
+
+    public function getCondition(): ItemCondition
+    {
+        return $this->condition;
+    }
+
+    public function getSerialNumber(): ?string
+    {
+        return $this->serialNumber;
+    }
+
+    public function getStatus(): ItemStatus
+    {
+        return $this->status;
+    }
+
+    /**
+     * @internal réservé au StockMovementRecorder
+     */
+    public function moveTo(Location $location): void
+    {
+        $this->location = $location;
+    }
+
+    /**
+     * @internal réservé au StockMovementRecorder ; le lieu est conservé
+     */
+    public function remove(): void
+    {
+        $this->status = ItemStatus::Removed;
+    }
+}

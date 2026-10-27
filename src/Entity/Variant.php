@@ -73,6 +73,9 @@ class Variant
     // @phpstan-ignore property.unusedType (assigné par Gedmo SoftDeleteable)
     private ?\DateTimeImmutable $deletedAt = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $archivedAt = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -210,6 +213,32 @@ class Variant
             [$this->size, $this->fit, $this->side, $this->width, $this->color],
             static fn (?string $value): bool => null !== $value && '' !== $value,
         ));
+    }
+
+    public function isArchived(): bool
+    {
+        return null !== $this->archivedAt;
+    }
+
+    public function getArchivedAt(): ?\DateTimeImmutable
+    {
+        return $this->archivedAt;
+    }
+
+    public function archive(): static
+    {
+        $this->archivedAt = new \DateTimeImmutable();
+        $this->active = false;
+
+        return $this;
+    }
+
+    public function unarchive(): static
+    {
+        $this->archivedAt = null;
+        $this->active = true;
+
+        return $this;
     }
 
     public function getDeletedAt(): ?\DateTimeImmutable
