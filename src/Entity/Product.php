@@ -154,6 +154,16 @@ class Product
         return $this->variants;
     }
 
+    public function addVariant(Variant $variant): static
+    {
+        if (!$this->variants->contains($variant)) {
+            $this->variants->add($variant);
+        }
+        $variant->setProduct($this);
+
+        return $this;
+    }
+
     public function getDeletedAt(): ?\DateTimeImmutable
     {
         return $this->deletedAt;

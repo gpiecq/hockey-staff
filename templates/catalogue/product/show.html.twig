@@ -6,6 +6,12 @@
     <a class="back" href="{{ path('catalogue_product_index') }}">‹ Produits</a>
     <div class="page-head">
         <h1>{{ product.designation }}</h1>
+        {% if is_granted('CATALOGUE_EDIT') %}
+            <span class="actions">
+                <a class="btn" href="{{ path('catalogue_product_edit', {id: product.id}) }}">Modifier</a>
+                <a class="btn" href="{{ path('catalogue_product_delete', {id: product.id}) }}">Supprimer</a>
+            </span>
+        {% endif %}
     </div>
 
     <dl class="product-meta">
@@ -22,7 +28,7 @@
     {% else %}
         <table class="table">
             <thead>
-                <tr><th>Variante</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix club HT</th><th class="num">Prix public TTC</th></tr>
+                <tr><th>Variante</th><th>EAN</th><th class="num">Prix club TTC</th><th class="num">Prix club HT</th><th class="num">Prix public TTC</th>{% if is_granted('CATALOGUE_EDIT') %}<th></th>{% endif %}</tr>
             </thead>
             <tbody>
                 {% for variant in variants %}
@@ -40,9 +46,20 @@
                         {% else %}
                             <td colspan="3" class="muted">Tarif absent</td>
                         {% endif %}
+                        {% if is_granted('CATALOGUE_EDIT') %}
+                            <td>
+                                <a href="{{ path('catalogue_variant_edit', {id: variant.id}) }}">Modifier</a>
+                                <a href="{{ path('catalogue_variant_price', {id: variant.id}) }}">Tarif</a>
+                                <a href="{{ path('catalogue_variant_delete', {id: variant.id}) }}">Supprimer</a>
+                            </td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
+    {% endif %}
+
+    {% if is_granted('CATALOGUE_EDIT') %}
+        <p><a class="btn btn-primary" href="{{ path('catalogue_variant_new', {id: product.id}) }}">Nouvelle variante</a></p>
     {% endif %}
 {% endblock %}

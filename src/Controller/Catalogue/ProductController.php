@@ -12,8 +12,10 @@ use App\Entity\Category;
 use App\Entity\Product;
 use App\Entity\Supplier;
 use App\Form\CatalogueFilterType;
+use App\Form\ProductType;
 use App\Repository\SeasonPriceRepository;
 use App\Repository\VariantRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -70,6 +72,77 @@ final class ProductController extends AbstractController
             'season' => $season,
             'variants' => $variants->findLiveByProduct($product),
             'prices' => null === $season ? [] : $prices->indexByVariantForProduct($product, $season),
+        ]);
+    }
+
+    #[Route('/new', name: 'catalogue_product_new', methods: ['GET', 'POST'])]
+    #[IsGranted('CATALOGUE_EDIT')]
+    public function new(Request $request, EntityManagerInterface $em): Response
+    {
+        $form = $this->createForm(ProductType::class, new Product());
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $product = $form->getData();
+            \assert($product instanceof Product);
+            $em->persist($product);
+            $em->flush();
+            $this->addFlash('success', 'Produit créé.');
+
+            return $this->redirectToRoute('catalogue_product_show', ['id' => $product->getId()]);
+        }
+
+        return $this->render('catalogue/product/form.html.twig', [
+            'form' => $form,
+            'title' => 'Nouveau produit',
+            'cancel_url' => $this->generateUrl('catalogue_product_index'),
+        ], new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+    }
+
+    #[Route('/{id}/edit', name: 'catalogue_product_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    #[IsGranted('CATALOGUE_EDIT')]
+    public function edit(Product $product, Request $request, EntityManagerInterface $em): Response
+    {
+        $form = $this->createForm(ProductType::class, $product);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $em->flush();
+            $this->addFlash('success', 'Produit modifié.');
+
+            return $this->redirectToRoute('catalogue_product_show', ['id' => $product->getId()]);
+        }
+
+        return $this->render('catalogue/product/form.html.twig', [
+            'form' => $form,
+            'title' => 'Modifier le produit '.$product->getReference(),
+            'cancel_url' => $this->generateUrl('catalogue_product_show', ['id' => $product->getId()]),
+        ], new Response(status: $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+    }
+
+    /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
+    #[Route('/{id}/delete', name: 'catalogue_product_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    #[IsGranted('CATALOGUE_EDIT')]
+    public function delete(Product $product, Request $request, EntityManagerInterface $em): Response
+    {
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('product_delete_'.$product->getId(), $request->request->getString('_token'))) {
+                throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            $em->remove($product);
+            $em->flush();
+            $this->addFlash('success', 'Produit supprimé.');
+
+            return $this->redirectToRoute('catalogue_product_index');
+        }
+
+        return $this->render('catalogue/_confirm_delete.html.twig', [
+            'title' => 'Supprimer le produit',
+            'name' => $product->getDesignation(),
+            'token_id' => 'product_delete_'.$product->getId(),
+            'cancel_route' => 'catalogue_product_show',
+            'cancel_params' => ['id' => $product->getId()],
         ]);
     }
 }

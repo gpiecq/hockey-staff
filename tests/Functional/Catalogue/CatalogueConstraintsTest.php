@@ -106,7 +106,7 @@ final class CatalogueConstraintsTest extends KernelTestCase
 
         $violations = $this->validator->validate($duplicate);
 
-        self::assertSame('Cet EAN est déjà utilisé.', $this->firstMessage($violations));
+        self::assertSame('Ce code EAN est déjà utilisé.', $this->firstMessage($violations));
     }
 
     public function testVariantsWithoutEanAreAllowed(): void

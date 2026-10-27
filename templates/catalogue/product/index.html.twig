@@ -5,6 +5,7 @@
 {% block body %}
     <div class="page-head">
         <h1>Produits</h1>
+        {% if is_granted('CATALOGUE_EDIT') %}<a class="btn btn-primary" href="{{ path('catalogue_product_new') }}">Nouveau produit</a>{% endif %}
     </div>
 
     {# Formulaire GET hors du cadre : seul le cadre de résultats est remplacé, l'URL est mise à jour (advance). #}

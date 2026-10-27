@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+    <h1>{{ title }}</h1>
+
+    {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate'}}) }}
+        {% for name in ['ean', 'size', 'fit', 'side', 'width', 'color'] %}
+            <div class="field">
+                {{ form_label(form[name]) }}
+                {{ form_widget(form[name]) }}
+                {% for error in form[name].vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="field">
+            <label class="check">{{ form_widget(form.active) }} {{ form.active.vars.label }}</label>
+            {% for error in form.active.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+
+        {% for error in form.vars.errors %}<p class="form-error">{{ error.message }}</p>{% endfor %}
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a class="btn" href="{{ cancel_url }}">Annuler</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}
