@@ -156,6 +156,29 @@ final class OutTransferControllerTest extends WebTestCase
         self::assertSelectorTextContains('.field-error', 'Indiquez une variante ou un code de pièce.');
     }
 
+    public function testCodeAndVariantTogetherIsFieldError(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $location = StockFixtures::location($this->em($client));
+        $this->receive($client, TrackingMode::Serialized, $location, 1);
+        $item = $this->item($client);
+        $variant = $item->getVariant();
+
+        $crawler = $client->request('GET', '/stock/sortie');
+        $this->submit($client, $crawler, 'stock_out', [
+            'location' => (string) $location->getId(),
+            'reason' => 'broken',
+            'comment' => '',
+            'lines' => [['itemCode' => $item->getCode(), 'variant' => (string) $variant->getId(), 'quantity' => '1']],
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('.field-error', 'Indiquez soit un code de pièce, soit une variante.');
+        $this->em($client)->clear();
+        self::assertSame(ItemStatus::InStock, $this->item($client)->getStatus());
+    }
+
     public function testInsufficientStockShowsRecorderMessage(): void
     {
         $client = static::createClient();

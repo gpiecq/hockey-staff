@@ -28,7 +28,7 @@ class ItemRepository extends ServiceEntityRepository
     }
 
     /**
-     * Relit la pièce en base avec un verrou PESSIMISTIC_WRITE (état rafraîchi) ; à appeler dans une transaction.
+     * Pièce par code HS-… (espaces ignorés, insensible à la casse).
      */
     public function findOneByCode(string $code): ?Item
     {
@@ -37,6 +37,9 @@ class ItemRepository extends ServiceEntityRepository
         return $item instanceof Item ? $item : null;
     }
 
+    /**
+     * Relit la pièce en base avec un verrou PESSIMISTIC_WRITE (état rafraîchi) ; à appeler dans une transaction.
+     */
     public function findForUpdate(Item $item): Item
     {
         $fresh = $this->createQueryBuilder('i')

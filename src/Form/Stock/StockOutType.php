@@ -9,11 +9,9 @@ use App\Enum\StockOutReason;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Validator\Constraints\Count;
 use Symfony\Component\Validator\Constraints\NotNull;
 
 final class StockOutType extends AbstractType
@@ -37,16 +35,6 @@ final class StockOutType extends AbstractType
                 'constraints' => [new NotNull(message: 'Choisissez un motif.')],
             ])
             ->add('comment', TextareaType::class, ['label' => 'Commentaire (obligatoire pour « Autre »)', 'required' => false, 'attr' => ['rows' => 2]])
-            ->add('lines', CollectionType::class, [
-                'label' => false,
-                'entry_type' => StockLineType::class,
-                'entry_options' => ['label' => false],
-                'allow_add' => true,
-                'allow_delete' => true,
-                'delete_empty' => false,
-                'prototype' => true,
-                'error_bubbling' => false,
-                'constraints' => [new Count(min: 1, minMessage: 'Ajoutez au moins une ligne.')],
-            ]);
+            ->add('lines', StockLinesType::class);
     }
 }

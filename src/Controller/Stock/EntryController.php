@@ -26,6 +26,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('STOCK_MOVE')]
 final class EntryController extends AbstractController
 {
+    use StockOperationScreen;
+
     #[Route('/stock/entree/{type}', name: 'stock_entry_new', requirements: ['type' => 'achat|dotation'], methods: ['GET', 'POST'])]
     public function new(string $type, Request $request, StockMovementRecorder $recorder, LocationRepository $locations): Response
     {
@@ -73,11 +75,6 @@ final class EntryController extends AbstractController
         }
 
         return new StockEntry($type, $data['location'], $lines, $this->nullIfBlank($data['documentReference'] ?? null), $this->nullIfBlank($data['comment'] ?? null));
-    }
-
-    private function nullIfBlank(?string $value): ?string
-    {
-        return null === $value || '' === trim($value) ? null : trim($value);
     }
 
     private function flash(StockOperation $operation): string

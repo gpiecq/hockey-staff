@@ -34,7 +34,10 @@ final readonly class StockLineMapper
             $variant = $row['variant'] ?? null;
             $quantity = $row['quantity'] ?? null;
 
-            if ('' !== $code) {
+            if ('' !== $code && null !== $variant) {
+                $line->get('itemCode')->addError(new FormError('Indiquez soit un code de pièce, soit une variante.'));
+                $valid = false;
+            } elseif ('' !== $code) {
                 $item = $this->items->findOneByCode($code);
                 if (null === $item) {
                     $line->get('itemCode')->addError(new FormError(\sprintf('Pièce %s introuvable.', $code)));
