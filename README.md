@@ -57,6 +57,22 @@ Règles de mise à jour :
 
 **Ne jamais commiter les catalogues fournisseurs.**
 
+### Préparer un import avec une IA (Manager et plus)
+
+Pour transformer les fichiers bruts du fournisseur en fichier d'import, une IA (Claude, Gemini, Copilot…) peut remplir le modèle de l'application. Tout est expliqué dans la page **Catalogue › Imports › Préparer un import** (`/imports/preparer`).
+
+1. **Télécharger les 3 fichiers** depuis cette page : le modèle d'import du fournisseur (xlsx), les règles pour l'IA (`regles-ia.md`) et la table de correspondance (csv, facultative : déjà dans l'onglet « Correspondances » du modèle).
+2. **Donner le tout à l'IA** : modèle, règles, base EAN et tarif club du fournisseur, en lui demandant de remplir le modèle en suivant exactement les règles.
+3. **Vérifier son compte rendu** : il doit chiffrer les références, lignes, lignes sans prix, sans EAN, sans catégorie, sections inconnues et EAN en double. S'il manque ou semble incohérent, lui demander de recommencer.
+4. **Importer le fichier** rendu par l'IA via « Nouvel import », contrôler l'aperçu (marques créées, « N produits sans catégorie »), puis appliquer.
+
+L'import ne crée jamais de catégorie : une catégorie vide ou inconnue laisse le produit sans catégorie.
+
+Après l'import, le tableau de bord affiche deux cards :
+
+- **Produits sans tarif** : ouvre le catalogue filtré (`sansTarif`) ; le prix se saisit au niveau du produit (`/catalogue/{id}/tarif`).
+- **Produits sans catégorie** : ouvre le catalogue filtré (`sansCategorie`) ; à la première catégorisation, le produit reçoit le mode de suivi par défaut de la catégorie.
+
 ### Environnement de dev
 
 `frankenphp/conf.d/20-app.dev.ini` relève `memory_limit` à 512M (mode debug et profiler). En prod, les limites d'upload de `10-app.ini` (20M / 24M) nécessitent une reconstruction de l'image : `docker compose build`.

@@ -209,7 +209,7 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    d'occasion avec dépréciation, reçu PDF simple.
 5. **Inventaire** — sessions, scans multi-utilisateurs live (Mercure), écarts, ajustements.
 6. **Valorisation** — valeur HT courante, snapshots, graphiques d'évolution, valeur des dotations par fournisseur.
-7. **Préparation assistée du catalogue (IA)** — *ajouté le 2026-10-27, position dans l'ordre des lots à décider.
+7. **Préparation assistée du catalogue (IA)** — **LIVRÉ** (recette manuelle à faire, voir les décisions du lot) — *ajouté le 2026-10-27, position dans l'ordre des lots à décider.
    Design détaillé : `2026-10-27-lot7-preparation-catalogue-design.md` (il remplace les questions ouvertes
    ci-dessous).*
    - **Fichier template d'import** officiel (xlsx téléchargeable depuis l'appli) : format pivot unique accepté par

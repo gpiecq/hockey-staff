@@ -25,3 +25,31 @@ contredisaient. Chacune indique ce qu'elle coûte si elle est fausse. À relire 
   (PATIN ENFANT, ROLLER, STREET, PROSHARP…) n'ont pas de correspondance : l'IA laisse leur catégorie vide et le
   manager la renseigne depuis la card « Produits sans catégorie ». Coût si faux : compléter la table à la main.
 - Candidates des couples ambigus triées par fréquence décroissante dans le fichier de travail.
+
+## Tasks 2-7
+
+- Task 4 — un produit catégorisé pour la première fois dont le mode de suivi soumis est inchangé reçoit le mode par
+  défaut de la catégorie, même si l'utilisateur voulait garder l'ancien (indiscernable).
+
+## Recette manuelle (à faire par l'utilisateur)
+
+Hors CI (spec § 8). À réaliser sur la base de dev (catalogue Bauer importé) :
+
+1. Ouvrir Catalogue › Imports › Préparer un import et télécharger le modèle Bauer et `regles-ia.md`.
+2. Donner à une IA le modèle, les règles, la base EAN 2025-2026 et le tarif club 2025-2026, puis récupérer le xlsx
+   rempli et le compte rendu.
+3. Importer ce fichier (Nouvel import, saison courante) et lire l'aperçu sans l'appliquer.
+
+Résultat attendu : aperçu **sans changement de prix ni de catégorie** sur les 633 références existantes, hors
+références nouvellement incluses dans le fichier.
+
+Résultat constaté (à remplir) :
+
+- Date de la recette : ________
+- IA utilisée : ________
+- Compte rendu de l'IA (références / lignes / sans prix / sans EAN / sans catégorie) : ________
+- Références existantes avec changement de prix : ____ / 633
+- Références existantes avec changement de catégorie : ____ / 633
+- Références nouvelles : ____
+- Écarts et actions : ________
+- Verdict : ________
