@@ -15,10 +15,10 @@ use Symfony\UX\Autocomplete\Form\BaseEntityAutocompleteType;
 
 /**
  * Choix d'une catégorie parente (niveaux 1 et 2) en autocomplétion serveur.
- * Suggestions : /autocomplete/category_autocomplete_field?query=….
+ * Suggestions : /autocomplete/parent_category_autocomplete_field?query=….
  */
 #[AsEntityAutocompleteField]
-final class CategoryAutocompleteField extends AbstractType
+final class ParentCategoryAutocompleteField extends AbstractType
 {
     public function configureOptions(OptionsResolver $resolver): void
     {

@@ -20,7 +20,7 @@ final class CategoryType extends AbstractType
                 'help' => 'Enregistré en majuscules.',
                 'empty_data' => '',
             ])
-            ->add('parent', CategoryAutocompleteField::class, [
+            ->add('parent', ParentCategoryAutocompleteField::class, [
                 'label' => 'Catégorie parente',
                 'help' => 'Laisser vide pour une catégorie racine. Trois niveaux au maximum.',
             ]);

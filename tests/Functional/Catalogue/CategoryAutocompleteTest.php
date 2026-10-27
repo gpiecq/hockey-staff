@@ -42,6 +42,7 @@ final class CategoryAutocompleteTest extends WebTestCase
         $repo->findOrCreatePath(['EQUIPEMENT', 'JOUEUR']);
         $repo->findOrCreatePath(['EQUIPEMENT', 'GARDIEN']);
         $repo->findOrCreatePath(['EQUIPEMENT', 'JOUEUR', 'PATIN']);
+        $repo->findOrCreatePath(['EQUIPEMENT', 'PATINAGE']);
         $repo->findOrCreatePath(['CONSOMMABLE']);
     }
 
@@ -68,7 +69,6 @@ final class CategoryAutocompleteTest extends WebTestCase
 
         $crawler = $client->request('GET', '/categories/new');
         $url = (string) $crawler->filter('select[name="category[parent]"]')->attr('data-symfony--ux-autocomplete--autocomplete-url-value');
-        // niveau 3 (PATIN) non proposé comme parent ; « pat » ne correspond qu'à lui : on cherche donc « joueur »
         $client->request('GET', $url, ['query' => 'joueur']);
 
         self::assertResponseIsSuccessful();
@@ -76,6 +76,21 @@ final class CategoryAutocompleteTest extends WebTestCase
         $texts = array_column($results, 'text');
         self::assertSame(['EQUIPEMENT › JOUEUR'], $texts);
         self::assertArrayHasKey('value', $results[0]);
+    }
+
+    public function testPatQueryReturnsLevelTwoPathButNotLevelThree(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $this->seed($client);
+
+        $crawler = $client->request('GET', '/categories/new');
+        $url = (string) $crawler->filter('select[name="category[parent]"]')->attr('data-symfony--ux-autocomplete--autocomplete-url-value');
+        $client->request('GET', $url, ['query' => 'pat']);
+
+        self::assertResponseIsSuccessful();
+        // « EQUIPEMENT › JOUEUR › PATIN » (niveau 3) n'est pas un parent possible
+        self::assertSame(['EQUIPEMENT › PATINAGE'], array_column($this->results($client), 'text'));
     }
 
     public function testSuggestionsMatchAncestorNamesAndExcludeOthers(): void
@@ -91,14 +106,14 @@ final class CategoryAutocompleteTest extends WebTestCase
         $results = $this->results($client);
         $texts = array_column($results, 'text');
         sort($texts);
-        self::assertSame(['EQUIPEMENT', 'EQUIPEMENT › GARDIEN', 'EQUIPEMENT › JOUEUR'], $texts);
+        self::assertSame(['EQUIPEMENT', 'EQUIPEMENT › GARDIEN', 'EQUIPEMENT › JOUEUR', 'EQUIPEMENT › PATINAGE'], $texts);
     }
 
     public function testSuggestionsRequireLogin(): void
     {
         $client = static::createClient();
 
-        $client->request('GET', '/autocomplete/category_autocomplete_field', ['query' => 'a']);
+        $client->request('GET', '/autocomplete/parent_category_autocomplete_field', ['query' => 'a']);
 
         self::assertResponseRedirects();
     }

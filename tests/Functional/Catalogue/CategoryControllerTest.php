@@ -111,7 +111,7 @@ final class CategoryControllerTest extends WebTestCase
         self::assertSelectorTextContains('.field-error', 'Ce nom est déjà utilisé à ce niveau.');
     }
 
-    public function testFourthLevelRendersErrorWith422(): void
+    public function testLevelThreeCategoryIsNotAcceptedAsParent(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Manager);
@@ -121,8 +121,9 @@ final class CategoryControllerTest extends WebTestCase
         $form->disableValidation()['category[parent]'] = (string) $leaf->getId();
         $client->submit($form);
 
-        // le niveau 3 n'est pas un parent proposé : le choix est refusé (422)
+        // le niveau 3 n'est pas un parent proposé : le choix est refusé comme valeur invalide
         self::assertResponseStatusCodeSame(422);
+        self::assertSelectorExists('.field-error');
     }
 
     public function testManagerRenames(): void
