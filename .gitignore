@@ -30,3 +30,7 @@
 *.swp
 *.swo
 .DS_Store
+
+###> superpowers ###
+/.superpowers/
+###< superpowers ###
