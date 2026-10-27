@@ -35,7 +35,6 @@ class ImportRun
     private ?\DateTimeImmutable $analyzedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    // @phpstan-ignore property.unusedType (renseigné par l'application du diff, Task 10)
     private ?\DateTimeImmutable $appliedAt = null;
 
     /** @param string $storedPath chemin relatif au dossier var/imports/ */
@@ -111,6 +110,23 @@ class ImportRun
         $this->diff = $diff;
         $this->error = null;
         $this->analyzedAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    /** @param array<string, mixed> $appliedDiff diff effectivement appliqué (ré-analysé à l'application) */
+    public function markApplied(array $appliedDiff): static
+    {
+        $this->status = ImportRunStatus::Applied;
+        $this->diff = $appliedDiff;
+        $this->appliedAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function markCancelled(): static
+    {
+        $this->status = ImportRunStatus::Cancelled;
 
         return $this;
     }

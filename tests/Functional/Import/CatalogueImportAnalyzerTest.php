@@ -280,6 +280,44 @@ final class CatalogueImportAnalyzerTest extends KernelTestCase
         self::assertSame([], $diff->deactivatedVariantIds);
     }
 
+    public function testNewVariantOnKeyTakenEarlierByChangedVariantRejectsTheChangedRow(): void
+    {
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
+        $moving = ImportFixtures::variant($this->em, $product, '688698508062', 'SR M', season: $this->season, club: 25000, public: 30000);
+
+        // La variante existante passe en SR L ; une autre ligne crée une nouvelle variante SR L (même produit).
+        $diff = $this->analyze([
+            self::row(['Gencode' => '688698508062', 'Taille' => 'SR L']),
+            self::row(['Gencode' => '688698508079', 'Taille' => 'SR L']),
+        ]);
+
+        self::assertSame([2], $diff->rejectedLines);
+        self::assertSame([ImportAnomalyCode::VariantKeyCollision->value], self::codes($diff));
+        self::assertSame([], $diff->changedVariants);
+        self::assertCount(1, $diff->newVariants);
+        self::assertSame(3, $diff->newVariants[0]['line']);
+        self::assertSame([], $diff->deactivatedVariantIds);
+        self::assertNotNull($moving->getId());
+    }
+
+    public function testChangedVariantMovingOntoKeyCreatedEarlierByNewVariantIsRejected(): void
+    {
+        $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
+        ImportFixtures::variant($this->em, $product, '688698508062', 'SR M', season: $this->season, club: 25000, public: 30000);
+
+        $diff = $this->analyze([
+            self::row(['Gencode' => '688698508079', 'Taille' => 'SR L']),
+            self::row(['Gencode' => '688698508062', 'Taille' => 'SR L']),
+        ]);
+
+        self::assertSame([3], $diff->rejectedLines);
+        self::assertSame([ImportAnomalyCode::VariantKeyCollision->value], self::codes($diff));
+        self::assertSame([], $diff->changedVariants);
+        self::assertCount(1, $diff->newVariants);
+        self::assertSame(2, $diff->newVariants[0]['line']);
+        self::assertSame([], $diff->deactivatedVariantIds);
+    }
+
     public function testRejectedRowStillMarksItsVariantPresent(): void
     {
         $product = ImportFixtures::product($this->em, $this->supplier, 'R1');

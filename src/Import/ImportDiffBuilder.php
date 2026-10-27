@@ -103,6 +103,15 @@ final class ImportDiffBuilder
         ];
     }
 
+    /** Retire tout ce qui avait été émis pour une variante rapprochée (changement, tarif, réactivation). */
+    public function retract(int $variantId): void
+    {
+        $keepOther = static fn (array $entry): bool => $entry['variantId'] !== $variantId;
+        $this->changedVariants = array_values(array_filter($this->changedVariants, $keepOther));
+        $this->priceChanges = array_values(array_filter($this->priceChanges, $keepOther));
+        $this->reactivated = array_values(array_filter($this->reactivated, static fn (int $id): bool => $id !== $variantId));
+    }
+
     public function deactivate(int $variantId): void
     {
         $this->deactivated[] = $variantId;

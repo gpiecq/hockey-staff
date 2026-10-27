@@ -118,6 +118,8 @@ final class CatalogueImportAnalyzer
         $claimed = [];
         $seenEans = [];
         $newKeys = [];
+        /** @var array<string, array{variantId: int, line: int}> $movedKeys */
+        $movedKeys = [];
         $newReferences = [];
         /** @var array<string, NormalizedRow> $firstByReference */
         $firstByReference = [];
@@ -209,7 +211,34 @@ final class CatalogueImportAnalyzer
                     ));
                     continue;
                 }
-            } elseif (isset($newKeys[$key])) {
+                if (null === $byKey && isset($newKeys[$key])) {
+                    // R24 : la variante déplace sa clé sur celle d'une nouvelle variante créée par ce même fichier.
+                    $present[(int) $matched->getId()] = true;
+                    $builder->rejectWith($row->line, ImportAnomalyCode::VariantKeyCollision, \sprintf(
+                        'Les nouveaux attributs de la variante de gencode « %s » (référence « %s ») sont ceux d\'une variante créée à la ligne %d : ligne ignorée.',
+                        $ean, $row->reference, $newKeys[$key],
+                    ));
+                    continue;
+                }
+                if (null === $byKey && isset($movedKeys[$key])) {
+                    $present[(int) $matched->getId()] = true;
+                    $builder->rejectWith($row->line, ImportAnomalyCode::VariantKeyCollision, \sprintf(
+                        'Les nouveaux attributs de la variante de gencode « %s » (référence « %s ») sont ceux d\'une autre variante modifiée à la ligne %d : ligne ignorée.',
+                        $ean, $row->reference, $movedKeys[$key]['line'],
+                    ));
+                    continue;
+                }
+            } elseif (isset($movedKeys[$key])) {
+                // R24, ordre inverse : la ligne qui déplaçait sa clé jusqu'ici est rejetée et ses changements retirés.
+                $moved = $movedKeys[$key];
+                unset($movedKeys[$key]);
+                $builder->retract($moved['variantId']);
+                $builder->rejectWith($moved['line'], ImportAnomalyCode::VariantKeyCollision, \sprintf(
+                    'Les nouveaux attributs de la variante (référence « %s ») sont ceux d\'une variante créée à la ligne %d : ligne %d ignorée.',
+                    $row->reference, $row->line, $moved['line'],
+                ));
+            }
+            if (null === $matched && isset($newKeys[$key])) {
                 $builder->rejectWith($row->line, ImportAnomalyCode::VariantDuplicateInFile, \sprintf(
                     'La variante (référence « %s », attributs identiques) est déjà présente à la ligne %d : ligne ignorée.',
                     $row->reference, $newKeys[$key],
@@ -242,6 +271,9 @@ final class CatalogueImportAnalyzer
                 $matchedId = (int) $matched->getId();
                 $present[$matchedId] = true;
                 $claimed[$matchedId] = $row->line;
+                if (null === $byKey) {
+                    $movedKeys[$key] = ['variantId' => $matchedId, 'line' => $row->line];
+                }
                 if (!$matched->isActive()) {
                     $builder->reactivate($matchedId);
                 }

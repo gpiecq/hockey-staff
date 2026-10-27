@@ -21,3 +21,10 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+when@test:
+    services:
+        # Pas encore consommé par un contrôleur (Task 11) : public pour les tests fonctionnels.
+        App\Import\CatalogueImportApplier:
+            autowire: true
+            public: true
