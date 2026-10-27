@@ -1,0 +1,81 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Imprimer des étiquettes{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Imprimer des étiquettes</h1>
+    </div>
+
+    {% if error %}
+        <div class="flash flash-error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if lines is empty %}
+        {% if not error %}
+            <p class="empty">Aucune étiquette à imprimer.</p>
+        {% endif %}
+    {% else %}
+        {% if has_choice %}
+            <form method="get" action="{{ path('label_print') }}" class="form">
+                {% for pair in carried %}
+                    <input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}">
+                {% endfor %}
+                <fieldset class="tiles">
+                    <legend>Étiquettes</legend>
+                    <label class="tile"><input type="radio" name="mode" value="pieces"{{ mode.value == 'pieces' ? ' checked' }}><span>Une par pièce en stock</span></label>
+                    <label class="tile"><input type="radio" name="mode" value="variantes"{{ mode.value == 'variantes' ? ' checked' }}><span>Une par variante</span></label>
+                </fieldset>
+                <div class="actions"><button type="submit" class="btn">Appliquer</button></div>
+            </form>
+        {% endif %}
+
+        <form method="post" action="{{ path('label_pdf') }}" target="_blank" data-turbo="false" class="form" data-controller="label-format">
+            <input type="hidden" name="_token" value="{{ csrf_token('label_pdf') }}">
+
+            <table class="table">
+                <thead>
+                    <tr><th>Désignation</th><th>Attributs</th><th>Code imprimé</th><th>Exemplaires</th><th>Retirer</th></tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                        {% set variant = line.item ? line.item.variant : line.variant %}
+                        <tr>
+                            <td data-label="Désignation">
+                                <input type="hidden" name="lignes[{{ loop.index0 }}][type]" value="{{ line.item ? 'piece' : 'variante' }}">
+                                <input type="hidden" name="lignes[{{ loop.index0 }}][id]" value="{{ line.item ? line.item.code : line.variant.id }}">
+                                {{ line.designation }}
+                            </td>
+                            <td data-label="Attributs">{{ variant.label ?: 'Unique' }}</td>
+                            <td data-label="Code imprimé">{{ line.code }}</td>
+                            <td data-label="Exemplaires">
+                                <input type="number" name="lignes[{{ loop.index0 }}][exemplaires]" value="{{ line.copies }}" min="0" max="500" step="1" inputmode="numeric" aria-label="Exemplaires de {{ line.designation }}">
+                            </td>
+                            <td data-label="Retirer">
+                                <label class="check"><input type="checkbox" name="lignes[{{ loop.index0 }}][retirer]" value="1"><span>Retirer</span></label>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="field">
+                <label for="label-format">Format</label>
+                <select id="label-format" name="format" data-label-format-target="format" data-action="change->label-format#change">
+                    {% for case in enum_cases('App\\Label\\LabelFormat') %}
+                        <option value="{{ case.value }}"{{ case == format ? ' selected' }}>{{ case.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field" data-label-format-target="firstCell">
+                <label for="label-first-cell">Première case</label>
+                <input type="number" id="label-first-cell" name="premiere_case" value="{{ first_cell }}" min="1" max="21" step="1" inputmode="numeric">
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Générer le PDF</button>
+            </div>
+        </form>
+    {% endif %}
+{% endblock %}

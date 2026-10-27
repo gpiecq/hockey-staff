@@ -7,10 +7,13 @@
     <a class="back" href="{{ path('stock_index') }}">‹ Stock</a>
     <div class="page-head">
         <h1>Pièce {{ item.code }}</h1>
-        {% if is_granted('STOCK_MOVE') and item.status.value == 'in_stock' %}
+        {% if is_granted('STOCK_MOVE') %}
             <span class="actions">
-                <a class="btn" href="{{ path('stock_out_new', {item: item.code}) }}">Sortie</a>
-                <a class="btn" href="{{ path('stock_transfer_new', {item: item.code}) }}">Transfert</a>
+                {% if item.status.value == 'in_stock' %}
+                    <a class="btn" href="{{ path('stock_out_new', {item: item.code}) }}">Sortie</a>
+                    <a class="btn" href="{{ path('stock_transfer_new', {item: item.code}) }}">Transfert</a>
+                {% endif %}
+                <a class="btn" href="{{ path('label_print', {piece: item.code}) }}">Imprimer l'étiquette</a>
             </span>
         {% endif %}
     </div>

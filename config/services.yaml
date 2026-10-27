@@ -23,13 +23,3 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
-
-when@test:
-    services:
-        App\Label\LabelPdfRenderer:
-            autowire: true
-            public: true
-        # Retirer ce public: true quand un contrôleur injectera le builder (tâche suivante).
-        App\Label\LabelLineBuilder:
-            autowire: true
-            public: true
