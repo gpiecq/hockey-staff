@@ -211,6 +211,7 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    `2026-10-28-lot4-joueurs-attributions-ventes-design.md`, qui remplace sur ces points le § 4 : pas de reçu PDF,
    ni moyen de paiement, ni statut payé / non payé ; pas d'import CSV des joueurs ; pas de prêt à une équipe (don à
    un joueur ou à une équipe) ; prix de revente = prix **public** TTC × (1 − % de réduction).*
+   *Lot 4b — **LIVRÉ** : stock en quantité par variante × lieu × état, fin du suivi pièce par pièce ; voir `2026-10-28-stock-quantite-etat-design.md` et `../decisions/2026-10-28-lot4b-decisions.md`.*
 5. **Inventaire** — sessions, scans multi-utilisateurs live (Mercure), écarts, ajustements.
 6. **Valorisation** — valeur HT courante, snapshots, graphiques d'évolution, valeur des dotations par fournisseur.
 7. **Préparation assistée du catalogue (IA)** — **LIVRÉ** (recette manuelle à faire, voir les décisions du lot) — *ajouté le 2026-10-27, position dans l'ordre des lots à décider.

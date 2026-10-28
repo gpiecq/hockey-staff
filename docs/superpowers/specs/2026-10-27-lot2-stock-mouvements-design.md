@@ -1,5 +1,7 @@
 # Lot 2 — Stock et mouvements
 
+> **Remplacé par `2026-10-28-stock-quantite-etat-design.md`** pour les pièces sérialisées (suivi pièce par pièce) (lot 4b livré, voir `../decisions/2026-10-28-lot4b-decisions.md`).
+
 Date : 2026-10-27 · Statut : à valider par l'utilisateur · Spec parente : `2026-10-27-hockey-staff-domain-design.md` (§ 4, § 7, § 9 lot 2)
 
 L'utilisateur a demandé de partir de la spec de domaine telle quelle, sans nouvelle séance de questions. Ce

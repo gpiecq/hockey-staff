@@ -1,5 +1,7 @@
 # Lot 8 — Codes-barres et étiquettes
 
+> **Remplacé par `2026-10-28-stock-quantite-etat-design.md`** pour les étiquettes de pièce `HS-` (lot 4b livré, voir `../decisions/2026-10-28-lot4b-decisions.md`).
+
 Date : 2026-10-27 · Statut : validé par l'utilisateur · Spec parente : `2026-10-27-hockey-staff-domain-design.md` (§ 9 lot 8)
 
 Ce document tranche les questions ouvertes de la spec § 9 (lot 8) après échange avec l'utilisateur. Ce que

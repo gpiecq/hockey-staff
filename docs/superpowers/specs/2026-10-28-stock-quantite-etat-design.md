@@ -1,6 +1,6 @@
 # Stock en quantité avec état — fin du suivi pièce par pièce
 
-Date : 2026-10-28 · Statut : validé par l'utilisateur (2026-10-28) · Spec parente :
+Date : 2026-10-28 · Statut : validé par l'utilisateur (2026-10-28), **livré** (lot 4b, décisions R37 à R49 dans `../decisions/2026-10-28-lot4b-decisions.md`) · Spec parente :
 `2026-10-27-hockey-staff-domain-design.md` · Remplace en partie : `2026-10-27-lot2-stock-mouvements-design.md`
 (pièces sérialisées), `2026-10-28-lot4-joueurs-attributions-ventes-design.md` (prêt, retour, don, vente
 pièce par pièce), `2026-10-27-lot8-codes-barres-etiquettes-design.md` (étiquettes de pièce `HS-`).

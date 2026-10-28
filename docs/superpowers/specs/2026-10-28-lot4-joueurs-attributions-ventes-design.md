@@ -1,5 +1,7 @@
 # Lot 4 — Joueurs, équipes, prêts, dons et ventes d'occasion
 
+> **Remplacé par `2026-10-28-stock-quantite-etat-design.md`** pour le prêt, le retour, le don et la vente pièce par pièce (lot 4b livré, voir `../decisions/2026-10-28-lot4b-decisions.md`).
+
 Date : 2026-10-28 · Statut : validé par l'utilisateur (2026-10-28) · Spec parente : `2026-10-27-hockey-staff-domain-design.md`
 (§ 4, § 7, § 9 lot 4) · Socle : `2026-10-27-lot2-stock-mouvements-design.md`
 
