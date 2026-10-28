@@ -59,8 +59,8 @@ qu'elle coûte si elle est fausse. À relire par l'utilisateur.
   le padding de l'étiquette est ajusté. Coût si faux : étiquette à redessiner.
 - **R48 — Colonne « État » sur la page d'opération.** Chaque mouvement affiche son état, ce que la tâche 6 avait
   laissé de côté. Coût si faux : aucun.
-- **R49 — Correctif `locationNames` de la page Stock.** La page Stock affichait un nom de lieu erroné ; corrigé
-  à la tâche 7 (la construction par `array_map` / `array_combine` reste dense, à simplifier). Coût si faux : aucun (lecture seule).
+- **R49 — Correctif `locationNames` de la page Stock.** La page Stock affichait « ? » au lieu du nom de lieu : le
+  filtre Twig `merge` renumérotait les clés entières (identifiants de lieu) ; corrigé à la tâche 7 (la construction par `array_map` / `array_combine` reste dense, à simplifier). Coût si faux : aucun (lecture seule).
 
 ## Points ouverts
 

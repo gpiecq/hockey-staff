@@ -56,7 +56,8 @@ final class VariantSheetController extends AbstractController
         $secondHand = array_values(array_filter(
             $levels,
             static fn (StockLevel $level): bool => ProductKind::Equipment === $variant->getProduct()?->getKind()
-                && StockCondition::New !== $level->getCondition() && $level->getQuantity() > 0,
+                && StockCondition::New !== $level->getCondition() && $level->getQuantity() > 0
+                && $level->getLocation()->isActive(),
         ));
         $rank = array_flip(array_map(static fn (StockCondition $condition): string => $condition->value, StockCondition::cases()));
         usort($secondHand, static fn (StockLevel $a, StockLevel $b): int => [$a->getLocation()->getName(), $rank[$a->getCondition()->value]] <=> [$b->getLocation()->getName(), $rank[$b->getCondition()->value]]);

@@ -210,7 +210,7 @@ final class StockPageTest extends WebTestCase
 
         self::assertCount(1, $client->getCrawler()->filter('table.stock-table tbody tr'));
         self::assertSame('1', trim($client->getCrawler()->filter('table.stock-table tbody tr td[data-label="Prêtées"]')->text()));
-        self::assertStringContainsString('Valeur totale du stock (hors filtres catégorie et recherche) : 50,00 € HT (pièces prêtées incluses)', $this->text($client));
+        self::assertStringContainsString('Valeur totale du stock (hors filtres catégorie et recherche) : 50,00 € HT (matériel prêté inclus)', $this->text($client));
 
         $client->request('GET', '/stock', ['lieu' => (string) $local->getId()]);
 

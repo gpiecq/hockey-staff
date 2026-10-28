@@ -68,7 +68,6 @@ final class VariantSheetTest extends WebTestCase
         }
     }
 
-    /** Occasion en quantité au « Local » : 2 Usé (niveau de stock). */
     public function testActionsHiddenWithoutStock(): void
     {
         $client = static::createClient();
@@ -135,6 +134,27 @@ final class VariantSheetTest extends WebTestCase
         self::assertSame(1, $client->getCrawler()->selectLink('Donner')->count());
     }
 
+    public function testSecondHandAtInactiveLocationIsNotOfferedForSale(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $recorder = $client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $closed = StockFixtures::location($em, 'Ancien local');
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-3', 'Casque ancien local');
+        StockScenario::receive($recorder, $helmet, $closed, 2, 9000, StockCondition::Worn);
+        $closed->setActive(false);
+        $em->flush();
+
+        $client->request('GET', '/stock/variantes/'.$helmet->getId());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(0, $client->getCrawler()->selectLink('Vendre')->count());
+    }
+
+    /** Occasion en quantité au « Local » : 2 Usé (niveau de stock). */
     private function secondHand(KernelBrowser $client, Variant $variant): Location
     {
         $em = $client->getContainer()->get(EntityManagerInterface::class);

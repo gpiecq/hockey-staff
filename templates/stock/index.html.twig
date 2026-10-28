@@ -15,7 +15,7 @@
         {% endif %}
     </div>
 
-    <p class="stock-total"><strong>Valeur totale du stock{% if location %} du lieu{% endif %} (hors filtres catégorie et recherche) : {{ total|euros }} HT{% if not location %} (pièces prêtées incluses){% endif %}</strong>{% if location %} · {{ location.name }}{% endif %}</p>
+    <p class="stock-total"><strong>Valeur totale du stock{% if location %} du lieu{% endif %} (hors filtres catégorie et recherche) : {{ total|euros }} HT{% if not location %} (matériel prêté inclus){% endif %}</strong>{% if location %} · {{ location.name }}{% endif %}</p>
 
     <form method="get" action="{{ path('stock_index') }}" class="filters">
         <div class="field">
