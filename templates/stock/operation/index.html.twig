@@ -35,7 +35,7 @@
                 {% for operation in page.items %}
                     <tr>
                         <td data-label="Date"><a href="{{ path('stock_operation_show', {id: operation.id}) }}">{{ operation.occurredAt|date('d/m/Y H:i') }}</a></td>
-                        <td data-label="Type">{{ operation.type.label }}</td>
+                        <td data-label="Type">{{ operation.type.label }}{{ include('stock/operation/_recipient.html.twig') }}</td>
                         <td data-label="Lieu(x)">{% if operation.source and operation.destination %}{{ operation.source.name }} → {{ operation.destination.name }}{% else %}{{ (operation.source ?? operation.destination).name }}{% endif %}</td>
                         <td class="num" data-label="Lignes">{{ counts[operation.id]|default(0) }}</td>
                         <td data-label="Auteur">{{ operation.createdBy ? operation.createdBy.fullName : '—' }}</td>

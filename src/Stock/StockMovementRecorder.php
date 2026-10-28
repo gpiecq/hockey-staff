@@ -11,6 +11,7 @@ use App\Entity\StockLevel;
 use App\Entity\StockMovement;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
+use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
@@ -19,8 +20,11 @@ use App\Repository\ItemRepository;
 use App\Repository\StockLevelRepository;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
+use App\Stock\Input\StockGift;
 use App\Stock\Input\StockLine;
+use App\Stock\Input\StockLoan;
 use App\Stock\Input\StockOut;
+use App\Stock\Input\StockReturn;
 use App\Stock\Input\StockTransfer;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -154,6 +158,95 @@ final readonly class StockMovementRecorder
         });
     }
 
+    public function recordLoan(StockLoan $loan): StockOperation
+    {
+        if (TrackingMode::Serialized !== $loan->variant->getProduct()?->getTrackingMode()) {
+            throw new StockException(\sprintf('« %s » est suivi en quantité : il ne se prête pas.', $this->label($loan->variant)));
+        }
+        if (!$loan->location->isActive()) {
+            throw new StockException(\sprintf('Le lieu « %s » est inactif.', $loan->location->getName()));
+        }
+        $season = $this->seasons->get();
+
+        return $this->em->wrapInTransaction(function () use ($loan, $season): StockOperation {
+            $item = $this->lockOldestInStock($loan->variant, $loan->location, $loan->condition);
+            $operation = new StockOperation(StockMovementType::LoanOut, $loan->location, null, null, null, $loan->comment, $loan->player);
+            $this->em->persist($operation);
+            $item->lendTo($loan->player);
+            $operation->addMovement(new StockMovement($operation, $loan->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
+
+            $this->em->flush();
+
+            return $operation;
+        });
+    }
+
+    public function recordReturn(StockReturn $return): StockOperation
+    {
+        if (!$return->location->isActive()) {
+            throw new StockException(\sprintf('Le lieu « %s » est inactif.', $return->location->getName()));
+        }
+        $season = $this->seasons->get();
+
+        return $this->em->wrapInTransaction(function () use ($return, $season): StockOperation {
+            $item = $this->items->findForUpdate($return->item);
+            if (ItemStatus::Loaned !== $item->getStatus() || $item->getHolder()?->getId() !== $return->player->getId()) {
+                throw new StockException(\sprintf('La pièce %s n\'est pas prêtée à %s.', $item->getCode(), $return->player->getFullName()));
+            }
+            $operation = new StockOperation(StockMovementType::LoanReturn, null, $return->location, null, null, $return->comment, $return->player);
+            $this->em->persist($operation);
+            $item->giveBack($return->location, $return->condition);
+            $operation->addMovement(new StockMovement($operation, $item->getVariant(), 1, $item->getPurchaseCostHt(), $item, null, $season));
+
+            $this->em->flush();
+
+            return $operation;
+        });
+    }
+
+    public function recordGift(StockGift $gift): StockOperation
+    {
+        if ((null === $gift->player) === (null === $gift->team)) {
+            throw new StockException('Choisissez un joueur ou une équipe.');
+        }
+        if ($gift->quantity < 1) {
+            throw new StockException('La quantité doit être au moins 1.');
+        }
+        $serialized = TrackingMode::Serialized === $gift->variant->getProduct()?->getTrackingMode();
+        if ($serialized && null === $gift->condition) {
+            throw new StockException('Choisissez l\'état de la pièce.');
+        }
+        if ($serialized && 1 !== $gift->quantity) {
+            throw new StockException('Une pièce se donne à l\'unité : quantité 1.');
+        }
+        $season = $this->seasons->get();
+
+        return $this->em->wrapInTransaction(function () use ($gift, $serialized, $season): StockOperation {
+            // Verrous et contrôles avant la première écriture.
+            $item = null;
+            $level = null;
+            if (null !== $gift->condition && $serialized) {
+                $item = $this->lockOldestInStock($gift->variant, $gift->location, $gift->condition);
+            } else {
+                $level = $this->lockAndCheck($gift->location, [new StockLine($gift->variant, $gift->quantity)])['levels'][(int) $gift->variant->getId()];
+            }
+            $operation = new StockOperation(StockMovementType::GiftOut, $gift->location, null, null, null, $gift->comment, $gift->player, $gift->team);
+            $this->em->persist($operation);
+
+            if (null !== $item) {
+                $item->gift();
+                $operation->addMovement(new StockMovement($operation, $gift->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
+            } else {
+                $value = $level->remove($gift->quantity);
+                $operation->addMovement(new StockMovement($operation, $gift->variant, $gift->quantity, (int) round($value / $gift->quantity), null, null, $season));
+            }
+
+            $this->em->flush();
+
+            return $operation;
+        });
+    }
+
     /**
      * Contrôles de forme des lignes (sans accès base).
      *
@@ -237,6 +330,15 @@ final readonly class StockMovementRecorder
         }
 
         return ['levels' => $levels, 'items' => $locked];
+    }
+
+    /**
+     * Verrouille la plus ancienne pièce en stock de l'état demandé dans le lieu ; à appeler dans la transaction.
+     */
+    private function lockOldestInStock(Variant $variant, Location $location, ItemCondition $condition): Item
+    {
+        return $this->items->findOldestInStockForUpdate($variant, $location, $condition)
+            ?? throw new StockException(\sprintf('Aucune pièce « %s » à l\'état %s disponible à « %s ».', $this->label($variant), $condition->label(), $location->getName()));
     }
 
     /**

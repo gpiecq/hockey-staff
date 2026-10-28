@@ -34,6 +34,8 @@ class StockOperationRepository extends ServiceEntityRepository
             ->leftJoin('o.source', 'src')->addSelect('src')
             ->leftJoin('o.destination', 'dst')->addSelect('dst')
             ->leftJoin('o.createdBy', 'author')->addSelect('author')
+            ->leftJoin('o.player', 'pl')->addSelect('pl')
+            ->leftJoin('o.team', 't')->addSelect('t')
             ->orderBy('o.occurredAt', 'DESC')
             ->addOrderBy('o.id', 'DESC');
 

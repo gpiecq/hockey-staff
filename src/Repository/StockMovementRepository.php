@@ -28,10 +28,12 @@ class StockMovementRepository extends ServiceEntityRepository
     {
         /** @var list<StockMovement> $movements */
         $movements = $this->createQueryBuilder('m')
-            ->addSelect('o', 's', 'd')
+            ->addSelect('o', 's', 'd', 'pl', 't')
             ->join('m.operation', 'o')
             ->leftJoin('o.source', 's')
             ->leftJoin('o.destination', 'd')
+            ->leftJoin('o.player', 'pl')
+            ->leftJoin('o.team', 't')
             ->where('m.item = :item')
             ->setParameter('item', $item)
             ->orderBy('o.occurredAt', 'DESC')

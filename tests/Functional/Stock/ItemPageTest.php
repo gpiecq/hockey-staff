@@ -6,13 +6,17 @@ namespace App\Tests\Functional\Stock;
 
 use App\Entity\Item;
 use App\Entity\Location;
+use App\Enum\ItemCondition;
 use App\Enum\StockOutReason;
 use App\Enum\TrackingMode;
 use App\Enum\UserRole;
+use App\Stock\Input\StockGift;
 use App\Stock\Input\StockLine;
+use App\Stock\Input\StockLoan;
 use App\Stock\Input\StockOut;
 use App\Stock\Input\StockTransfer;
 use App\Stock\StockMovementRecorder;
+use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
 use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
@@ -122,5 +126,38 @@ final class ItemPageTest extends WebTestCase
         $text = $client->getCrawler()->filter('table')->text();
         self::assertStringContainsString('Local A', $text);
         self::assertSelectorTextContains('td[data-label="Stock"]', '4');
+    }
+
+    public function testLoanedItemShowsHolderAndOperationsShowRecipient(): void
+    {
+        $client = static::createClient();
+        $client->loginUser(UserFactory::create($this->em($client), UserRole::Stock, 'u@example.test'));
+        [$item, $a] = $this->serialized($client);
+        $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), ItemCondition::New));
+        $team = PlayerFixtures::team($this->em($client), 'U15');
+        $pucks = StockScenario::variant($this->em($client), TrackingMode::Quantity, 'PALET', 'Palet');
+        StockScenario::receive($this->recorder($client), $pucks, $a, 10, 100);
+        $gift = $this->recorder($client)->recordGift(new StockGift($a, $pucks, 2, null, null, $team));
+
+        $client->request('GET', '/stock/pieces/'.$item->getCode());
+        self::assertResponseIsSuccessful();
+        $meta = $client->getCrawler()->filter('dl.product-meta')->text();
+        self::assertStringContainsString('Prêtée', $meta);
+        self::assertStringContainsString('DétenteurLéo Martin', $meta);
+        self::assertStringContainsString('Joueur : Léo Martin', $client->getCrawler()->filter('table.history')->text());
+        self::assertCount(0, $client->getCrawler()->filter('.page-head a[href^="/stock/sortie?item="]'));
+
+        $client->request('GET', '/stock/operations/'.$loan->getId());
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('JoueurLéo Martin', $client->getCrawler()->filter('dl.product-meta')->text());
+
+        $client->request('GET', '/stock/operations/'.$gift->getId());
+        self::assertStringContainsString('ÉquipeU15', $client->getCrawler()->filter('dl.product-meta')->text());
+
+        $client->request('GET', '/stock/operations');
+        $text = $client->getCrawler()->filter('table.operations')->text();
+        self::assertStringContainsString('Joueur : Léo Martin', $text);
+        self::assertStringContainsString('Équipe : U15', $text);
     }
 }

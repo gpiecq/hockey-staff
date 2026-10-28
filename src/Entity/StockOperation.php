@@ -47,6 +47,16 @@ class StockOperation
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $comment;
 
+    /** Joueur concerné (prêt, retour, don). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?Player $player;
+
+    /** Équipe bénéficiaire d'un don. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?Team $team;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $occurredAt;
 
@@ -62,6 +72,8 @@ class StockOperation
         ?StockOutReason $outReason = null,
         ?string $documentReference = null,
         ?string $comment = null,
+        ?Player $player = null,
+        ?Team $team = null,
     ) {
         $this->type = $type;
         $this->source = $source;
@@ -69,6 +81,8 @@ class StockOperation
         $this->outReason = $outReason;
         $this->documentReference = $documentReference;
         $this->comment = $comment;
+        $this->player = $player;
+        $this->team = $team;
         $this->occurredAt = new \DateTimeImmutable();
         $this->movements = new ArrayCollection();
     }
@@ -106,6 +120,16 @@ class StockOperation
     public function getComment(): ?string
     {
         return $this->comment;
+    }
+
+    public function getPlayer(): ?Player
+    {
+        return $this->player;
+    }
+
+    public function getTeam(): ?Team
+    {
+        return $this->team;
     }
 
     public function getOccurredAt(): \DateTimeImmutable

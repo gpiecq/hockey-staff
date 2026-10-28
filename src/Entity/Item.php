@@ -49,6 +49,11 @@ class Item
     #[ORM\Column(length: 20, enumType: ItemStatus::class)]
     private ItemStatus $status = ItemStatus::InStock;
 
+    /** Joueur détenteur, renseigné tant que la pièce est prêtée. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?Player $holder = null;
+
     public function __construct(
         string $code,
         Variant $variant,
@@ -105,6 +110,11 @@ class Item
         return $this->status;
     }
 
+    public function getHolder(): ?Player
+    {
+        return $this->holder;
+    }
+
     /**
      * @internal réservé au StockMovementRecorder
      */
@@ -119,5 +129,41 @@ class Item
     public function remove(): void
     {
         $this->status = ItemStatus::Removed;
+    }
+
+    /**
+     * @internal réservé au StockMovementRecorder ; le lieu de départ est conservé
+     */
+    public function lendTo(Player $player): void
+    {
+        $this->status = ItemStatus::Loaned;
+        $this->holder = $player;
+    }
+
+    /**
+     * @internal réservé au StockMovementRecorder
+     */
+    public function giveBack(Location $location, ItemCondition $condition): void
+    {
+        $this->status = ItemStatus::InStock;
+        $this->holder = null;
+        $this->location = $location;
+        $this->condition = $condition;
+    }
+
+    /**
+     * @internal réservé au StockMovementRecorder ; le lieu est conservé
+     */
+    public function gift(): void
+    {
+        $this->status = ItemStatus::Gifted;
+    }
+
+    /**
+     * @internal réservé au StockMovementRecorder ; le lieu est conservé
+     */
+    public function sell(): void
+    {
+        $this->status = ItemStatus::Sold;
     }
 }

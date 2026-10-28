@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Item;
+use App\Entity\Location;
+use App\Entity\Player;
 use App\Entity\Variant;
+use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
@@ -75,6 +78,107 @@ class ItemRepository extends ServiceEntityRepository
             ->andWhere('i.status = :status')
             ->setParameter('variants', $variants)
             ->setParameter('status', ItemStatus::InStock)
+            ->orderBy('i.code')
+            ->getQuery()
+            ->getResult();
+
+        return $items;
+    }
+
+    /**
+     * Plus ancienne pièce en stock (plus petit code) de la variante, du lieu et de l'état donnés, verrouillée
+     * (PESSIMISTIC_WRITE, état rafraîchi) ; à appeler dans une transaction.
+     */
+    public function findOldestInStockForUpdate(Variant $variant, Location $location, ItemCondition $condition): ?Item
+    {
+        $item = $this->createQueryBuilder('i')
+            ->where('i.variant = :variant')
+            ->andWhere('i.location = :location')
+            ->andWhere('i.condition = :condition')
+            ->andWhere('i.status = :status')
+            ->setParameter('variant', $variant)
+            ->setParameter('location', $location)
+            ->setParameter('condition', $condition)
+            ->setParameter('status', ItemStatus::InStock)
+            ->orderBy('i.code')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $item instanceof Item ? $item : null;
+    }
+
+    /**
+     * Nombre de pièces en stock de la variante dans le lieu, par état.
+     *
+     * @return array<string, int> clé = valeur d'ItemCondition
+     */
+    public function countInStockByCondition(Variant $variant, Location $location): array
+    {
+        /** @var list<array{itemCondition: ItemCondition|string, total: int|string}> $rows */
+        $rows = $this->createQueryBuilder('i')
+            ->select('i.condition AS itemCondition, COUNT(i.id) AS total')
+            ->where('i.variant = :variant')
+            ->andWhere('i.location = :location')
+            ->andWhere('i.status = :status')
+            ->setParameter('variant', $variant)
+            ->setParameter('location', $location)
+            ->setParameter('status', ItemStatus::InStock)
+            ->groupBy('i.condition')
+            ->getQuery()
+            ->getResult();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $condition = $row['itemCondition'];
+            $counts[$condition instanceof ItemCondition ? $condition->value : $condition] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Pièces prêtées de la variante, détenteur joint, triées par nom de joueur.
+     *
+     * @return list<Item>
+     */
+    public function findLoanedByVariant(Variant $variant): array
+    {
+        /** @var list<Item> $items */
+        $items = $this->createQueryBuilder('i')
+            ->addSelect('h')
+            ->join('i.holder', 'h')
+            ->where('i.variant = :variant')
+            ->andWhere('i.status = :status')
+            ->setParameter('variant', $variant)
+            ->setParameter('status', ItemStatus::Loaned)
+            ->orderBy('h.lastName')
+            ->addOrderBy('h.firstName')
+            ->addOrderBy('i.code')
+            ->getQuery()
+            ->getResult();
+
+        return $items;
+    }
+
+    /**
+     * Pièces prêtées au joueur, triées par code.
+     *
+     * @return list<Item>
+     */
+    public function findLoanedByPlayer(Player $player): array
+    {
+        /** @var list<Item> $items */
+        $items = $this->createQueryBuilder('i')
+            ->addSelect('v', 'p')
+            ->join('i.variant', 'v')
+            ->join('v.product', 'p')
+            ->where('i.holder = :player')
+            ->andWhere('i.status = :status')
+            ->setParameter('player', $player)
+            ->setParameter('status', ItemStatus::Loaned)
             ->orderBy('i.code')
             ->getQuery()
             ->getResult();

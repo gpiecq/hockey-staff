@@ -18,6 +18,8 @@
         <dt>Auteur</dt><dd>{{ operation.createdBy ? operation.createdBy.fullName : '—' }}</dd>
         {% if operation.source %}<dt>Origine</dt><dd>{{ operation.source.name }}</dd>{% endif %}
         {% if operation.destination %}<dt>Destination</dt><dd>{{ operation.destination.name }}</dd>{% endif %}
+        {% if operation.player %}<dt>Joueur</dt><dd><a href="{{ path('player_show', {id: operation.player.id}) }}">{{ operation.player.fullName }}</a></dd>{% endif %}
+        {% if operation.team %}<dt>Équipe</dt><dd>{{ operation.team.name }}</dd>{% endif %}
         {% if operation.outReason %}<dt>Motif</dt><dd>{{ operation.outReason.label }}</dd>{% endif %}
         {% if operation.documentReference %}<dt>Document</dt><dd>{{ operation.documentReference }}</dd>{% endif %}
         {% if operation.comment %}<dt>Commentaire</dt><dd>{{ operation.comment }}</dd>{% endif %}
