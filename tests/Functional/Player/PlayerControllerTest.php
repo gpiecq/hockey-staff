@@ -74,6 +74,16 @@ final class PlayerControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
     }
 
+    public function testViewerSeesPlayersLinkInNavigation(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Viewer);
+
+        $client->request('GET', '/joueurs');
+
+        self::assertSelectorExists('.sidebar a[href="/joueurs"]');
+    }
+
     public function testSearchIgnoresAccents(): void
     {
         $client = static::createClient();
