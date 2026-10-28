@@ -91,7 +91,7 @@ class VariantRepository extends ServiceEntityRepository
     }
 
     /**
-     * Variantes étiquetables (non supprimées, actives ou en stock) dont l'EAN est absent ou n'a pas de clé de contrôle valide,
+     * Variantes étiquetables (non supprimées, actives ou en stock — pièce en stock ou prêtée) dont l'EAN est absent ou n'a pas de clé de contrôle valide,
      * triées par référence produit puis id. L'EAN est jugé en PHP sur une requête scalaire, puis la règle « étiquetable » en SQL.
      *
      * @return list<Variant>
@@ -118,10 +118,10 @@ class VariantRepository extends ServiceEntityRepository
         $variants = $this->createQueryBuilder('v')
             ->innerJoin('v.product', 'p')
             ->where('v.id IN (:ids)')
-            ->andWhere('v.active = true OR EXISTS (SELECT 1 FROM '.Item::class.' i WHERE i.variant = v AND i.status = :status)'
+            ->andWhere('v.active = true OR EXISTS (SELECT 1 FROM '.Item::class.' i WHERE i.variant = v AND i.status IN (:statuses))'
                 .' OR EXISTS (SELECT 1 FROM '.StockLevel::class.' l WHERE l.variant = v AND l.quantity > 0)')
             ->setParameter('ids', $ids)
-            ->setParameter('status', ItemStatus::InStock)
+            ->setParameter('statuses', [ItemStatus::InStock, ItemStatus::Loaned])
             ->orderBy('p.reference')
             ->addOrderBy('v.id')
             ->getQuery()

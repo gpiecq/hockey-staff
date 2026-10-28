@@ -10,14 +10,17 @@ use App\Entity\Season;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ImportAnomalyCode;
+use App\Enum\ItemCondition;
 use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Import\CatalogueImportAnalyzer;
 use App\Import\CatalogueImportApplier;
 use App\Import\ImportDiff;
 use App\Repository\CategoryRepository;
+use App\Stock\Input\StockLoan;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\ImportFixtures;
+use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
 use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
@@ -113,6 +116,25 @@ final class ImportStockRulesTest extends WebTestCase
     {
         $absent = $this->absentVariant();
         $this->stockIn($absent);
+
+        $this->applier->apply($this->analyzedRun([self::row()]));
+
+        self::assertFalse($absent->isActive());
+        self::assertFalse($absent->isArchived());
+    }
+
+    public function testAbsentVariantWhoseOnlyItemIsLoanedIsNotArchived(): void
+    {
+        $absent = $this->absentVariant();
+        $absent->getProduct()?->setTrackingMode(TrackingMode::Serialized);
+        $this->em->flush();
+        $location = StockFixtures::location($this->em);
+        StockScenario::receive($this->recorder, $absent, $location, 1, 5000);
+        $this->recorder->recordLoan(new StockLoan($location, PlayerFixtures::player($this->em), $absent, ItemCondition::New));
+
+        $diff = $this->analyzer->analyze(ImportFixtures::run($this->em, $this->supplier, $this->season, [self::row()]));
+        self::assertSame([], $diff->archivedVariantIds);
+        self::assertSame([$absent->getId()], $diff->deactivatedVariantIds);
 
         $this->applier->apply($this->analyzedRun([self::row()]));
 

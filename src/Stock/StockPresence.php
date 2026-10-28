@@ -22,7 +22,7 @@ final readonly class StockPresence
     }
 
     /**
-     * Variantes qui ont une pièce en stock ou un niveau de quantité positif.
+     * Variantes qui ont une pièce en stock ou prêtée (elle appartient toujours au stock du club) ou un niveau de quantité positif.
      *
      * @param list<int> $variantIds
      *
@@ -36,8 +36,8 @@ final readonly class StockPresence
 
         $found = [];
         $items = $this->em->createQuery(
-            'SELECT DISTINCT IDENTITY(i.variant) FROM '.Item::class.' i WHERE IDENTITY(i.variant) IN (:ids) AND i.status = :status',
-        )->setParameter('ids', $variantIds)->setParameter('status', ItemStatus::InStock)->getSingleColumnResult();
+            'SELECT DISTINCT IDENTITY(i.variant) FROM '.Item::class.' i WHERE IDENTITY(i.variant) IN (:ids) AND i.status IN (:statuses)',
+        )->setParameter('ids', $variantIds)->setParameter('statuses', [ItemStatus::InStock, ItemStatus::Loaned])->getSingleColumnResult();
         $levels = $this->em->createQuery(
             'SELECT DISTINCT IDENTITY(l.variant) FROM '.StockLevel::class.' l WHERE IDENTITY(l.variant) IN (:ids) AND l.quantity > 0',
         )->setParameter('ids', $variantIds)->getSingleColumnResult();
