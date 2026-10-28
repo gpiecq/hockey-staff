@@ -206,7 +206,7 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    historique, étiquettes internes PDF. *Design détaillé : `2026-10-27-lot2-stock-mouvements-design.md` ; les
    étiquettes passent au lot 8, ordre retenu lot 2 → lot 8 → lot 3.*
 3. **Scan & Hotwire Native** — coques iOS/Android, bridge scanner, flux « scanner → action », scan web de secours.
-4. **Joueurs, équipes, attributions, ventes** — saisons d'équipe, roster, prêt/retour avec état, don, ventes
+4. **Joueurs, équipes, attributions, ventes** — **LIVRÉ** (recette manuelle à faire, voir les décisions du lot) — saisons d'équipe, roster, prêt/retour avec état, don, ventes
    d'occasion avec dépréciation. *Décidé le 2026-10-28 : le lot 4 passe **avant** le lot 3. Design détaillé :
    `2026-10-28-lot4-joueurs-attributions-ventes-design.md`, qui remplace sur ces points le § 4 : pas de reçu PDF,
    ni moyen de paiement, ni statut payé / non payé ; pas d'import CSV des joueurs ; pas de prêt à une équipe (don à
