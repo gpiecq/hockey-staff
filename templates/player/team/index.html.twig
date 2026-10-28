@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Équipes{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Équipes</h1>
+        {% if is_granted('PLAYER_MANAGE') %}
+            <a class="btn btn-primary" href="{{ path('team_new') }}">Nouvelle équipe</a>
+        {% endif %}
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucune équipe.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Équipe</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for team in page.items %}
+                    <tr>
+                        <td><a href="{{ path('team_roster', {id: team.id}) }}">{{ team.name }}</a></td>
+                        <td>
+                            <a href="{{ path('team_roster', {id: team.id}) }}">Effectif</a>
+                            {% if is_granted('PLAYER_MANAGE') %}
+                                <a href="{{ path('team_edit', {id: team.id}) }}">Modifier</a>
+                                <a href="{{ path('team_delete', {id: team.id}) }}">Supprimer</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'équipes'} %}
+{% endblock %}

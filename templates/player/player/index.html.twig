@@ -12,6 +12,14 @@
 
     <form method="get" class="filters" role="search">
         <input type="search" name="q" value="{{ q }}" placeholder="Nom ou prénom" aria-label="Rechercher un joueur">
+        <select name="equipe" aria-label="Équipe">
+            <option value="">Toutes les équipes</option>
+            {% for t in teams %}<option value="{{ t.id }}"{% if team and t.id == team.id %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+        </select>
+        <select name="saison" aria-label="Saison">
+            <option value="">Toutes les saisons</option>
+            {% for s in seasons %}<option value="{{ s.id }}"{% if season and s.id == season.id %} selected{% endif %}>{{ s.label }}</option>{% endfor %}
+        </select>
         <button type="submit" class="btn">Rechercher</button>
     </form>
 
@@ -20,11 +28,12 @@
     {% else %}
         <table class="table">
             <thead>
-                <tr><th>Joueur</th><th>Poste</th><th></th></tr>
+                <tr>{% if numbers is not null %}<th>N°</th>{% endif %}<th>Joueur</th><th>Poste</th><th></th></tr>
             </thead>
             <tbody>
                 {% for player in page.items %}
                     <tr>
+                        {% if numbers is not null %}<td>{{ numbers[player.id]|default('') }}</td>{% endif %}
                         <td><a href="{{ path('player_show', {id: player.id}) }}">{{ player.fullName }}</a></td>
                         <td>{{ player.position.label }}</td>
                         <td>

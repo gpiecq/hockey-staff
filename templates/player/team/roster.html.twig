@@ -1,0 +1,76 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Effectif {{ team.name }}{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Effectif {{ team.name }}{% if season %} — {{ season.label }}{% endif %}</h1>
+        <a class="btn" href="{{ path('team_index') }}">Équipes</a>
+    </div>
+
+    <form method="get" class="filters" action="{{ path('team_roster', {id: team.id}) }}">
+        <label for="roster-season">Saison</label>
+        <select id="roster-season" name="saison">
+            {% for s in seasons %}
+                <option value="{{ s.id }}"{% if season and s.id == season.id %} selected{% endif %}>{{ s.label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn">Afficher</button>
+    </form>
+
+    {% if season is null %}
+        <p class="empty">Aucune saison courante : choisissez une saison.</p>
+    {% else %}
+        {% if entries is empty %}
+            <p class="empty">Aucun joueur dans cet effectif.</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                    <tr><th>N°</th><th>Joueur</th><th>Poste</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                        <tr>
+                            <td>{{ entry.number is null ? '' : entry.number }}</td>
+                            <td><a href="{{ path('player_show', {id: entry.player.id}) }}">{{ entry.player.fullName }}</a></td>
+                            <td>{{ entry.player.position.label }}</td>
+                            <td>
+                                {% if is_granted('PLAYER_MANAGE') %}
+                                    <form method="post" action="{{ path('team_roster_remove', {id: team.id, entry: entry.id, saison: season.id}) }}" class="inline">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('roster_remove_' ~ entry.id) }}">
+                                        <button type="submit" class="btn">Retirer</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% if form %}
+            <h2>Ajouter un joueur</h2>
+            {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate'}}) }}
+                <div class="field">
+                    {{ form_label(form.player) }}
+                    {{ form_widget(form.player) }}
+                    {% for error in form.player.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+                </div>
+                <div class="field">
+                    {{ form_label(form.number) }}
+                    {{ form_widget(form.number) }}
+                    {% for error in form.number.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+                </div>
+                {% for error in form.vars.errors %}<p class="form-error">{{ error.message }}</p>{% endfor %}
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Ajouter</button>
+                </div>
+            {{ form_end(form) }}
+
+            <form method="post" action="{{ path('team_roster_copy', {id: team.id, saison: season.id}) }}" class="actions">
+                <input type="hidden" name="_token" value="{{ csrf_token('roster_copy_' ~ team.id) }}">
+                <button type="submit" class="btn">Reprendre la saison précédente</button>
+            </form>
+        {% endif %}
+    {% endif %}
+{% endblock %}

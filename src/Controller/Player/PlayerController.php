@@ -8,6 +8,10 @@ use App\Entity\Player;
 use App\Form\PlayerType;
 use App\Pagination\Page;
 use App\Repository\PlayerRepository;
+use App\Repository\RosterEntryRepository;
+use App\Repository\SeasonRepository;
+use App\Repository\TeamRepository;
+use App\Repository\TeamSeasonRepository;
 use App\Security\Voter\PlayerVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,13 +25,32 @@ final class PlayerController extends AbstractController
 {
     #[Route('', name: 'player_index', methods: ['GET'])]
     #[IsGranted(PlayerVoter::VIEW)]
-    public function index(Request $request, PlayerRepository $players): Response
-    {
+    public function index(
+        Request $request,
+        PlayerRepository $players,
+        TeamRepository $teams,
+        SeasonRepository $seasons,
+        TeamSeasonRepository $teamSeasons,
+        RosterEntryRepository $entries,
+    ): Response {
         $q = $request->query->getString('q');
+        $team = $request->query->getInt('equipe') > 0 ? $teams->find($request->query->getInt('equipe')) : null;
+        $season = $request->query->getInt('saison') > 0 ? $seasons->find($request->query->getInt('saison')) : null;
+
+        $numbers = null;
+        if (null !== $team && null !== $season) {
+            $teamSeason = $teamSeasons->findOneFor($team, $season);
+            $numbers = null !== $teamSeason ? $entries->numbersByPlayer($teamSeason) : [];
+        }
 
         return $this->render('player/player/index.html.twig', [
-            'page' => Page::fromQuery($players->search($q), $request->query->getString('page')),
+            'page' => Page::fromQuery($players->search($q, $team, $season), $request->query->getString('page')),
             'q' => $q,
+            'teams' => $teams->findAllOrdered(),
+            'seasons' => $seasons->findBy([], ['startsOn' => 'DESC']),
+            'team' => $team,
+            'season' => $season,
+            'numbers' => $numbers,
         ]);
     }
 
