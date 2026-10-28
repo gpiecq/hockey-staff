@@ -59,16 +59,16 @@
     {% endif %}
 
     {% if serialized and secondHand is not empty and is_granted('SALE_MANAGE') %}
-        <h2>Pièces d'occasion en stock</h2>
+        <h2>Occasion en stock</h2>
         <table class="table second-hand">
-            <thead><tr><th>Pièce</th><th>État</th><th>Lieu</th><th></th></tr></thead>
+            <thead><tr><th>Lieu</th><th>État</th><th class="num">Quantité</th><th></th></tr></thead>
             <tbody>
-                {% for item in secondHand %}
+                {% for level in secondHand %}
                     <tr>
-                        <td data-label="Pièce"><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
-                        <td data-label="État">{{ item.condition.label }}</td>
-                        <td data-label="Lieu">{{ item.location.name }}</td>
-                        <td><a href="{{ path('sale_new', {item: item.code}) }}">Vendre</a></td>
+                        <td data-label="Lieu">{{ level.location.name }}</td>
+                        <td data-label="État">{{ level.condition.label }}</td>
+                        <td class="num" data-label="Quantité">{{ level.quantity }}</td>
+                        <td><a href="{{ path('sale_new', {variant: variant.id, etat: level.condition.value, lieu: level.location.id}) }}">Vendre</a></td>
                     </tr>
                 {% endfor %}
             </tbody>

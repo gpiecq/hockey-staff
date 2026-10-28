@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Location;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
+use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
@@ -69,5 +70,39 @@ class StockLevelRepository extends ServiceEntityRepository
         }
 
         return $quantities;
+    }
+
+    /**
+     * Occasion vendable : niveaux d'équipement d'état autre que Neuf, en quantité, dans le lieu donné (tous lieux si null) ;
+     * variante, produit et lieu joints ; tri désignation, variante (clé de rapprochement), lieu, puis état (Bon, Usé, Abîmé).
+     *
+     * @return list<StockLevel>
+     */
+    public function findSecondHand(?Location $location): array
+    {
+        $qb = $this->createQueryBuilder('sl')
+            ->addSelect('v', 'p', 'l')
+            ->addSelect("CASE sl.condition WHEN 'good' THEN 1 WHEN 'worn' THEN 2 ELSE 3 END AS HIDDEN conditionRank")
+            ->join('sl.variant', 'v')
+            ->join('v.product', 'p')
+            ->join('sl.location', 'l')
+            ->where('p.kind = :equipment')
+            ->andWhere('sl.condition <> :new')
+            ->andWhere('sl.quantity > 0')
+            ->setParameter('equipment', ProductKind::Equipment)
+            ->setParameter('new', StockCondition::New)
+            ->orderBy('p.designation')
+            ->addOrderBy('v.matchKey')
+            ->addOrderBy('v.id')
+            ->addOrderBy('l.name')
+            ->addOrderBy('l.id')
+            ->addOrderBy('conditionRank');
+        if (null !== $location) {
+            $qb->andWhere('sl.location = :location')->setParameter('location', $location);
+        }
+        /** @var list<StockLevel> $levels */
+        $levels = $qb->getQuery()->getResult();
+
+        return $levels;
     }
 }

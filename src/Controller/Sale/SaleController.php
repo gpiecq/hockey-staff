@@ -4,23 +4,22 @@ declare(strict_types=1);
 
 namespace App\Controller\Sale;
 
-use App\Entity\Item;
+use App\Controller\Stock\VariantFormScreen;
 use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Sale;
-use App\Entity\Variant;
-use App\Enum\ItemStatus;
-use App\Enum\StockCondition;
+use App\Entity\StockLevel;
 use App\Form\Sale\SaleLineMapper;
+use App\Form\Sale\SaleLineType;
 use App\Form\Sale\SaleType;
 use App\Pagination\Page;
-use App\Repository\ItemRepository;
+use App\Repository\LocationRepository;
 use App\Repository\SaleRepository;
+use App\Repository\StockLevelRepository;
 use App\Sale\SalePreviewer;
 use App\Stock\Input\StockSale;
 use App\Stock\StockException;
 use App\Stock\StockMovementRecorder;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
@@ -33,6 +32,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/ventes')]
 final class SaleController extends AbstractController
 {
+    use VariantFormScreen;
+
     #[Route('', name: 'sale_index', methods: ['GET'])]
     public function index(Request $request, SaleRepository $sales): Response
     {
@@ -44,14 +45,17 @@ final class SaleController extends AbstractController
     }
 
     #[Route('/new', name: 'sale_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $em, ItemRepository $items, SaleLineMapper $mapper, StockMovementRecorder $recorder, SalePreviewer $previewer): Response
+    public function new(Request $request, LocationRepository $locations, StockLevelRepository $levels, SaleLineMapper $mapper, StockMovementRecorder $recorder, SalePreviewer $previewer): Response
     {
-        $form = $this->createForm(SaleType::class, $this->initialData($request, $em, $items));
+        [$location, $line] = $this->prefill($request, $locations, $levels);
+        $sellable = null === $location ? [] : $levels->findSecondHand($location);
+        $data = ['location' => $location, 'lines' => [['stock' => $line, 'quantity' => 1, 'discount' => null, 'finalPrice' => null]]];
+        $form = $this->createForm(SaleType::class, $data, ['sellable' => $sellable]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $request->request->has('preview')) {
             // « Calculer » : rien n'est enregistré ; formulaire réaffiché avec les données saisies, sans erreurs de validation.
-            return $this->renderForm($this->createForm(SaleType::class, $form->getData()), $items, $previewer, Response::HTTP_OK);
+            return $this->renderForm($this->createForm(SaleType::class, $form->getData(), ['sellable' => $sellable]), $previewer, Response::HTTP_OK);
         }
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -59,14 +63,13 @@ final class SaleController extends AbstractController
             if (null !== $lines) {
                 /** @var array{location: Location, buyer: string, player: ?Player, comment: ?string} $values */
                 $values = $form->getData();
-                $comment = trim($values['comment'] ?? '');
                 try {
-                    $operation = $recorder->recordSale(new StockSale($values['location'], $values['buyer'], $lines, $values['player'] ?? null, '' === $comment ? null : $comment));
+                    $operation = $recorder->recordSale(new StockSale($values['location'], $values['buyer'], $lines, $values['player'] ?? null, $this->nullIfBlank($values['comment'] ?? null)));
                 } catch (StockException $e) {
                     // R6 : l'EntityManager peut être fermé ; aucune écriture après ce point, rendu en lecture seule.
                     $form->addError(new FormError($e->getMessage()));
 
-                    return $this->renderForm($form, $items, $previewer, Response::HTTP_UNPROCESSABLE_ENTITY);
+                    return $this->renderForm($form, $previewer, Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
                 $this->addFlash('success', 'Vente enregistrée.');
 
@@ -74,7 +77,7 @@ final class SaleController extends AbstractController
             }
         }
 
-        return $this->renderForm($form, $items, $previewer, $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK);
+        return $this->renderForm($form, $previewer, $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK);
     }
 
     #[Route('/{id}', name: 'sale_show', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -86,11 +89,11 @@ final class SaleController extends AbstractController
     }
 
     /**
-     * Formulaire avec l'aperçu de prix de chaque ligne reconnue et la liste des pièces d'occasion vendables (datalist, tous lieux).
+     * Formulaire avec l'aperçu de prix (unitaire et total) de chaque ligne reconnue.
      *
      * @param FormInterface<mixed> $form
      */
-    private function renderForm(FormInterface $form, ItemRepository $items, SalePreviewer $previewer, int $status): Response
+    private function renderForm(FormInterface $form, SalePreviewer $previewer, int $status): Response
     {
         $lines = $form->get('lines')->getData();
         $lines = \is_array($lines) ? $lines : [];
@@ -100,32 +103,34 @@ final class SaleController extends AbstractController
             'form' => $form,
             'previews' => $previews,
             'totals' => $previewer->totals($lines, $previews),
-            'sellable' => $items->findSecondHandInStock(),
         ], new Response(status: $status));
     }
 
     /**
-     * `?item={code}` préremplit une ligne sur cette pièce et son lieu, si elle est vendable (occasion en stock, lieu actif) ;
-     * sinon `?variant={id}` préremplit la première pièce d'occasion en stock (plus petit code) et son lieu.
+     * Lieu et article de la première ligne : `?lieu=` (ou valeur soumise, ou lieu actif unique) ;
+     * `?variant=<id>&etat=<value>` présélectionne cet article d'occasion s'il est en stock dans ce lieu
+     * (premier état d'occasion disponible sans `etat`). Sans lieu, celui de la première occasion de la variante.
      *
-     * @return array<string, mixed>
+     * @return array{?Location, ?string} lieu, valeur du choix « <variantId>-<état> »
      */
-    private function initialData(Request $request, EntityManagerInterface $em, ItemRepository $items): array
+    private function prefill(Request $request, LocationRepository $locations, StockLevelRepository $levels): array
     {
-        $empty = ['lines' => [['itemCode' => null, 'discount' => null, 'finalPrice' => null]]];
-        $code = $request->query->getString('item');
-        $item = '' === trim($code) ? null : $items->findOneByCode($code);
-        if (null === $item) {
-            $variantId = $request->query->getString('variant');
-            $variant = ctype_digit($variantId) ? $em->find(Variant::class, (int) $variantId) : null;
-            $item = $variant instanceof Variant
-                ? array_find($items->findInStockByVariants([$variant]), static fn (Item $candidate): bool => StockCondition::New !== $candidate->getCondition())
-                : null;
+        $location = $this->selectedLocation($request, $locations, 'sale');
+        $variantId = $request->query->getString('variant');
+        if (!ctype_digit($variantId)) {
+            return [$location, null];
         }
-        if (null === $item || ItemStatus::InStock !== $item->getStatus() || StockCondition::New === $item->getCondition() || !$item->getLocation()->isActive()) {
-            return $empty;
+        $condition = $request->query->getString('etat');
+        $match = static fn (StockLevel $level): bool => (string) $level->getVariant()->getId() === $variantId
+            && ('' === $condition || $level->getCondition()->value === $condition);
+        if (null === $location) {
+            // Sans lieu (à l'affichage seulement) : celui de la première occasion de la variante dans un lieu actif.
+            $level = $request->request->has('sale') ? null : array_find($levels->findSecondHand(null), static fn (StockLevel $candidate): bool => $match($candidate) && $candidate->getLocation()->isActive());
+            $location = $level?->getLocation();
+        } else {
+            $level = array_find($levels->findSecondHand($location), $match);
         }
 
-        return ['location' => $item->getLocation(), 'lines' => [['itemCode' => $item->getCode(), 'discount' => null, 'finalPrice' => null]]];
+        return [$location, null === $level ? null : SaleLineType::value($level)];
     }
 }

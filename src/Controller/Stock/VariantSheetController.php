@@ -7,6 +7,7 @@ namespace App\Controller\Stock;
 use App\Catalogue\CurrentSeasonProvider;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
+use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use App\Repository\ItemRepository;
 use App\Repository\PlayerHoldingRepository;
@@ -33,14 +34,10 @@ final class VariantSheetController extends AbstractController
 
         // Stock par lieu : pièces et niveaux ventilés par état (équipement), quantités (consommable).
         $locations = [];
-        $secondHand = [];
         foreach ($items->findInStockByVariants([$variant]) as $item) {
             $name = $item->getLocation()->getName();
             $locations[$name]['conditions'][$item->getCondition()->value] = ($locations[$name]['conditions'][$item->getCondition()->value] ?? 0) + 1;
             $locations[$name]['quantity'] = ($locations[$name]['quantity'] ?? 0) + 1;
-            if (StockCondition::New !== $item->getCondition()) {
-                $secondHand[] = $item;
-            }
         }
         foreach ($levels as $level) {
             if ($level->getQuantity() > 0) {
@@ -60,6 +57,15 @@ final class VariantSheetController extends AbstractController
             }
             $locations[$name]['conditions'] = $conditions;
         }
+
+        // Occasion vendable : niveaux d'équipement d'état autre que Neuf, en quantité, par lieu puis état.
+        $secondHand = array_values(array_filter(
+            $levels,
+            static fn (StockLevel $level): bool => ProductKind::Equipment === $variant->getProduct()?->getKind()
+                && StockCondition::New !== $level->getCondition() && $level->getQuantity() > 0,
+        ));
+        $rank = array_flip(array_map(static fn (StockCondition $condition): string => $condition->value, StockCondition::cases()));
+        usort($secondHand, static fn (StockLevel $a, StockLevel $b): int => [$a->getLocation()->getName(), $rank[$a->getCondition()->value]] <=> [$b->getLocation()->getName(), $rank[$b->getCondition()->value]]);
 
         $season = $seasons->get();
 

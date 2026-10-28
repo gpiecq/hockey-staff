@@ -11,7 +11,7 @@ use App\Repository\StockLevelRepository;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Socle commun des écrans Prêter / Retour / Donner d'une variante.
+ * Socle commun des écrans Prêter / Retour / Donner d'une variante et de la vente d'occasion.
  */
 trait VariantFormScreen
 {

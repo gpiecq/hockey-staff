@@ -4,25 +4,25 @@ declare(strict_types=1);
 
 namespace App\Sale;
 
-use App\Repository\ItemRepository;
+use App\Form\Sale\SaleLineMapper;
 use App\Stock\StockException;
 
 /**
- * Calcule, sans rien enregistrer, le prix de chaque ligne saisie dont le code désigne une pièce.
+ * Calcule, sans rien enregistrer, le prix unitaire et le total de chaque ligne saisie dont l'article est reconnu.
  * Sans réduction ni prix final, seul le prix public de référence est donné.
  */
 final readonly class SalePreviewer
 {
     public function __construct(
-        private ItemRepository $items,
+        private SaleLineMapper $mapper,
         private SalePricing $pricing,
     ) {
     }
 
     /**
-     * @param array<array-key, mixed> $lines données des lignes du formulaire (itemCode, discount en %, finalPrice en centimes)
+     * @param array<array-key, mixed> $lines données des lignes du formulaire (stock, quantity, discount en %, finalPrice en centimes)
      *
-     * @return array<array-key, SaleLinePreview> aperçus indexés comme les lignes ; lignes sans pièce reconnue absentes
+     * @return array<array-key, SaleLinePreview> aperçus indexés comme les lignes ; lignes sans article reconnu absentes
      */
     public function preview(array $lines): array
     {
@@ -31,23 +31,23 @@ final readonly class SalePreviewer
             if (!\is_array($row)) {
                 continue;
             }
-            $code = \is_string($row['itemCode'] ?? null) ? trim($row['itemCode']) : '';
-            $item = '' === $code ? null : $this->items->findOneByCode($code);
-            if (null === $item) {
+            $stock = $this->mapper->parse($row['stock'] ?? null);
+            if (null === $stock) {
                 continue;
             }
-            $variant = $item->getVariant();
+            [$variant, $condition] = $stock;
+            $quantity = \is_int($row['quantity'] ?? null) && $row['quantity'] > 0 ? $row['quantity'] : 1;
             $discount = \is_int($row['discount'] ?? null) ? $row['discount'] * 100 : null;
             $finalPrice = \is_int($row['finalPrice'] ?? null) ? $row['finalPrice'] : null;
             $base = $this->pricing->publicReferencePrice($variant);
             if (null === $discount && null === $finalPrice) {
-                $previews[$key] = new SaleLinePreview($item, $base);
+                $previews[$key] = new SaleLinePreview($variant, $condition, $quantity, $base);
                 continue;
             }
             try {
-                $previews[$key] = new SaleLinePreview($item, $base, $this->pricing->price($variant, $discount, $finalPrice));
+                $previews[$key] = new SaleLinePreview($variant, $condition, $quantity, $base, $this->pricing->price($variant, $discount, $finalPrice));
             } catch (StockException $e) {
-                $previews[$key] = new SaleLinePreview($item, $base, error: $e->getMessage());
+                $previews[$key] = new SaleLinePreview($variant, $condition, $quantity, $base, error: $e->getMessage());
             }
         }
 
@@ -55,7 +55,7 @@ final readonly class SalePreviewer
     }
 
     /**
-     * Totaux TTC et HT, seulement si chaque ligne saisie a un prix calculé.
+     * Totaux TTC et HT (somme des totaux de ligne), seulement si chaque ligne saisie a un prix calculé.
      *
      * @param array<array-key, mixed>           $lines
      * @param array<array-key, SaleLinePreview> $previews
@@ -69,12 +69,14 @@ final readonly class SalePreviewer
         }
         $totals = ['ttc' => 0, 'ht' => 0];
         foreach (array_keys($lines) as $key) {
-            $price = ($previews[$key] ?? null)?->price;
-            if (null === $price) {
+            $preview = $previews[$key] ?? null;
+            $ttc = $preview?->totalTtc();
+            $ht = $preview?->totalHt();
+            if (null === $ttc || null === $ht) {
                 return null;
             }
-            $totals['ttc'] += $price->priceTtc;
-            $totals['ht'] += $price->priceHt;
+            $totals['ttc'] += $ttc;
+            $totals['ht'] += $ht;
         }
 
         return $totals;

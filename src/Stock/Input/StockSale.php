@@ -8,7 +8,7 @@ use App\Entity\Location;
 use App\Entity\Player;
 
 /**
- * Vente d'occasion d'une ou plusieurs pièces, toutes en stock dans le même lieu.
+ * Vente d'occasion d'une ou plusieurs lignes (variante × état × quantité), toutes en stock dans le même lieu.
  */
 final readonly class StockSale
 {

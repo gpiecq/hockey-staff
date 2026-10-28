@@ -20,25 +20,27 @@
 
     <table class="table">
         <thead>
-            <tr><th>Pièce</th><th class="num">Prix public</th><th class="num">Réduction</th><th class="num">Prix TTC</th><th class="num">Prix HT</th></tr>
+            <tr><th>Article</th><th>État</th><th class="num">Quantité</th><th class="num">Prix public</th><th class="num">Réduction</th><th class="num">Prix unitaire TTC</th><th class="num">Prix unitaire HT</th><th class="num">Total TTC</th></tr>
         </thead>
         <tbody>
             {% for line in sale.lines %}
-                {% set variant = line.item.variant %}
+                {% set variant = line.variant %}
                 <tr>
-                    <td data-label="Pièce">
-                        <a href="{{ path('stock_item_show', {code: line.item.code}) }}">{{ line.item.code }}</a>
-                        — {{ variant.product.reference }} — {{ variant.product.designation }}{% if variant.label %} — {{ variant.label }}{% endif %}
+                    <td data-label="Article">
+                        <a href="{{ path('stock_variant_show', {id: variant.id}) }}">{{ variant.product.reference }} — {{ variant.product.designation }} · {{ variant.label ?: 'Unique' }}</a>
                     </td>
+                    <td data-label="État">{{ line.condition.label }}</td>
+                    <td class="num" data-label="Quantité">{{ line.quantity }}</td>
                     <td class="num" data-label="Prix public">{{ line.basePriceTtc is null ? '—' : line.basePriceTtc|euros }}</td>
                     <td class="num" data-label="Réduction">{{ line.discountRate is null ? '—' : (line.discountRate / 100)|number_format(0) ~ ' %' ~ (line.discountApplied ? '' : ' (non appliquée)') }}</td>
-                    <td class="num" data-label="Prix TTC">{{ line.priceTtc|euros }}</td>
-                    <td class="num" data-label="Prix HT">{{ line.priceHt|euros }}</td>
+                    <td class="num" data-label="Prix unitaire TTC">{{ line.priceTtc|euros }}</td>
+                    <td class="num" data-label="Prix unitaire HT">{{ line.priceHt|euros }}</td>
+                    <td class="num" data-label="Total TTC">{{ line.totalTtc|euros }}</td>
                 </tr>
             {% endfor %}
         </tbody>
         <tfoot>
-            <tr><th colspan="3">Total</th><th class="num">{{ sale.totalTtc|euros }}</th><th class="num">{{ sale.lines|reduce((sum, l) => sum + l.priceHt, 0)|euros }}</th></tr>
+            <tr><th colspan="7">Total ({{ sale.totalHt|euros }} HT)</th><th class="num">{{ sale.totalTtc|euros }}</th></tr>
         </tfoot>
     </table>
 {% endblock %}

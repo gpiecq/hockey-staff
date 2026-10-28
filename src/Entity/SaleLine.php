@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\StockCondition;
 use App\Sale\SalePrice;
 use App\Sale\SalePricing;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Ligne immuable d'une vente : la pièce vendue et son prix figé (centimes, taux en points de base).
+ * Ligne immuable d'une vente : une quantité d'occasion (variante × état) et son prix **unitaire** figé
+ * (centimes, taux en points de base) ; total de ligne = quantité × prix unitaire.
  */
 #[ORM\Entity]
-#[ORM\UniqueConstraint(name: 'uniq_sale_line_item', columns: ['item_id'])]
 class SaleLine
 {
     #[ORM\Id]
@@ -27,7 +28,13 @@ class SaleLine
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
-    private Item $item;
+    private Variant $variant;
+
+    #[ORM\Column(length: 20, enumType: StockCondition::class)]
+    private StockCondition $condition;
+
+    #[ORM\Column]
+    private int $quantity;
 
     /** Prix public TTC de référence ; null sans tarif public. */
     #[ORM\Column(nullable: true)]
@@ -40,21 +47,25 @@ class SaleLine
     #[ORM\Column]
     private int $vatRate;
 
+    /** Prix unitaire TTC. */
     #[ORM\Column]
     private int $priceTtc;
 
+    /** Prix unitaire HT. */
     #[ORM\Column]
     private int $priceHt;
 
-    public function __construct(Sale $sale, Item $item, SalePrice $price)
+    public function __construct(Sale $sale, Variant $variant, StockCondition $condition, int $quantity, SalePrice $unitPrice)
     {
         $this->sale = $sale;
-        $this->item = $item;
-        $this->basePriceTtc = $price->basePriceTtc;
-        $this->discountRate = $price->discountRate;
-        $this->vatRate = $price->vatRate;
-        $this->priceTtc = $price->priceTtc;
-        $this->priceHt = $price->priceHt;
+        $this->variant = $variant;
+        $this->condition = $condition;
+        $this->quantity = $quantity;
+        $this->basePriceTtc = $unitPrice->basePriceTtc;
+        $this->discountRate = $unitPrice->discountRate;
+        $this->vatRate = $unitPrice->vatRate;
+        $this->priceTtc = $unitPrice->priceTtc;
+        $this->priceHt = $unitPrice->priceHt;
     }
 
     public function getId(): ?int
@@ -67,9 +78,19 @@ class SaleLine
         return $this->sale;
     }
 
-    public function getItem(): Item
+    public function getVariant(): Variant
     {
-        return $this->item;
+        return $this->variant;
+    }
+
+    public function getCondition(): StockCondition
+    {
+        return $this->condition;
+    }
+
+    public function getQuantity(): int
+    {
+        return $this->quantity;
     }
 
     public function getBasePriceTtc(): ?int
@@ -95,6 +116,18 @@ class SaleLine
     public function getPriceHt(): int
     {
         return $this->priceHt;
+    }
+
+    /** Total TTC de la ligne : quantité × prix unitaire TTC. */
+    public function getTotalTtc(): int
+    {
+        return $this->quantity * $this->priceTtc;
+    }
+
+    /** Total HT de la ligne : quantité × prix unitaire HT (pas de recalcul depuis le total TTC). */
+    public function getTotalHt(): int
+    {
+        return $this->quantity * $this->priceHt;
     }
 
     /** Faux quand un prix final a remplacé la réduction saisie (la réduction reste enregistrée, pour mémoire). */

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Stock;
 
-use App\Entity\Item;
+use App\Entity\Location;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
@@ -71,14 +71,33 @@ final class VariantSheetTest extends WebTestCase
         }
     }
 
+    /** Occasion en quantité au « Local » : 2 Usé (niveau de stock). */
+    private function secondHand(KernelBrowser $client, Variant $variant): Location
+    {
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $local = $em->getRepository(Location::class)->findOneBy(['name' => 'Local']);
+        \assert($local instanceof Location);
+        StockFixtures::level($em, $variant, $local, 2, 15000, StockCondition::Worn);
+
+        return $local;
+    }
+
     public function testSellButtonOnlyForManagerWithSecondHandStock(): void
     {
         $client = static::createClient();
-        $this->login($client, UserRole::Stock);
+        $this->login($client, UserRole::Manager);
         $variant = $this->sheet($client);
 
+        // Les pièces d'occasion ne comptent plus : seule l'occasion en quantité se vend.
         $client->request('GET', '/stock/variantes/'.$variant->getId());
         self::assertSame(0, $client->getCrawler()->selectLink('Vendre')->count());
+
+        $local = $this->secondHand($client, $variant);
+        $stock = $client;
+        $this->login($stock, UserRole::Stock, 's@example.test');
+        $stock->request('GET', '/stock/variantes/'.$variant->getId());
+        self::assertSame(0, $stock->getCrawler()->selectLink('Vendre')->count());
 
         $manager = $client;
         $this->login($manager, UserRole::Manager, 'm@example.test');
@@ -87,43 +106,42 @@ final class VariantSheetTest extends WebTestCase
         self::assertSame(1, $link->count());
         self::assertSame('/ventes/new?variant='.$variant->getId(), $link->attr('href'));
 
-        // Sans pièce d'occasion en stock (la seule pièce usée est vendue), le bouton disparaît.
+        // Toute l'occasion vendue : le bouton disparaît.
         $em = $manager->getContainer()->get(EntityManagerInterface::class);
         \assert($em instanceof EntityManagerInterface);
         $recorder = $manager->getContainer()->get(StockMovementRecorder::class);
         \assert($recorder instanceof StockMovementRecorder);
-        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => StockCondition::Worn]);
-        \assert($worn instanceof Item);
-        $recorder->recordSale(new StockSale($worn->getLocation(), 'Mme Dupont', [new StockSaleLine($worn, null, 1000)]));
+        $local = $em->find(Location::class, $local->getId());
+        $sold = $em->find(Variant::class, $variant->getId());
+        \assert($local instanceof Location && $sold instanceof Variant);
+        $recorder->recordSale(new StockSale($local, 'Mme Dupont', [new StockSaleLine($sold, StockCondition::Worn, 2, null, 1000)]));
         $manager->request('GET', '/stock/variantes/'.$variant->getId());
         self::assertSame(0, $manager->getCrawler()->selectLink('Vendre')->count());
     }
 
-    public function testManagerSeesSecondHandItemsWithSellLinks(): void
+    public function testManagerSeesSecondHandLevelsWithSellLinks(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $variant = $this->sheet($client);
-        $em = $client->getContainer()->get(EntityManagerInterface::class);
-        \assert($em instanceof EntityManagerInterface);
-        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => StockCondition::Worn]);
-        \assert($worn instanceof Item);
-        $href = '/ventes/new?item='.$worn->getCode();
+        $local = $this->secondHand($client, $variant);
+        $href = '/ventes/new?variant='.$variant->getId().'&etat=worn&lieu='.$local->getId();
 
         $client->request('GET', '/stock/variantes/'.$variant->getId());
         self::assertCount(0, $client->getCrawler()->filter('a[href="'.$href.'"]'));
-        self::assertStringNotContainsString('Pièces d\'occasion en stock', $client->getCrawler()->filter('body')->text());
+        self::assertStringNotContainsString('Occasion en stock', $client->getCrawler()->filter('body')->text());
 
         $manager = $client;
         $this->login($manager, UserRole::Manager, 'm@example.test');
         $manager->request('GET', '/stock/variantes/'.$variant->getId());
+        self::assertStringContainsString('Occasion en stock', $manager->getCrawler()->filter('body')->text());
         $table = $manager->getCrawler()->filter('table.second-hand');
         self::assertCount(1, $table);
         self::assertCount(1, $table->filter('tbody tr'));
-        $row = $table->filter('tbody tr')->text();
-        self::assertStringContainsString($worn->getCode(), $row);
-        self::assertStringContainsString('Usé', $row);
-        self::assertStringContainsString('Local', $row);
+        $row = $table->filter('tbody tr');
+        self::assertSame('Local', trim($row->filter('td[data-label="Lieu"]')->text()));
+        self::assertSame('Usé', trim($row->filter('td[data-label="État"]')->text()));
+        self::assertSame('2', trim($row->filter('td[data-label="Quantité"]')->text()));
         self::assertSame('Vendre', trim($table->filter('a[href="'.$href.'"]')->text()));
     }
 

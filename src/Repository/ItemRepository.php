@@ -103,30 +103,6 @@ class ItemRepository extends ServiceEntityRepository
     }
 
     /**
-     * Pièces d'occasion (état autre que neuf) en stock, tous lieux, triées par code ; variante, produit et lieu joints.
-     *
-     * @return list<Item>
-     */
-    public function findSecondHandInStock(): array
-    {
-        /** @var list<Item> $items */
-        $items = $this->createQueryBuilder('i')
-            ->addSelect('v', 'p', 'l')
-            ->join('i.variant', 'v')
-            ->join('v.product', 'p')
-            ->join('i.location', 'l')
-            ->where('i.status = :status')
-            ->andWhere('i.condition <> :new')
-            ->setParameter('status', ItemStatus::InStock)
-            ->setParameter('new', StockCondition::New)
-            ->orderBy('i.code')
-            ->getQuery()
-            ->getResult();
-
-        return $items;
-    }
-
-    /**
      * Plus ancienne pièce en stock (plus petit code) de la variante, du lieu et de l'état donnés, verrouillée
      * (PESSIMISTIC_WRITE, état rafraîchi) ; à appeler dans une transaction.
      */

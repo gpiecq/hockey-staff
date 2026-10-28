@@ -35,11 +35,12 @@ class SaleRepository extends ServiceEntityRepository
     }
 
     /**
-     * Nombre de pièces et total TTC par vente, en une seule requête groupée (les lignes ne sont pas chargées).
+     * Nombre d'articles (somme des quantités) et total TTC (somme quantité × prix unitaire) par vente,
+     * en une seule requête groupée (les lignes ne sont pas chargées).
      *
      * @param list<Sale> $sales
      *
-     * @return array<int, array{pieces: int, totalTtc: int}> id de vente => résumé
+     * @return array<int, array{articles: int, totalTtc: int}> id de vente => résumé
      */
     public function summaries(array $sales): array
     {
@@ -49,7 +50,7 @@ class SaleRepository extends ServiceEntityRepository
 
         /** @var list<array{id: int|string, n: int|string, total: int|string}> $rows */
         $rows = $this->getEntityManager()->createQueryBuilder()
-            ->select('IDENTITY(l.sale) AS id', 'COUNT(l.id) AS n', 'SUM(l.priceTtc) AS total')
+            ->select('IDENTITY(l.sale) AS id', 'SUM(l.quantity) AS n', 'SUM(l.quantity * l.priceTtc) AS total')
             ->from(SaleLine::class, 'l')
             ->where('l.sale IN (:sales)')
             ->setParameter('sales', $sales)
@@ -58,24 +59,23 @@ class SaleRepository extends ServiceEntityRepository
 
         $summaries = [];
         foreach ($rows as $row) {
-            $summaries[(int) $row['id']] = ['pieces' => (int) $row['n'], 'totalTtc' => (int) $row['total']];
+            $summaries[(int) $row['id']] = ['articles' => (int) $row['n'], 'totalTtc' => (int) $row['total']];
         }
 
         return $summaries;
     }
 
     /**
-     * Vente pour sa fiche : opération, joueur (même supprimé), lignes, pièces et variantes jointes.
+     * Vente pour sa fiche : opération, joueur (même supprimé), lignes, variantes et produits joints.
      */
     public function findForShow(int $id): ?Sale
     {
         $sale = $this->includingDeletedPeople(fn (): mixed => $this->createQueryBuilder('s')
-            ->addSelect('o', 'pl', 'l', 'i', 'v', 'p')
+            ->addSelect('o', 'pl', 'l', 'v', 'p')
             ->join('s.operation', 'o')
             ->leftJoin('s.player', 'pl')
             ->leftJoin('s.lines', 'l')
-            ->leftJoin('l.item', 'i')
-            ->leftJoin('i.variant', 'v')
+            ->leftJoin('l.variant', 'v')
             ->leftJoin('v.product', 'p')
             ->where('s.id = :id')
             ->setParameter('id', $id)

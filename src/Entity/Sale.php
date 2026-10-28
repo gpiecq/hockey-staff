@@ -97,7 +97,18 @@ class Sale
     {
         $total = 0;
         foreach ($this->lines as $line) {
-            $total += $line->getPriceTtc();
+            $total += $line->getTotalTtc();
+        }
+
+        return $total;
+    }
+
+    /** Total HT en centimes. */
+    public function getTotalHt(): int
+    {
+        $total = 0;
+        foreach ($this->lines as $line) {
+            $total += $line->getTotalHt();
         }
 
         return $total;

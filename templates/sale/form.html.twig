@@ -6,45 +6,41 @@
     <a class="back" href="{{ path('sale_index') }}">‹ Ventes</a>
     <h1>Vente d'occasion</h1>
 
-    {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate'}}) }}
-        {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
+    <turbo-frame id="sale-form" data-controller="variant-location">
+        {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate', 'data-turbo-frame': '_top'}}) }}
+            {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
 
-        <div class="field">
-            {{ form_label(form.location) }}
-            {{ form_widget(form.location) }}
-            {% for error in form.location.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
-        </div>
-        <div class="field">
-            {{ form_label(form.buyer) }}
-            {{ form_widget(form.buyer) }}
-            {% for error in form.buyer.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
-        </div>
-        <div class="field">
-            {{ form_label(form.player) }}
-            {{ form_widget(form.player) }}
-            {% for error in form.player.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
-        </div>
-        <div class="field">
-            {{ form_label(form.comment) }}
-            {{ form_widget(form.comment) }}
-        </div>
+            <div class="field">
+                {{ form_label(form.location) }}
+                {{ form_widget(form.location) }}
+                {% for error in form.location.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+            <div class="field">
+                {{ form_label(form.buyer) }}
+                {{ form_widget(form.buyer) }}
+                {% for error in form.buyer.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+            <div class="field">
+                {{ form_label(form.player) }}
+                {{ form_widget(form.player) }}
+                {% for error in form.player.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+            <div class="field">
+                {{ form_label(form.comment) }}
+                {{ form_widget(form.comment) }}
+            </div>
 
-        {{ include('sale/_lines.html.twig') }}
+            {{ include('sale/_lines.html.twig') }}
 
-        <datalist id="sale-sellable-items">
-            {% for item in sellable %}
-                <option value="{{ item.code }}">{{ item.variant.product.designation }}{% if item.variant.label %} — {{ item.variant.label }}{% endif %} — {{ item.condition.label }} — {{ item.location.name }}</option>
-            {% endfor %}
-        </datalist>
+            {% if totals %}<p class="sale-total"><strong>Total : {{ totals.ttc|euros }} TTC · {{ totals.ht|euros }} HT</strong></p>{% endif %}
 
-        {% if totals %}<p class="sale-total"><strong>Total : {{ totals.ttc|euros }} TTC · {{ totals.ht|euros }} HT</strong></p>{% endif %}
+            {{ form_rest(form) }}
 
-        {{ form_rest(form) }}
-
-        <div class="actions">
-            <button type="submit" class="btn" name="preview" value="1">Calculer</button>
-            <button type="submit" class="btn btn-primary">Enregistrer la vente</button>
-            <a class="btn" href="{{ path('sale_index') }}">Annuler</a>
-        </div>
-    {{ form_end(form) }}
+            <div class="actions">
+                <button type="submit" class="btn" name="preview" value="1">Calculer</button>
+                <button type="submit" class="btn btn-primary">Enregistrer la vente</button>
+                <a class="btn" href="{{ path('sale_index') }}" data-turbo-frame="_top">Annuler</a>
+            </div>
+        {{ form_end(form) }}
+    </turbo-frame>
 {% endblock %}

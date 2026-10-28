@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace App\Form\Sale;
 
-use App\Repository\ItemRepository;
+use App\Entity\Variant;
+use App\Enum\StockCondition;
 use App\Stock\Input\StockSaleLine;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 
 /**
- * Traduit les lignes saisies en StockSaleLine (réduction % → points de base) ;
- * les erreurs de saisie sont portées par les champs de la ligne.
+ * Traduit les lignes saisies en StockSaleLine (choix « <variantId>-<état> », réduction % → points de base) ;
+ * les erreurs de saisie sont portées par les champs de la ligne. Les règles métier (neuf, consommable, doublon,
+ * stock) restent au StockMovementRecorder.
  */
 final readonly class SaleLineMapper
 {
-    public function __construct(private ItemRepository $items)
+    public function __construct(private EntityManagerInterface $em)
     {
     }
 
@@ -27,24 +30,32 @@ final readonly class SaleLineMapper
         $result = [];
         $valid = true;
         foreach ($lines as $line) {
-            /** @var array{itemCode?: ?string, discount?: ?int, finalPrice?: ?int} $row */
+            /** @var array{stock?: ?string, quantity?: ?int, discount?: ?int, finalPrice?: ?int} $row */
             $row = $line->getData();
-            $code = strtoupper(trim($row['itemCode'] ?? ''));
-            if ('' === $code) {
-                $line->get('itemCode')->addError(new FormError('Indiquez le code de la pièce.'));
-                $valid = false;
-                continue;
-            }
-            $item = $this->items->findOneByCode($code);
-            if (null === $item) {
-                $line->get('itemCode')->addError(new FormError(\sprintf('Pièce %s introuvable.', $code)));
+            $stock = $this->parse($row['stock'] ?? null);
+            if (null === $stock) {
+                $line->get('stock')->addError(new FormError('Choisissez l\'article d\'occasion.'));
                 $valid = false;
                 continue;
             }
             $discount = $row['discount'] ?? null;
-            $result[] = new StockSaleLine($item, null === $discount ? null : $discount * 100, $row['finalPrice'] ?? null);
+            $result[] = new StockSaleLine($stock[0], $stock[1], $row['quantity'] ?? 1, null === $discount ? null : $discount * 100, $row['finalPrice'] ?? null);
         }
 
         return $valid ? $result : null;
+    }
+
+    /**
+     * @return array{Variant, StockCondition}|null
+     */
+    public function parse(mixed $value): ?array
+    {
+        if (!\is_string($value) || 1 !== preg_match('/^(\d+)-([a-z]+)$/', $value, $matches)) {
+            return null;
+        }
+        $variant = $this->em->find(Variant::class, (int) $matches[1]);
+        $condition = StockCondition::tryFrom($matches[2]);
+
+        return null === $variant || null === $condition ? null : [$variant, $condition];
     }
 }

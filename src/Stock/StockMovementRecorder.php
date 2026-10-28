@@ -277,30 +277,44 @@ final readonly class StockMovementRecorder
         if ([] === $sale->lines) {
             throw new StockException('Ajoutez au moins une ligne.');
         }
-        // Lignes indexées par id de pièce, dans l'ordre de verrouillage (id croissant) pour éviter les deadlocks.
-        $lines = [];
-        foreach ($sale->lines as $line) {
-            $key = (int) $line->item->getId();
-            if (isset($lines[$key])) {
-                throw new StockException(\sprintf('La pièce %s figure deux fois.', $line->item->getCode()));
+        // Contrôles de forme avant tout accès base ; clé de verrouillage => rang de la ligne saisie.
+        $keys = [];
+        foreach ($sale->lines as $index => $line) {
+            if ($line->quantity < 1) {
+                throw new StockException('La quantité doit être au moins 1.');
             }
-            $lines[$key] = $line;
+            if (ProductKind::Equipment !== $line->variant->getProduct()?->getKind()) {
+                throw new StockException(\sprintf('« %s » est un consommable : il ne se vend pas.', $this->label($line->variant)));
+            }
+            if (StockCondition::New === $line->condition) {
+                throw new StockException(\sprintf('« %s » neuf : seule l\'occasion se vend.', $this->label($line->variant)));
+            }
+            $key = \sprintf('%012d-%s', (int) $line->variant->getId(), $line->condition->value);
+            if (isset($keys[$key])) {
+                throw new StockException(\sprintf('« %s » (%s) figure deux fois : augmentez la quantité.', $this->label($line->variant), $line->condition->label()));
+            }
+            $keys[$key] = $index;
         }
-        ksort($lines);
+        // Ordre global de verrouillage (variante id, puis état ; un seul lieu) pour éviter les deadlocks ;
+        // la vente garde l'ordre de saisie des lignes.
+        ksort($keys);
+        $lines = $sale->lines;
         $season = $this->seasons->get();
 
-        return $this->em->wrapInTransaction(function () use ($sale, $buyer, $lines, $season): StockOperation {
+        return $this->em->wrapInTransaction(function () use ($sale, $buyer, $keys, $lines, $season): StockOperation {
             // Verrous, contrôles et prix avant la première écriture.
+            $locked = [];
+            foreach ($keys as $index) {
+                $line = $lines[$index];
+                $level = $this->levels->findForUpdate($line->variant, $sale->location, $line->condition);
+                if (null === $level || $line->quantity > $level->getQuantity()) {
+                    throw $this->shortStock($line->variant, $line->condition, $sale->location, $level?->getQuantity() ?? 0);
+                }
+                $locked[$index] = $level;
+            }
             $plans = [];
-            foreach ($lines as $line) {
-                $item = $this->items->findForUpdate($line->item);
-                if (ItemStatus::InStock !== $item->getStatus() || $item->getLocation()->getId() !== $sale->location->getId()) {
-                    throw new StockException(\sprintf('La pièce %s n\'est pas en stock à « %s ».', $item->getCode(), $sale->location->getName()));
-                }
-                if (StockCondition::New === $item->getCondition()) {
-                    throw new StockException(\sprintf('La pièce %s est neuve : seule l\'occasion se vend.', $item->getCode()));
-                }
-                $plans[] = [$item, $this->pricing->price($item->getVariant(), $line->discountRate, $line->finalPriceTtc)];
+            foreach ($lines as $index => $line) {
+                $plans[] = [$line, $locked[$index], $this->pricing->price($line->variant, $line->discountRate, $line->finalPriceTtc)];
             }
 
             $record = new Sale($buyer, $sale->player, $sale->comment);
@@ -308,10 +322,10 @@ final readonly class StockMovementRecorder
             $operation = new StockOperation(StockMovementType::SaleOut, $sale->location, null, null, null, null, $sale->player, null, $record);
             $this->em->persist($operation);
 
-            foreach ($plans as [$item, $price]) {
-                $record->addLine(new SaleLine($record, $item, $price));
-                $operation->addMovement(new StockMovement($operation, $item->getVariant(), 1, $item->getPurchaseCostHt(), $item, null, $season));
-                $item->sell();
+            foreach ($plans as [$line, $level, $price]) {
+                $record->addLine(new SaleLine($record, $line->variant, $line->condition, $line->quantity, $price));
+                $value = $level->remove($line->quantity);
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, null, $season, $line->condition));
             }
 
             $this->em->flush();
