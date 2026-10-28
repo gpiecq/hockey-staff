@@ -1,5 +1,8 @@
 {#
   Modèle du menu. Ajouter une rubrique = ajouter un bloc dans `groups` :
+    {title: 'Joueurs', role: 'ROLE_VIEWER', items: [
+        {label: 'Joueurs', route: 'player_index', prefix: 'player_'},
+    ]},
     {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
         {label: 'Produits', route: 'catalogue_product_index', prefix: 'catalogue_product', main: true},
     ]}

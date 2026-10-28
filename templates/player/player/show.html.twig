@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ player.fullName }}{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>{{ player.fullName }}</h1>
+        {% if is_granted('PLAYER_MANAGE') %}
+            <a class="btn" href="{{ path('player_edit', {id: player.id}) }}">Modifier</a>
+        {% endif %}
+    </div>
+
+    <dl>
+        <dt>Poste</dt>
+        <dd>{{ player.position.label }}</dd>
+        <dt>Notes</dt>
+        <dd>{{ player.notes|default('—')|nl2br }}</dd>
+    </dl>
+
+    <p><a href="{{ path('player_index') }}">Retour aux joueurs</a></p>
+{% endblock %}

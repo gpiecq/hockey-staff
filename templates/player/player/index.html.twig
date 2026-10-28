@@ -1,0 +1,43 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Joueurs{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Joueurs</h1>
+        {% if is_granted('PLAYER_MANAGE') %}
+            <a class="btn btn-primary" href="{{ path('player_new') }}">Nouveau joueur</a>
+        {% endif %}
+    </div>
+
+    <form method="get" class="filters" role="search">
+        <input type="search" name="q" value="{{ q }}" placeholder="Nom ou prénom" aria-label="Rechercher un joueur">
+        <button type="submit" class="btn">Rechercher</button>
+    </form>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucun joueur.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Joueur</th><th>Poste</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for player in page.items %}
+                    <tr>
+                        <td><a href="{{ path('player_show', {id: player.id}) }}">{{ player.fullName }}</a></td>
+                        <td>{{ player.position.label }}</td>
+                        <td>
+                            {% if is_granted('PLAYER_MANAGE') %}
+                                <a href="{{ path('player_edit', {id: player.id}) }}">Modifier</a>
+                                <a href="{{ path('player_delete', {id: player.id}) }}">Supprimer</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'joueurs'} %}
+{% endblock %}
