@@ -207,7 +207,10 @@ API Platform reste pour d'éventuels besoins JSON ; l'UI est en Twig + Turbo (pa
    étiquettes passent au lot 8, ordre retenu lot 2 → lot 8 → lot 3.*
 3. **Scan & Hotwire Native** — coques iOS/Android, bridge scanner, flux « scanner → action », scan web de secours.
 4. **Joueurs, équipes, attributions, ventes** — saisons d'équipe, roster, prêt/retour avec état, don, ventes
-   d'occasion avec dépréciation, reçu PDF simple.
+   d'occasion avec dépréciation. *Décidé le 2026-10-28 : le lot 4 passe **avant** le lot 3. Design détaillé :
+   `2026-10-28-lot4-joueurs-attributions-ventes-design.md`, qui remplace sur ces points le § 4 : pas de reçu PDF,
+   ni moyen de paiement, ni statut payé / non payé ; pas d'import CSV des joueurs ; pas de prêt à une équipe (don à
+   un joueur ou à une équipe) ; prix de revente = prix **public** TTC × (1 − % de réduction).*
 5. **Inventaire** — sessions, scans multi-utilisateurs live (Mercure), écarts, ajustements.
 6. **Valorisation** — valeur HT courante, snapshots, graphiques d'évolution, valeur des dotations par fournisseur.
 7. **Préparation assistée du catalogue (IA)** — **LIVRÉ** (recette manuelle à faire, voir les décisions du lot) — *ajouté le 2026-10-27, position dans l'ordre des lots à décider.
