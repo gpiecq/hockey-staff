@@ -20,6 +20,8 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class ItemRepository extends ServiceEntityRepository
 {
+    use IncludesDeletedPeopleTrait;
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Item::class);
@@ -38,6 +40,22 @@ class ItemRepository extends ServiceEntityRepository
     public function findOneByCode(string $code): ?Item
     {
         $item = $this->findOneBy(['code' => strtoupper(trim($code))]);
+
+        return $item instanceof Item ? $item : null;
+    }
+
+    /**
+     * Pièce par code pour sa fiche : détenteur joint, même supprimé (soft delete).
+     */
+    public function findOneByCodeWithHolder(string $code): ?Item
+    {
+        $item = $this->includingDeletedPeople(fn (): mixed => $this->createQueryBuilder('i')
+            ->addSelect('h')
+            ->leftJoin('i.holder', 'h')
+            ->where('i.code = :code')
+            ->setParameter('code', strtoupper(trim($code)))
+            ->getQuery()
+            ->getOneOrNullResult());
 
         return $item instanceof Item ? $item : null;
     }

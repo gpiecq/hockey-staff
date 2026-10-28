@@ -18,9 +18,28 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class StockOperationRepository extends ServiceEntityRepository
 {
+    use IncludesDeletedPeopleTrait;
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, StockOperation::class);
+    }
+
+    /**
+     * Opération pour sa fiche : joueur et équipe joints, même supprimés (soft delete).
+     */
+    public function findWithPeople(int $id): ?StockOperation
+    {
+        $operation = $this->includingDeletedPeople(fn (): mixed => $this->createQueryBuilder('o')
+            ->addSelect('pl', 't')
+            ->leftJoin('o.player', 'pl')
+            ->leftJoin('o.team', 't')
+            ->where('o.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult());
+
+        return $operation instanceof StockOperation ? $operation : null;
     }
 
     /**

@@ -4,8 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Player;
 
+use App\Enum\ItemCondition;
+use App\Enum\TrackingMode;
 use App\Enum\UserRole;
+use App\Stock\Input\StockLoan;
+use App\Stock\StockMovementRecorder;
 use App\Tests\Support\PlayerFixtures;
+use App\Tests\Support\StockFixtures;
+use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -112,5 +118,27 @@ final class PlayerControllerTest extends WebTestCase
         $client->followRedirect();
         self::assertSelectorNotExists('tbody tr');
         self::assertNotNull($this->em($client)->getConnection()->fetchOne('SELECT deleted_at FROM player WHERE id = ?', [$player->getId()]));
+    }
+
+    public function testPlayerHoldingLoanedItemCannotBeDeleted(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        $em = $this->em($client);
+        $recorder = $client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $player = PlayerFixtures::player($em);
+        $local = StockFixtures::location($em, 'Local');
+        $helmet = StockScenario::variant($em, TrackingMode::Serialized, 'CASQUE-1', 'Casque');
+        StockScenario::receive($recorder, $helmet, $local, 1, 15000);
+        $recorder->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
+
+        $crawler = $client->request('GET', '/joueurs/'.$player->getId().'/delete');
+        $client->submit($crawler->selectButton('Confirmer la suppression')->form());
+
+        self::assertResponseRedirects('/joueurs');
+        $client->followRedirect();
+        self::assertSelectorTextContains('body', 'Ce joueur détient encore du matériel prêté : enregistrez d\'abord le retour.');
+        self::assertNull($this->em($client)->getConnection()->fetchOne('SELECT deleted_at FROM player WHERE id = ?', [$player->getId()]));
     }
 }

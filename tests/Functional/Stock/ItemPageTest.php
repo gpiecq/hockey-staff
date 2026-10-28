@@ -160,4 +160,36 @@ final class ItemPageTest extends WebTestCase
         self::assertStringContainsString('Joueur : Léo Martin', $text);
         self::assertStringContainsString('Équipe : U15', $text);
     }
+
+    public function testHistoryStaysReadableAfterPlayerAndTeamAreDeleted(): void
+    {
+        $client = static::createClient();
+        $client->loginUser(UserFactory::create($this->em($client), UserRole::Stock, 'u@example.test'));
+        [$item, $a] = $this->serialized($client);
+        $em = $this->em($client);
+        $player = PlayerFixtures::player($em, 'Martin', 'Léo');
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), ItemCondition::New));
+        $team = PlayerFixtures::team($em, 'U15');
+        $pucks = StockScenario::variant($em, TrackingMode::Quantity, 'PALET', 'Palet');
+        StockScenario::receive($this->recorder($client), $pucks, $a, 10, 100);
+        $gift = $this->recorder($client)->recordGift(new StockGift($a, $pucks, 2, null, null, $team));
+        // Données héritées : suppression douce directe, sans passer par la garde du contrôleur.
+        $em->remove($player);
+        $em->remove($team);
+        $em->flush();
+        $em->clear();
+
+        $client->request('GET', '/stock/pieces/'.$item->getCode());
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('DétenteurLéo Martin', $client->getCrawler()->filter('dl.product-meta')->text());
+        self::assertStringContainsString('Joueur : Léo Martin', $client->getCrawler()->filter('table.history')->text());
+
+        $client->request('GET', '/stock/operations/'.$loan->getId());
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('JoueurLéo Martin', $client->getCrawler()->filter('dl.product-meta')->text());
+
+        $client->request('GET', '/stock/operations/'.$gift->getId());
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('ÉquipeU15', $client->getCrawler()->filter('dl.product-meta')->text());
+    }
 }

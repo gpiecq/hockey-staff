@@ -17,7 +17,7 @@ final class ItemController extends AbstractController
     #[Route('/stock/pieces/{code}', name: 'stock_item_show', requirements: ['code' => '[A-Za-z0-9-]+'], methods: ['GET'])]
     public function show(string $code, ItemRepository $items, StockMovementRepository $movements): Response
     {
-        $item = $items->findOneByCode($code) ?? throw $this->createNotFoundException('Pièce introuvable.');
+        $item = $items->findOneByCodeWithHolder($code) ?? throw $this->createNotFoundException('Pièce introuvable.');
 
         return $this->render('stock/item/show.html.twig', [
             'item' => $item,

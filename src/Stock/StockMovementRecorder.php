@@ -212,21 +212,22 @@ final readonly class StockMovementRecorder
         if ($gift->quantity < 1) {
             throw new StockException('La quantité doit être au moins 1.');
         }
-        $serialized = TrackingMode::Serialized === $gift->variant->getProduct()?->getTrackingMode();
-        if ($serialized && null === $gift->condition) {
-            throw new StockException('Choisissez l\'état de la pièce.');
-        }
-        if ($serialized && 1 !== $gift->quantity) {
-            throw new StockException('Une pièce se donne à l\'unité : quantité 1.');
+        // État de la pièce à donner ; null pour un produit suivi en quantité.
+        $condition = null;
+        if (TrackingMode::Serialized === $gift->variant->getProduct()?->getTrackingMode()) {
+            $condition = $gift->condition ?? throw new StockException('Choisissez l\'état de la pièce.');
+            if (1 !== $gift->quantity) {
+                throw new StockException('Une pièce se donne à l\'unité : quantité 1.');
+            }
         }
         $season = $this->seasons->get();
 
-        return $this->em->wrapInTransaction(function () use ($gift, $serialized, $season): StockOperation {
+        return $this->em->wrapInTransaction(function () use ($gift, $condition, $season): StockOperation {
             // Verrous et contrôles avant la première écriture.
             $item = null;
             $level = null;
-            if (null !== $gift->condition && $serialized) {
-                $item = $this->lockOldestInStock($gift->variant, $gift->location, $gift->condition);
+            if (null !== $condition) {
+                $item = $this->lockOldestInStock($gift->variant, $gift->location, $condition);
             } else {
                 $level = $this->lockAndCheck($gift->location, [new StockLine($gift->variant, $gift->quantity)])['levels'][(int) $gift->variant->getId()];
             }

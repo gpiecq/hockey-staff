@@ -60,8 +60,10 @@ final class OperationController extends AbstractController
 
     #[Route('/{id}', name: 'stock_operation_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     #[IsGranted('STOCK_VIEW')]
-    public function show(StockOperation $operation): Response
+    public function show(int $id, StockOperationRepository $operations): Response
     {
+        $operation = $operations->findWithPeople($id) ?? throw $this->createNotFoundException('Opération introuvable.');
+
         return $this->render('stock/operation/show.html.twig', ['operation' => $operation]);
     }
 }

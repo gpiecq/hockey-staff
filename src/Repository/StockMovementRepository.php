@@ -14,6 +14,8 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class StockMovementRepository extends ServiceEntityRepository
 {
+    use IncludesDeletedPeopleTrait;
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, StockMovement::class);
@@ -27,7 +29,7 @@ class StockMovementRepository extends ServiceEntityRepository
     public function findByItem(Item $item): array
     {
         /** @var list<StockMovement> $movements */
-        $movements = $this->createQueryBuilder('m')
+        $movements = $this->includingDeletedPeople(fn (): mixed => $this->createQueryBuilder('m')
             ->addSelect('o', 's', 'd', 'pl', 't')
             ->join('m.operation', 'o')
             ->leftJoin('o.source', 's')
@@ -39,7 +41,7 @@ class StockMovementRepository extends ServiceEntityRepository
             ->orderBy('o.occurredAt', 'DESC')
             ->addOrderBy('m.id', 'DESC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
 
         return $movements;
     }

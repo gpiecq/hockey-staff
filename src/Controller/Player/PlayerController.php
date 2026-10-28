@@ -7,6 +7,7 @@ namespace App\Controller\Player;
 use App\Entity\Player;
 use App\Form\PlayerType;
 use App\Pagination\Page;
+use App\Repository\ItemRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\RosterEntryRepository;
 use App\Repository\SeasonRepository;
@@ -107,11 +108,17 @@ final class PlayerController extends AbstractController
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/{id}/delete', name: 'player_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted(PlayerVoter::MANAGE)]
-    public function delete(Player $player, Request $request, EntityManagerInterface $em): Response
+    public function delete(Player $player, Request $request, EntityManagerInterface $em, ItemRepository $items): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('player_delete_'.$player->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            if ([] !== $items->findLoanedByPlayer($player)) {
+                $this->addFlash('error', 'Ce joueur détient encore du matériel prêté : enregistrez d\'abord le retour.');
+
+                return $this->redirectToRoute('player_index');
             }
 
             $em->remove($player);
