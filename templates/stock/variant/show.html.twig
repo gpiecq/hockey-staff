@@ -11,23 +11,6 @@
     <p><strong>{{ variant.label ?: 'Unique' }}</strong>
         {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}</p>
 
-    {% if is_granted('STOCK_MOVE') %}
-        <div class="actions variant-actions">
-            {% if equipment %}
-                <a class="btn btn-primary" href="{{ path('stock_loan_new', {id: variant.id}) }}">Prêter</a>
-                {% if holders is not empty %}<a class="btn" href="{{ path('stock_loan_return', {id: variant.id}) }}">Retour</a>{% endif %}
-            {% endif %}
-            <a class="btn" href="{{ path('stock_gift_new', {id: variant.id}) }}">Donner</a>
-            <a class="btn" href="{{ path('stock_out_new') }}">Sortie</a>
-        </div>
-    {% endif %}
-
-    {% if equipment and secondHand is not empty and is_granted('SALE_MANAGE') %}
-        <div class="actions variant-actions">
-            <a class="btn" href="{{ path('sale_new', {variant: variant.id}) }}">Vendre</a>
-        </div>
-    {% endif %}
-
     <dl class="product-meta">
         <dt>Référence</dt><dd><a href="{{ path('catalogue_product_show', {id: product.id}) }}">{{ product.reference }}</a></dd>
         <dt>EAN</dt><dd>{{ variant.ean ?? '—' }}</dd>
@@ -40,6 +23,23 @@
             <dt>Tarif</dt><dd class="muted">Tarif absent</dd>
         {% endif %}
     </dl>
+
+    {% set inStock = locations is not empty %}
+    {% set canMove = is_granted('STOCK_MOVE') and inStock %}
+    {% set canLoan = equipment and canMove %}
+    {% set canReturn = is_granted('STOCK_MOVE') and holders is not empty %}
+    {% set canSell = equipment and secondHand is not empty and is_granted('SALE_MANAGE') %}
+    {% if canLoan or canReturn or canMove or canSell %}
+        <div class="actions variant-actions">
+            {% if canLoan %}<a class="btn btn-primary" href="{{ path('stock_loan_new', {id: variant.id}) }}">Prêter</a>{% endif %}
+            {% if canReturn %}<a class="btn" href="{{ path('stock_loan_return', {id: variant.id}) }}">Retour</a>{% endif %}
+            {% if canMove %}
+                <a class="btn" href="{{ path('stock_gift_new', {id: variant.id}) }}">Donner</a>
+                <a class="btn" href="{{ path('stock_out_new', {variant: variant.id}) }}">Sortie</a>
+            {% endif %}
+            {% if canSell %}<a class="btn" href="{{ path('sale_new', {variant: variant.id}) }}">Vendre</a>{% endif %}
+        </div>
+    {% endif %}
 
     <h2>Stock par lieu</h2>
     {% if locations is empty %}

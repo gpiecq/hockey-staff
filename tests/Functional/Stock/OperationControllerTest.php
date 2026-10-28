@@ -219,6 +219,7 @@ final class OperationControllerTest extends WebTestCase
         self::assertStringContainsString('Hugo', $page);
         self::assertStringContainsString('Durand', $page);
         self::assertStringContainsString('Casque', $page);
+        self::assertSame('Usé', trim($client->getCrawler()->filter('table td[data-label="État"]')->text()));
 
         $this->page($client, $gift);
         self::assertSelectorTextContains('dl.product-meta', 'Équipe');

@@ -137,6 +137,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
 .page-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem}
 .help{color:var(--muted);font-size:.875rem;margin:0}
 .actions{display:flex;gap:.75rem;flex-wrap:wrap}
+.variant-actions{margin:0 0 1.5rem}
+.plain-list{list-style:none;margin:0;padding:0}
+.plain-list li+li{margin-top:.25rem}
 
 /* Autocomplétion (Tom Select via symfony/ux-autocomplete) aux couleurs de la charte */
 .ts-wrapper{width:100%}

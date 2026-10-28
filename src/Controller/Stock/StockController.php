@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Stock;
 
+use App\Entity\Location;
 use App\Repository\CategoryRepository;
 use App\Repository\LocationRepository;
 use App\Stock\StockQuery;
@@ -24,11 +25,14 @@ final class StockController extends AbstractController
         $categoryId = $this->idParam($request, 'categorie');
         $search = trim($request->query->getString('q'));
 
+        $allLocations = $locations->findBy([], ['name' => 'ASC', 'id' => 'ASC']);
+
         return $this->render('stock/index.html.twig', [
             'page' => $stock->rows($location, $categoryId, '' === $search ? null : $search, $request->query->getString('page')),
             'total' => $stock->totalValueHt($location),
             'location' => $location,
-            'locations' => $locations->findBy([], ['name' => 'ASC', 'id' => 'ASC']),
+            'locations' => $allLocations,
+            'locationNames' => array_combine(array_map(static fn (Location $l): int => (int) $l->getId(), $allLocations), array_map(static fn (Location $l): string => $l->getName(), $allLocations)),
             'categories' => $categories->createTreeQueryBuilder()->getQuery()->getResult(),
             'categoryId' => $categoryId,
             'search' => $search,

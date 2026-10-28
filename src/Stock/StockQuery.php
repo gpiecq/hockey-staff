@@ -10,6 +10,7 @@ use App\Entity\PlayerHolding;
 use App\Entity\Product;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
+use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use App\Pagination\Page;
 use Doctrine\ORM\EntityManagerInterface;
@@ -77,9 +78,9 @@ final readonly class StockQuery
         $totals = [] === $ids ? [] : $this->aggregate($ids, $location);
 
         $rows = array_map(static function (Variant $variant) use ($totals): StockRow {
-            $data = $totals[$variant->getId() ?? 0] ?? ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0];
+            $data = $totals[$variant->getId() ?? 0] ?? ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0, 'conditions' => []];
 
-            return new StockRow($variant, $data['quantity'], $data['value'], $data['locations'], $data['loaned']);
+            return new StockRow($variant, $data['quantity'], $data['value'], $data['locations'], $data['loaned'], ProductKind::Equipment === $variant->getProduct()?->getKind() ? self::secondHandConditions($data['conditions']) : []);
         }, $items);
 
         return new Page($rows, $variants->page, $variants->perPage, $variants->total);
@@ -152,30 +153,31 @@ final readonly class StockQuery
     /**
      * @param list<int> $variantIds
      *
-     * @return array<int, array{quantity: int, value: int, locations: array<int, int>, loaned: int}>
+     * @return array<int, array{quantity: int, value: int, locations: array<int, int>, loaned: int, conditions: array<int, array<string, int>>}>
      */
     private function aggregate(array $variantIds, ?Location $location): array
     {
         $levels = $this->em->createQueryBuilder()
-            ->select('IDENTITY(l.variant) AS variant', 'IDENTITY(l.location) AS location', 'SUM(l.quantity) AS qty', 'SUM(l.valueHt) AS value')
+            ->select('IDENTITY(l.variant) AS variant', 'IDENTITY(l.location) AS location', 'l.condition AS cond', 'SUM(l.quantity) AS qty', 'SUM(l.valueHt) AS value')
             ->from(StockLevel::class, 'l')
             ->where('l.quantity > 0 AND l.variant IN (:ids)')
             ->setParameter('ids', $variantIds)
-            ->groupBy('l.variant', 'l.location');
+            ->groupBy('l.variant', 'l.location', 'l.condition');
         if (null !== $location) {
             $levels->andWhere('l.location = :location')->setParameter('location', $location);
         }
 
         $totals = [];
-        /** @var list<array{variant: int|string, location: int|string, qty: int|string, value: int|string|null}> $rows */
+        /** @var list<array{variant: int|string, location: int|string, cond: StockCondition, qty: int|string, value: int|string|null}> $rows */
         $rows = $levels->getQuery()->getArrayResult();
         foreach ($rows as $row) {
             $variant = (int) $row['variant'];
             $loc = (int) $row['location'];
-            $totals[$variant] ??= ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0];
+            $totals[$variant] ??= ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0, 'conditions' => []];
             $totals[$variant]['quantity'] += (int) $row['qty'];
             $totals[$variant]['value'] += (int) $row['value'];
             $totals[$variant]['locations'][$loc] = ($totals[$variant]['locations'][$loc] ?? 0) + (int) $row['qty'];
+            $totals[$variant]['conditions'][$loc][$row['cond']->value] = (int) $row['qty'];
         }
 
         // Sans filtre de lieu : les quantités détenues par les joueurs comptent comme prêtées.
@@ -190,7 +192,7 @@ final readonly class StockQuery
                 ->getQuery()->getArrayResult();
             foreach ($held as $row) {
                 $variant = (int) $row['variant'];
-                $totals[$variant] ??= ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0];
+                $totals[$variant] ??= ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0, 'conditions' => []];
                 $totals[$variant]['quantity'] += (int) $row['qty'];
                 $totals[$variant]['value'] += (int) $row['value'];
                 $totals[$variant]['loaned'] += (int) $row['qty'];
@@ -198,6 +200,30 @@ final readonly class StockQuery
         }
 
         return $totals;
+    }
+
+    /**
+     * Ne garde que les lieux où l'équipement a de l'occasion ; états dans l'ordre Neuf, Bon, Usé, Abîmé.
+     *
+     * @param array<int, array<string, int>> $byLocation
+     *
+     * @return array<int, array<string, int>>
+     */
+    private static function secondHandConditions(array $byLocation): array
+    {
+        $result = [];
+        foreach ($byLocation as $location => $conditions) {
+            if ([] === array_diff_key($conditions, [StockCondition::New->value => true])) {
+                continue;
+            }
+            foreach (StockCondition::cases() as $condition) {
+                if (isset($conditions[$condition->value])) {
+                    $result[$location][$condition->value] = $conditions[$condition->value];
+                }
+            }
+        }
+
+        return $result;
     }
 
     private function int(mixed $value): int

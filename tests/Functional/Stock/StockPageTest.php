@@ -77,6 +77,33 @@ final class StockPageTest extends WebTestCase
         self::assertStringContainsString('Casque série', $this->text($client));
     }
 
+    public function testEquipmentRowShowsConditionBreakdown(): void
+    {
+        $client = static::createClient();
+        $em = $this->em($client);
+        $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
+        $a = StockFixtures::location($em, 'Local A');
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'REF-E', 'Casque mixte');
+        $tape = StockScenario::variant($em, ProductKind::Consumable, 'REF-T', 'Tape vrac');
+        StockScenario::receive($this->recorder($client), $helmet, $a, 3, 8000);
+        StockScenario::receive($this->recorder($client), $helmet, $a, 2, 5000, StockCondition::Worn);
+        StockScenario::receive($this->recorder($client), $tape, $a, 4, 300);
+
+        $client->request('GET', '/stock');
+
+        self::assertResponseIsSuccessful();
+        $rows = $client->getCrawler()->filter('table.stock-table tbody tr');
+        self::assertCount(2, $rows);
+        $byName = ['helmet' => '', 'tape' => ''];
+        foreach ($rows as $row) {
+            $text = str_replace("\u{00A0}", ' ', $row->textContent);
+            $byName[str_contains($text, 'Casque mixte') ? 'helmet' : 'tape'] = $text;
+        }
+        self::assertStringContainsString('Local A : 5', $byName['helmet']);
+        self::assertStringContainsString('Neuf 3 · Usé 2', $byName['helmet']);
+        self::assertStringNotContainsString('Neuf', $byName['tape']);
+    }
+
     public function testLocationFilterRestrictsRowsAndTotal(): void
     {
         $client = static::createClient();
