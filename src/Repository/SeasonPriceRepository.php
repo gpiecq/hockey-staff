@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Product;
 use App\Entity\Season;
 use App\Entity\SeasonPrice;
+use App\Entity\Variant;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -18,6 +19,33 @@ class SeasonPriceRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, SeasonPrice::class);
+    }
+
+    /**
+     * Tarif de référence pour le prix public : celui de la saison courante s'il a un prix public, sinon celui de la
+     * saison la plus récente (startsOn) qui en a un, sinon null.
+     */
+    public function findPublicReference(Variant $variant, ?Season $current): ?SeasonPrice
+    {
+        if (null !== $current) {
+            $price = $this->findOneBy(['variant' => $variant, 'season' => $current]);
+            if (null !== $price?->getPublicPriceTtc()) {
+                return $price;
+            }
+        }
+
+        /** @var ?SeasonPrice $latest */
+        $latest = $this->createQueryBuilder('sp')
+            ->join('sp.season', 's')
+            ->where('sp.variant = :variant')
+            ->andWhere('sp.publicPriceTtc IS NOT NULL')
+            ->setParameter('variant', $variant)
+            ->orderBy('s.startsOn', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $latest;
     }
 
     /** @return array<int, SeasonPrice> tarifs de la saison pour les variantes du produit, indexés par id de variante */

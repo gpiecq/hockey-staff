@@ -7,6 +7,8 @@ namespace App\Stock;
 use App\Catalogue\CurrentSeasonProvider;
 use App\Entity\Item;
 use App\Entity\Location;
+use App\Entity\Sale;
+use App\Entity\SaleLine;
 use App\Entity\StockLevel;
 use App\Entity\StockMovement;
 use App\Entity\StockOperation;
@@ -18,6 +20,7 @@ use App\Enum\StockOutReason;
 use App\Enum\TrackingMode;
 use App\Repository\ItemRepository;
 use App\Repository\StockLevelRepository;
+use App\Sale\SalePricing;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\Input\StockGift;
@@ -25,6 +28,7 @@ use App\Stock\Input\StockLine;
 use App\Stock\Input\StockLoan;
 use App\Stock\Input\StockOut;
 use App\Stock\Input\StockReturn;
+use App\Stock\Input\StockSale;
 use App\Stock\Input\StockTransfer;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -39,6 +43,7 @@ final readonly class StockMovementRecorder
         private ItemRepository $items,
         private EntryCostProvider $costs,
         private CurrentSeasonProvider $seasons,
+        private SalePricing $pricing,
     ) {
     }
 
@@ -240,6 +245,58 @@ final readonly class StockMovementRecorder
             } else {
                 $value = $level->remove($gift->quantity);
                 $operation->addMovement(new StockMovement($operation, $gift->variant, $gift->quantity, (int) round($value / $gift->quantity), null, null, $season));
+            }
+
+            $this->em->flush();
+
+            return $operation;
+        });
+    }
+
+    public function recordSale(StockSale $sale): StockOperation
+    {
+        $buyer = trim($sale->buyer);
+        if ('' === $buyer) {
+            throw new StockException('Indiquez l\'acheteur.');
+        }
+        if ([] === $sale->lines) {
+            throw new StockException('Ajoutez au moins une ligne.');
+        }
+        // Lignes indexées par id de pièce, dans l'ordre de verrouillage (id croissant) pour éviter les deadlocks.
+        $lines = [];
+        foreach ($sale->lines as $line) {
+            $key = (int) $line->item->getId();
+            if (isset($lines[$key])) {
+                throw new StockException(\sprintf('La pièce %s figure deux fois.', $line->item->getCode()));
+            }
+            $lines[$key] = $line;
+        }
+        ksort($lines);
+        $season = $this->seasons->get();
+
+        return $this->em->wrapInTransaction(function () use ($sale, $buyer, $lines, $season): StockOperation {
+            // Verrous, contrôles et prix avant la première écriture.
+            $plans = [];
+            foreach ($lines as $line) {
+                $item = $this->items->findForUpdate($line->item);
+                if (ItemStatus::InStock !== $item->getStatus() || $item->getLocation()->getId() !== $sale->location->getId()) {
+                    throw new StockException(\sprintf('La pièce %s n\'est pas en stock à « %s ».', $item->getCode(), $sale->location->getName()));
+                }
+                if (ItemCondition::New === $item->getCondition()) {
+                    throw new StockException(\sprintf('La pièce %s est neuve : seule l\'occasion se vend.', $item->getCode()));
+                }
+                $plans[] = [$item, $this->pricing->price($item->getVariant(), $line->discountRate, $line->finalPriceTtc)];
+            }
+
+            $record = new Sale($buyer, $sale->player, $sale->comment);
+            $this->em->persist($record);
+            $operation = new StockOperation(StockMovementType::SaleOut, $sale->location, null, null, null, null, $sale->player, null, $record);
+            $this->em->persist($operation);
+
+            foreach ($plans as [$item, $price]) {
+                $record->addLine(new SaleLine($record, $item, $price));
+                $operation->addMovement(new StockMovement($operation, $item->getVariant(), 1, $item->getPurchaseCostHt(), $item, null, $season));
+                $item->sell();
             }
 
             $this->em->flush();

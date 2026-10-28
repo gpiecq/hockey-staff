@@ -57,6 +57,11 @@ class StockOperation
     #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?Team $team;
 
+    /** Vente portée par une opération `SALE_OUT`. */
+    #[ORM\OneToOne(inversedBy: 'operation')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    private ?Sale $sale;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $occurredAt;
 
@@ -74,6 +79,7 @@ class StockOperation
         ?string $comment = null,
         ?Player $player = null,
         ?Team $team = null,
+        ?Sale $sale = null,
     ) {
         $this->type = $type;
         $this->source = $source;
@@ -83,6 +89,8 @@ class StockOperation
         $this->comment = $comment;
         $this->player = $player;
         $this->team = $team;
+        $this->sale = $sale;
+        $sale?->attachTo($this);
         $this->occurredAt = new \DateTimeImmutable();
         $this->movements = new ArrayCollection();
     }
@@ -130,6 +138,11 @@ class StockOperation
     public function getTeam(): ?Team
     {
         return $this->team;
+    }
+
+    public function getSale(): ?Sale
+    {
+        return $this->sale;
     }
 
     public function getOccurredAt(): \DateTimeImmutable
