@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller\Stock;
 
-use App\Entity\Item;
+use App\Entity\Location;
 use App\Entity\StockOperation;
+use App\Entity\Variant;
 use App\Form\Stock\StockLineMapper;
-use App\Repository\ItemRepository;
+use App\Repository\LocationRepository;
+use App\Repository\VariantRepository;
 use App\Stock\StockException;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
@@ -15,7 +17,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Socle commun des écrans de sortie et de transfert (préremplissage par pièce, soumission, rendu).
+ * Socle commun des écrans de sortie et de transfert (préremplissage par article et lieu, soumission, rendu).
  */
 trait StockOperationScreen
 {
@@ -25,19 +27,27 @@ trait StockOperationScreen
     }
 
     /**
-     * Données initiales du formulaire ; `?item=HS-…` préremplit la ligne et le lieu `$locationField` (code inconnu : formulaire vide).
+     * Données initiales du formulaire ; `?variant=<id>` préremplit la ligne et `?lieu=<id>` le lieu `$locationField` (identifiant inconnu ou lieu inactif : ignoré).
      *
      * @return array<string, mixed>
      */
-    private function initialData(Request $request, ItemRepository $items, string $locationField): array
+    private function initialData(Request $request, VariantRepository $variants, LocationRepository $locations, string $locationField): array
     {
-        $code = $request->query->getString('item');
-        $item = '' !== $code ? $items->findOneByCode($code) : null;
-        if ($item instanceof Item) {
-            return [$locationField => $item->getLocation(), 'lines' => [['itemCode' => $item->getCode(), 'variant' => null, 'quantity' => null]]];
+        $data = ['lines' => [['itemCode' => null, 'variant' => null, 'quantity' => 1]]];
+
+        $variantId = $request->query->getString('variant');
+        $variant = ctype_digit($variantId) ? $variants->find((int) $variantId) : null;
+        if ($variant instanceof Variant) {
+            $data['lines'][0]['variant'] = $variant;
         }
 
-        return ['lines' => [['itemCode' => null, 'variant' => null, 'quantity' => 1]]];
+        $locationId = $request->query->getString('lieu');
+        $location = ctype_digit($locationId) ? $locations->find((int) $locationId) : null;
+        if ($location instanceof Location && $location->isActive()) {
+            $data[$locationField] = $location;
+        }
+
+        return $data;
     }
 
     /**

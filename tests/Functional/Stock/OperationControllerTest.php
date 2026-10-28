@@ -122,7 +122,7 @@ final class OperationControllerTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         $page = str_replace("\u{00A0}", ' ', $client->getCrawler()->filter('body')->text());
-        self::assertSame(2, preg_match_all('/HS-[A-Z0-9]+/', $page));
+        self::assertStringNotContainsString('HS-', $page);
         self::assertStringContainsString('80,00 €', $page);
         self::assertStringContainsString('Local A', $page);
     }

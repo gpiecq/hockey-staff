@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Label;
 
-use App\Entity\Item;
-use App\Entity\Location;
 use App\Entity\Variant;
 use App\Label\BarcodeChoice;
 use App\Label\Symbology;
@@ -48,15 +46,5 @@ final class BarcodeChoiceTest extends TestCase
         yield 'bad check digit' => ['876369003339'];
         yield 'null' => [null];
         yield 'not numeric' => ['ABC123'];
-    }
-
-    public function testItemIsCode128OfItsCode(): void
-    {
-        $item = new Item('HS-000042', new Variant(), new Location(), 1000);
-
-        $barcode = BarcodeChoice::forItem($item);
-
-        self::assertSame(Symbology::Code128, $barcode->symbology);
-        self::assertSame('HS-000042', $barcode->value);
     }
 }

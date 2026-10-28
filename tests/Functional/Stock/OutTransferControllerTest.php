@@ -283,31 +283,60 @@ final class OutTransferControllerTest extends WebTestCase
         self::assertSame(1, $this->quantity($client, $variant, $b));
     }
 
-    public function testItemPrefill(): void
+    public function testOutFormPrefilledFromVariant(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         StockFixtures::location($this->em($client), 'Autre lieu');
-        $location = StockFixtures::location($this->em($client), 'Lieu pièce');
-        $this->receive($client, ProductKind::Equipment, $location, 1);
-        $item = $this->item($client);
+        $location = StockFixtures::location($this->em($client), 'Lieu prérempli');
+        $variant = $this->receive($client, ProductKind::Consumable, $location, 2);
 
-        $crawler = $client->request('GET', '/stock/sortie?item='.$item->getCode());
+        $crawler = $client->request('GET', '/stock/sortie?variant='.$variant->getId().'&lieu='.$location->getId());
 
         self::assertResponseIsSuccessful();
-        self::assertSame($item->getCode(), $crawler->filter('input[name="stock_out[lines][0][itemCode]"]')->attr('value'));
+        self::assertSame((string) $variant->getId(), $crawler->filter('select[name="stock_out[lines][0][variant]"] option[selected]')->attr('value'));
         self::assertSame((string) $location->getId(), $crawler->filter('select[name="stock_out[location]"] option[selected]')->attr('value'));
     }
 
-    public function testUnknownItemPrefillOpensEmptyForm(): void
+    public function testTransferFormPrefilledFromVariantAndLocation(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $location = StockFixtures::location($this->em($client), 'Lieu source');
+        $variant = $this->receive($client, ProductKind::Consumable, $location, 2);
+
+        $crawler = $client->request('GET', '/stock/transfert?variant='.$variant->getId().'&lieu='.$location->getId());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame((string) $variant->getId(), $crawler->filter('select[name="stock_transfer[lines][0][variant]"] option[selected]')->attr('value'));
+        self::assertSame((string) $location->getId(), $crawler->filter('select[name="stock_transfer[from]"] option[selected]')->attr('value'));
+    }
+
+    public function testInvalidPrefillOpensEmptyForm(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $inactive = StockFixtures::location($this->em($client), 'Lieu inactif');
+        $inactive->setActive(false);
+        $this->em($client)->flush();
+
+        $crawler = $client->request('GET', '/stock/transfert?variant=999999&lieu='.$inactive->getId());
+        self::assertResponseIsSuccessful();
+        self::assertCount(0, $crawler->filter('select[name="stock_transfer[lines][0][variant]"] option[selected]:not([value=""])'));
+        self::assertCount(0, $crawler->filter('select[name="stock_transfer[from]"] option[selected]:not([value=""])'));
+
+        $client->request('GET', '/stock/sortie?variant=abc&lieu=xyz&item=HS-000001');
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testItemPageIsGone(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
 
-        $crawler = $client->request('GET', '/stock/transfert?item=HS-999999');
+        $client->request('GET', '/stock/pieces/HS-000001');
 
-        self::assertResponseIsSuccessful();
-        self::assertSame('', (string) $crawler->filter('input[name="stock_transfer[lines][0][itemCode]"]')->attr('value'));
+        self::assertResponseStatusCodeSame(404);
     }
 
     public function testViewerCannotOpenOutOrTransfer(): void

@@ -8,7 +8,8 @@ use App\Entity\Location;
 use App\Enum\StockOutReason;
 use App\Form\Stock\StockLineMapper;
 use App\Form\Stock\StockOutType;
-use App\Repository\ItemRepository;
+use App\Repository\LocationRepository;
+use App\Repository\VariantRepository;
 use App\Stock\Input\StockOut;
 use App\Stock\StockMovementRecorder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,9 +24,9 @@ final class OutController extends AbstractController
     use StockOperationScreen;
 
     #[Route('/stock/sortie', name: 'stock_out_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, StockMovementRecorder $recorder, StockLineMapper $mapper, ItemRepository $items): Response
+    public function new(Request $request, StockMovementRecorder $recorder, StockLineMapper $mapper, VariantRepository $variants, LocationRepository $locations): Response
     {
-        $form = $this->createForm(StockOutType::class, $this->initialData($request, $items, 'location'));
+        $form = $this->createForm(StockOutType::class, $this->initialData($request, $variants, $locations, 'location'));
 
         return $this->handleOperation($request, $form, $mapper, function (array $lines) use ($form, $recorder) {
             /** @var array{location: Location, reason: StockOutReason, comment: ?string} $values */

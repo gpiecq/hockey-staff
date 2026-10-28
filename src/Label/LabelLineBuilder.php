@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Label;
 
-use App\Entity\Item;
 use App\Entity\Product;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
-use App\Repository\ItemRepository;
 use App\Repository\VariantRepository;
 use App\Stock\StockPresence;
 
@@ -21,7 +18,6 @@ use App\Stock\StockPresence;
 final readonly class LabelLineBuilder
 {
     public function __construct(
-        private ItemRepository $items,
         private VariantRepository $variants,
         private StockPresence $presence,
     ) {
@@ -32,24 +28,12 @@ final readonly class LabelLineBuilder
      *
      * @return list<LabelLine>
      */
-    public function forVariants(array $variants, LabelMode $mode): array
+    public function forVariants(array $variants): array
     {
-        $variants = $this->labelable($variants);
-        $itemsByVariant = LabelMode::Items === $mode ? $this->itemsByVariant($variants) : [];
-
-        $lines = [];
-        foreach ($variants as $variant) {
-            $items = $itemsByVariant[(int) $variant->getId()] ?? [];
-            if ([] === $items) {
-                $lines[] = new LabelLine($variant, null, 1);
-                continue;
-            }
-            foreach ($items as $item) {
-                $lines[] = new LabelLine(null, $item, 1);
-            }
-        }
-
-        return $lines;
+        return array_map(
+            static fn (Variant $variant): LabelLine => new LabelLine($variant, 1),
+            $this->labelable($variants),
+        );
     }
 
     /**
@@ -57,20 +41,14 @@ final readonly class LabelLineBuilder
      *
      * @return list<LabelLine>
      */
-    public function forProducts(array $products, LabelMode $mode): array
+    public function forProducts(array $products): array
     {
         $variants = [];
         foreach ($products as $product) {
             array_push($variants, ...$this->variants->findLiveByProduct($product));
         }
 
-        return $this->forVariants($variants, $mode);
-    }
-
-    /** @return list<LabelLine> */
-    public function forItem(Item $item): array
-    {
-        return [new LabelLine(null, $item, 1)];
+        return $this->forVariants($variants);
     }
 
     /** @return list<LabelLine> */
@@ -86,18 +64,13 @@ final readonly class LabelLineBuilder
         /** @var array<int, Variant> $variants */
         $variants = [];
         foreach ($operation->getMovements() as $movement) {
-            $item = $movement->getItem();
-            if (null !== $item) {
-                $lines[] = new LabelLine(null, $item, 1);
-                continue;
-            }
             $variant = $movement->getVariant();
             $key = (int) $variant->getId();
             $variants[$key] = $variant;
             $copies[$key] = ($copies[$key] ?? 0) + $movement->getQuantity();
         }
         foreach ($this->labelable(array_values($variants)) as $variant) {
-            $lines[] = new LabelLine($variant, null, $copies[(int) $variant->getId()]);
+            $lines[] = new LabelLine($variant, $copies[(int) $variant->getId()]);
         }
 
         return $lines;
@@ -107,15 +80,9 @@ final readonly class LabelLineBuilder
     public function withoutValidEan(): array
     {
         return array_map(
-            static fn (Variant $variant): LabelLine => new LabelLine($variant, null, 1),
+            static fn (Variant $variant): LabelLine => new LabelLine($variant, 1),
             $this->variants->findLabelableWithoutValidEan(),
         );
-    }
-
-    /** @param list<Variant> $variants */
-    public function hasItemChoice(array $variants): bool
-    {
-        return [] !== $this->itemsByVariant($this->labelable($variants));
     }
 
     /**
@@ -138,27 +105,5 @@ final readonly class LabelLineBuilder
             $variants,
             static fn (Variant $variant): bool => $variant->isActive() || isset($inStock[(int) $variant->getId()]),
         ));
-    }
-
-    /**
-     * Pièces en stock des variantes sérialisées, par id de variante (une requête).
-     *
-     * @param list<Variant> $variants
-     *
-     * @return array<int, list<Item>>
-     */
-    private function itemsByVariant(array $variants): array
-    {
-        $serialized = array_values(array_filter(
-            $variants,
-            static fn (Variant $variant): bool => ProductKind::Equipment === $variant->getProduct()?->getKind(),
-        ));
-
-        $grouped = [];
-        foreach ($this->items->findInStockByVariants($serialized) as $item) {
-            $grouped[(int) $item->getVariant()->getId()][] = $item;
-        }
-
-        return $grouped;
     }
 }

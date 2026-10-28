@@ -31,7 +31,7 @@
     <table class="table">
         <thead>
             <tr>
-                <th>Article</th><th>Pièce</th><th class="num">Quantité</th><th class="num">Coût unitaire HT</th>
+                <th>Article</th><th class="num">Quantité</th><th class="num">Coût unitaire HT</th>
                 {% if operation.type.value == 'donation_in' %}<th class="num">Valeur catalogue HT</th>{% endif %}
             </tr>
         </thead>
@@ -43,7 +43,6 @@
                         <a href="{{ path('catalogue_product_show', {id: variant.product.id}) }}">{{ variant.product.reference }} — {{ variant.product.designation }}</a>{% if variant.label %} — {{ variant.label }}{% endif %}
                         {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}
                     </td>
-                    <td data-label="Pièce">{% if movement.item %}<a href="{{ path('stock_item_show', {code: movement.item.code}) }}">{{ movement.item.code }}</a>{% else %}—{% endif %}</td>
                     <td class="num" data-label="Quantité">{{ movement.quantity }}</td>
                     <td class="num" data-label="Coût unitaire HT">{{ movement.unitCostHt|euros }}</td>
                     {% if operation.type.value == 'donation_in' %}

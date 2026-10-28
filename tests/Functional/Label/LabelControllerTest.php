@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Label;
 
-use App\Entity\Item;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
 use App\Enum\UserRole;
@@ -48,7 +47,7 @@ final class LabelControllerTest extends WebTestCase
 
     private function csrfToken(KernelBrowser $client, Variant $variant): string
     {
-        $crawler = $client->request('GET', '/etiquettes', ['variantes' => [(string) $variant->getId()], 'mode' => 'variantes']);
+        $crawler = $client->request('GET', '/etiquettes', ['variantes' => [(string) $variant->getId()]]);
         self::assertResponseIsSuccessful();
 
         return $crawler->filter('form[action$="/etiquettes/pdf"] input[name="_token"]')->attr('value') ?? '';
@@ -75,36 +74,19 @@ final class LabelControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
-    public function testItemPageLinksToPrintScreen(): void
+    public function testPrintOffersVariantLabelsOnly(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $this->variant($client, ProductKind::Equipment, 'REF-S', 1);
-        $item = $this->em($client)->getRepository(Item::class)->findOneBy([]);
-        self::assertNotNull($item);
-        $code = $item->getCode();
+        $equipment = $this->variant($client, ProductKind::Equipment, 'REF-S', 2);
 
-        $crawler = $client->request('GET', '/stock/pieces/'.$code);
-        self::assertSelectorExists('a[href="/etiquettes?piece='.$code.'"]');
+        $client->request('GET', '/etiquettes', ['variantes' => [(string) $equipment->getId()], 'mode' => 'pieces', 'piece' => 'HS-000001']);
 
-        $client->click($crawler->filter('a[href="/etiquettes?piece='.$code.'"]')->link());
         self::assertResponseIsSuccessful();
-        self::assertSelectorTextContains('table', $code);
-    }
-
-    public function testModeChoiceShownOnlyForSerializedWithStock(): void
-    {
-        $client = static::createClient();
-        $this->login($client, UserRole::Stock);
-        $serialized = $this->variant($client, ProductKind::Equipment, 'REF-S', 2);
-        $quantity = $this->variant($client, ProductKind::Consumable, 'REF-Q', 3);
-
-        $client->request('GET', '/etiquettes', ['variantes' => [(string) $serialized->getId()]]);
-        self::assertSelectorExists('input[type="radio"][name="mode"][value="pieces"]');
-        self::assertSelectorExists('input[type="radio"][name="mode"][value="variantes"]');
-
-        $client->request('GET', '/etiquettes', ['variantes' => [(string) $quantity->getId()]]);
         self::assertSelectorNotExists('input[type="radio"][name="mode"]');
+        self::assertSelectorExists('input[name="lignes[0][type]"][value="variante"]');
+        self::assertSelectorNotExists('input[name="lignes[1][type]"]');
+        self::assertSelectorNotExists('input[value="piece"]');
         self::assertSelectorExists('input[name$="[exemplaires]"][value="1"]');
     }
 

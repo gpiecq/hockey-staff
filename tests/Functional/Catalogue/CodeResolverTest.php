@@ -76,11 +76,12 @@ final class CodeResolverTest extends WebTestCase
         self::assertSame($variant, $this->resolver()->resolve('  '.strtolower((string) $variant->getCode()).' '));
     }
 
-    public function testItemCodeResolves(): void
+    public function testPieceCodeNoLongerResolves(): void
     {
         $item = $this->item();
 
-        self::assertSame($item, $this->resolver()->resolve(' '.strtolower($item->getCode())));
+        self::assertNull($this->resolver()->resolve($item->getCode()));
+        self::assertNull($this->resolver()->resolve('HS-000001'));
     }
 
     public function testArchivedVariantResolves(): void
@@ -118,15 +119,5 @@ final class CodeResolverTest extends WebTestCase
         $this->client->request('GET', '/catalogue', ['q' => strtolower((string) $variant->getCode())]);
 
         self::assertResponseRedirects('/catalogue/'.$variant->getProduct()?->getId());
-    }
-
-    public function testSearchByItemCodeRedirectsToItem(): void
-    {
-        $item = $this->item();
-        $this->client->loginUser(UserFactory::create($this->em, UserRole::Stock, 'u@example.test'));
-
-        $this->client->request('GET', '/catalogue', ['q' => $item->getCode()]);
-
-        self::assertResponseRedirects('/stock/pieces/'.$item->getCode());
     }
 }

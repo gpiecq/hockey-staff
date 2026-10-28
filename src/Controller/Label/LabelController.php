@@ -8,9 +8,7 @@ use App\Entity\Variant;
 use App\Label\LabelFormat;
 use App\Label\LabelLine;
 use App\Label\LabelLineBuilder;
-use App\Label\LabelMode;
 use App\Label\LabelPdfRenderer;
-use App\Repository\ItemRepository;
 use App\Repository\ProductRepository;
 use App\Repository\StockOperationRepository;
 use App\Repository\VariantRepository;
@@ -31,7 +29,6 @@ final class LabelController extends AbstractController
         private readonly LabelLineBuilder $builder,
         private readonly VariantRepository $variants,
         private readonly ProductRepository $products,
-        private readonly ItemRepository $items,
         private readonly StockOperationRepository $operations,
     ) {
     }
@@ -39,8 +36,6 @@ final class LabelController extends AbstractController
     #[Route('', name: 'label_print', methods: ['GET'])]
     public function print(Request $request): Response
     {
-        $mode = LabelMode::tryFrom($request->query->getString('mode')) ?? LabelMode::Items;
-
         $variants = [];
         foreach ($this->ids($request->query->all('variantes')) as $id) {
             $variant = $this->variants->find($id);
@@ -56,13 +51,7 @@ final class LabelController extends AbstractController
         }
         $variants = array_values($variants);
 
-        $lines = $this->builder->forVariants($variants, $mode);
-
-        $code = $request->query->getString('piece');
-        $item = '' === $code ? null : $this->items->findOneByCode($code);
-        if (null !== $item) {
-            array_push($lines, ...$this->builder->forItem($item));
-        }
+        $lines = $this->builder->forVariants($variants);
 
         $operationId = $request->query->getInt('operation');
         $operation = $operationId > 0 ? $this->operations->find($operationId) : null;
@@ -76,8 +65,6 @@ final class LabelController extends AbstractController
 
         return $this->render('label/print.html.twig', [
             'lines' => $lines,
-            'mode' => $mode,
-            'has_choice' => $this->builder->hasItemChoice($variants),
             'carried' => $this->carriedParameters($request),
             'format' => LabelFormat::Sheet,
             'first_cell' => 1,
@@ -108,8 +95,6 @@ final class LabelController extends AbstractController
         if (null !== $error) {
             return $this->render('label/print.html.twig', [
                 'lines' => array_values(array_filter($lines, static fn (LabelLine $line): bool => $line->copies > 0)),
-                'mode' => LabelMode::Items,
-                'has_choice' => false,
                 'carried' => [],
                 'format' => $format ?? LabelFormat::Sheet,
                 'first_cell' => false === $firstCell ? 1 : $firstCell,
@@ -146,16 +131,11 @@ final class LabelController extends AbstractController
             $copies = self::copies(self::string($row['exemplaires'] ?? ''));
             $id = trim(self::string($row['id'] ?? ''));
 
-            if ('piece' === ($row['type'] ?? null)) {
-                $item = $this->items->findOneByCode($id);
-                if (null !== $item) {
-                    $lines[] = new LabelLine(null, $item, $copies);
-                }
-            } elseif ('variante' === ($row['type'] ?? null) && ctype_digit($id)) {
+            if ('variante' === ($row['type'] ?? null) && ctype_digit($id)) {
                 $variant = $this->variants->find((int) $id);
-                $line = $variant instanceof Variant ? ($this->builder->forVariants([$variant], LabelMode::Variants)[0] ?? null) : null;
+                $line = $variant instanceof Variant ? ($this->builder->forVariants([$variant])[0] ?? null) : null;
                 if (null !== $line) {
-                    $lines[] = new LabelLine($line->variant, null, $copies);
+                    $lines[] = new LabelLine($line->variant, $copies);
                 }
             }
         }
@@ -199,7 +179,7 @@ final class LabelController extends AbstractController
                 }
             }
         }
-        foreach (['piece', 'operation', 'sans_ean'] as $name) {
+        foreach (['operation', 'sans_ean'] as $name) {
             if ($request->query->has($name) && \is_scalar($request->query->all()[$name])) {
                 $carried[] = [$name, (string) $request->query->all()[$name]];
             }

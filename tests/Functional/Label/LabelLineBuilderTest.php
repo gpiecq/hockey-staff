@@ -11,7 +11,6 @@ use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
 use App\Label\LabelLine;
 use App\Label\LabelLineBuilder;
-use App\Label\LabelMode;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\Input\StockLine;
@@ -54,64 +53,30 @@ final class LabelLineBuilderTest extends KernelTestCase
         return array_map(static fn (LabelLine $line): string => $line->code(), $lines);
     }
 
-    public function testSerializedVariantInItemsModeGivesOneLinePerPiece(): void
+    public function testStockedEquipmentGivesOneVariantLine(): void
     {
         $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque', '4006381333931');
         StockScenario::receive($this->recorder, $variant, $this->location, 3, 5000);
         $product = $variant->getProduct();
         self::assertNotNull($product);
 
-        $lines = $this->builder->forProducts([$product], LabelMode::Items);
-
-        self::assertCount(3, $lines);
-        foreach ($lines as $line) {
-            self::assertNull($line->variant);
-            self::assertNotNull($line->item);
-            self::assertSame(1, $line->copies);
+        foreach ([$this->builder->forVariants([$variant]), $this->builder->forProducts([$product])] as $lines) {
+            self::assertCount(1, $lines);
+            self::assertSame($variant, $lines[0]->variant);
+            self::assertSame(1, $lines[0]->copies);
+            self::assertSame('4006381333931', $lines[0]->code());
         }
-        $codes = $this->codes($lines);
-        self::assertMatchesRegularExpression('/^HS-\d{6}$/', $codes[0]);
-        $sorted = $codes;
-        sort($sorted);
-        self::assertSame($sorted, $codes);
-        self::assertTrue($this->builder->hasItemChoice([$variant]));
     }
 
-    public function testVariantsModeGivesVariantLine(): void
-    {
-        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque', '4006381333931');
-        StockScenario::receive($this->recorder, $variant, $this->location, 3, 5000);
-
-        $lines = $this->builder->forVariants([$variant], LabelMode::Variants);
-
-        self::assertCount(1, $lines);
-        self::assertSame($variant, $lines[0]->variant);
-        self::assertNull($lines[0]->item);
-        self::assertSame(1, $lines[0]->copies);
-        self::assertSame('4006381333931', $lines[0]->code());
-    }
-
-    public function testSerializedVariantWithoutPieceGivesVariantLine(): void
-    {
-        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque');
-
-        $lines = $this->builder->forVariants([$variant], LabelMode::Items);
-
-        self::assertCount(1, $lines);
-        self::assertSame($variant, $lines[0]->variant);
-        self::assertFalse($this->builder->hasItemChoice([$variant]));
-    }
-
-    public function testQuantityProductAlwaysGivesVariantLine(): void
+    public function testConsumableGivesVariantLine(): void
     {
         $variant = StockScenario::variant($this->em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         StockScenario::receive($this->recorder, $variant, $this->location, 4, 300);
 
-        $lines = $this->builder->forVariants([$variant], LabelMode::Items);
+        $lines = $this->builder->forVariants([$variant]);
 
         self::assertCount(1, $lines);
         self::assertSame($variant, $lines[0]->variant);
-        self::assertFalse($this->builder->hasItemChoice([$variant]));
     }
 
     public function testArchivedVariantWithStockIsLabelable(): void
@@ -123,10 +88,10 @@ final class LabelLineBuilderTest extends KernelTestCase
         $product = $variant->getProduct();
         self::assertNotNull($product);
 
-        $lines = $this->builder->forProducts([$product], LabelMode::Items);
+        $lines = $this->builder->forProducts([$product]);
 
         self::assertCount(1, $lines);
-        self::assertNotNull($lines[0]->item);
+        self::assertSame($variant, $lines[0]->variant);
         $withoutEan = $this->builder->withoutValidEan();
         self::assertCount(1, $withoutEan);
         self::assertSame($variant, $withoutEan[0]->variant);
@@ -140,8 +105,8 @@ final class LabelLineBuilderTest extends KernelTestCase
         $product = $variant->getProduct();
         self::assertNotNull($product);
 
-        self::assertSame([], $this->builder->forProducts([$product], LabelMode::Variants));
-        self::assertSame([], $this->builder->forVariants([$variant], LabelMode::Variants));
+        self::assertSame([], $this->builder->forProducts([$product]));
+        self::assertSame([], $this->builder->forVariants([$variant]));
         self::assertSame([], $this->builder->withoutValidEan());
     }
 
@@ -155,7 +120,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
         $lines = $this->builder->withoutValidEan();
 
-        self::assertSame([$none, $bad], array_map(static fn (LabelLine $line): ?Variant => $line->variant, $lines));
+        self::assertSame([$none, $bad], array_map(static fn (LabelLine $line): Variant => $line->variant, $lines));
         self::assertSame([$none->getCode(), $bad->getCode()], $this->codes($lines));
     }
 
@@ -170,27 +135,13 @@ final class LabelLineBuilderTest extends KernelTestCase
 
         $lines = $this->builder->forOperation($operation);
 
-        self::assertCount(3, $lines);
-        self::assertNotNull($lines[0]->item);
-        self::assertNotNull($lines[1]->item);
-        self::assertSame($quantity, $lines[2]->variant);
-        self::assertSame(5, $lines[2]->copies);
+        self::assertCount(2, $lines);
+        self::assertSame($serialized, $lines[0]->variant);
+        self::assertSame(2, $lines[0]->copies);
+        self::assertSame($quantity, $lines[1]->variant);
+        self::assertSame(5, $lines[1]->copies);
 
         $out = $this->recorder->recordOut(new StockOut($this->location, StockOutReason::Lost, [new StockLine($quantity, 1)]));
         self::assertSame([], $this->builder->forOperation($out));
-    }
-
-    public function testForItemGivesOneLine(): void
-    {
-        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque');
-        StockScenario::receive($this->recorder, $variant, $this->location, 1, 5000);
-        $item = $this->em->getRepository(\App\Entity\Item::class)->findOneBy([]);
-        self::assertNotNull($item);
-
-        $lines = $this->builder->forItem($item);
-
-        self::assertCount(1, $lines);
-        self::assertSame($item, $lines[0]->item);
-        self::assertSame($item->getCode(), $lines[0]->code());
     }
 }

@@ -11,7 +11,6 @@ use App\Catalogue\CurrentSeasonProvider;
 use App\Catalogue\ProductKindResolver;
 use App\Entity\Brand;
 use App\Entity\Category;
-use App\Entity\Item;
 use App\Entity\Product;
 use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
@@ -44,13 +43,10 @@ final class ProductController extends AbstractController
         \assert(\is_array($data));
         $query = \is_string($data['q'] ?? null) ? trim($data['q']) : '';
 
-        // Un code scanné (EAN, HV-…, HS-…) mène directement à la fiche produit ou à la fiche pièce.
+        // Un code scanné (EAN, HV-…) mène directement à la fiche produit.
         $found = '' !== $query ? $resolver->resolve($query) : null;
         if ($found instanceof Variant && null !== $found->getProduct()) {
             return $this->redirectToRoute('catalogue_product_show', ['id' => $found->getProduct()->getId()]);
-        }
-        if ($found instanceof Item && $this->isGranted('STOCK_VIEW')) {
-            return $this->redirectToRoute('stock_item_show', ['code' => $found->getCode()]);
         }
 
         $category = $data['category'] ?? null;

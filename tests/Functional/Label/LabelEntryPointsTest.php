@@ -154,7 +154,8 @@ final class LabelEntryPointsTest extends WebTestCase
 
         $client->click($crawler->filter('a[href="'.$href.'"]')->link());
         self::assertResponseIsSuccessful();
-        self::assertSelectorCount(3, 'tbody tr');
+        self::assertSelectorCount(2, 'tbody tr');
+        self::assertSelectorExists('input[name$="[exemplaires]"][value="2"]');
         self::assertSelectorExists('input[name$="[exemplaires]"][value="7"]');
 
         $client->request('GET', '/stock/operations/'.$out->getId());

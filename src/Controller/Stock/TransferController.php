@@ -7,7 +7,8 @@ namespace App\Controller\Stock;
 use App\Entity\Location;
 use App\Form\Stock\StockLineMapper;
 use App\Form\Stock\StockTransferType;
-use App\Repository\ItemRepository;
+use App\Repository\LocationRepository;
+use App\Repository\VariantRepository;
 use App\Stock\Input\StockTransfer;
 use App\Stock\StockMovementRecorder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,9 +23,9 @@ final class TransferController extends AbstractController
     use StockOperationScreen;
 
     #[Route('/stock/transfert', name: 'stock_transfer_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, StockMovementRecorder $recorder, StockLineMapper $mapper, ItemRepository $items): Response
+    public function new(Request $request, StockMovementRecorder $recorder, StockLineMapper $mapper, VariantRepository $variants, LocationRepository $locations): Response
     {
-        $form = $this->createForm(StockTransferType::class, $this->initialData($request, $items, 'from'));
+        $form = $this->createForm(StockTransferType::class, $this->initialData($request, $variants, $locations, 'from'));
 
         return $this->handleOperation($request, $form, $mapper, function (array $lines) use ($form, $recorder) {
             /** @var array{from: Location, to: Location, comment: ?string} $values */
