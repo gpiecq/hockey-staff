@@ -15,7 +15,7 @@
         {% endif %}
     </div>
 
-    <p class="stock-total"><strong>Valeur totale du stock{% if location %} du lieu{% endif %} (hors filtres catégorie et recherche) : {{ total|euros }} HT</strong>{% if location %} · {{ location.name }}{% endif %}</p>
+    <p class="stock-total"><strong>Valeur totale du stock{% if location %} du lieu{% endif %} (hors filtres catégorie et recherche) : {{ total|euros }} HT{% if not location %} (pièces prêtées incluses){% endif %}</strong>{% if location %} · {{ location.name }}{% endif %}</p>
 
     <form method="get" action="{{ path('stock_index') }}" class="filters">
         <div class="field">
@@ -49,7 +49,7 @@
         {% for l in locations %}{% set names = names|merge({(l.id): l.name}) %}{% endfor %}
         <table class="table stock-table">
             <thead>
-                <tr><th>Référence</th><th>Désignation</th><th>Variante</th><th class="num">Quantité</th><th>Lieux</th><th class="num">Valeur HT</th></tr>
+                <tr><th>Référence</th><th>Désignation</th><th>Variante</th><th class="num">Quantité</th><th class="num">Prêtées</th><th>Lieux</th><th class="num">Valeur HT</th></tr>
             </thead>
             <tbody>
                 {% for row in page.items %}
@@ -58,6 +58,7 @@
                         <td><a href="{{ path('catalogue_product_show', {id: row.variant.product.id}) }}">{{ row.variant.product.designation }}</a></td>
                         <td data-label="Variante">{{ row.variant.label ?: 'Unique' }}{% if not row.variant.active %} <span class="badge badge-warn">Plus au catalogue</span>{% endif %}</td>
                         <td class="num" data-label="Quantité">{{ row.quantity }}</td>
+                        <td class="num" data-label="Prêtées">{{ row.loanedQuantity }}</td>
                         <td data-label="Lieux">{% for id, qty in row.quantityByLocation %}{{ names[id]|default('?') }} : {{ qty }}{% if not loop.last %} · {% endif %}{% endfor %}</td>
                         <td class="num" data-label="Valeur HT">{{ row.valueHt|euros }}</td>
                     </tr>

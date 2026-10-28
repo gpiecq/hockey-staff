@@ -51,8 +51,8 @@
                         {% else %}
                             <td colspan="3" class="muted">Tarif absent</td>
                         {% endif %}
-                        {% set vstock = stock[variant.id]|default({levels: [], items: []}) %}
-                        {% set qty = vstock.items|length %}
+                        {% set vstock = stock[variant.id]|default({levels: [], items: [], loaned: []}) %}
+                        {% set qty = vstock.items|length + vstock.loaned|length %}
                         {% for level in vstock.levels %}{% set qty = qty + level.quantity %}{% endfor %}
                         <td class="num" data-label="Stock">
                             <strong>{{ qty }}</strong>
@@ -64,6 +64,7 @@
                                     {% for name, n in byLocation %}{{ name }} : {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
                                 </small>
                             {% endif %}
+                            {% if vstock.loaned is not empty %}<small class="muted block">dont {{ vstock.loaned|length }} prêtée{{ vstock.loaned|length > 1 ? 's' : '' }}</small>{% endif %}
                             <small><a href="{{ path('stock_operation_index', {variante: variant.id}) }}">Historique</a></small>
                         </td>
                         {% if is_granted('CATALOGUE_EDIT') %}
