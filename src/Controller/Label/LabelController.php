@@ -65,7 +65,6 @@ final class LabelController extends AbstractController
 
         return $this->render('label/print.html.twig', [
             'lines' => $lines,
-            'carried' => $this->carriedParameters($request),
             'format' => LabelFormat::Sheet,
             'first_cell' => 1,
             'error' => null,
@@ -95,7 +94,6 @@ final class LabelController extends AbstractController
         if (null !== $error) {
             return $this->render('label/print.html.twig', [
                 'lines' => array_values(array_filter($lines, static fn (LabelLine $line): bool => $line->copies > 0)),
-                'carried' => [],
                 'format' => $format ?? LabelFormat::Sheet,
                 'first_cell' => false === $firstCell ? 1 : $firstCell,
                 'error' => $error,
@@ -162,29 +160,5 @@ final class LabelController extends AbstractController
     private function ids(array $values): array
     {
         return array_values(array_map('intval', array_filter($values, static fn (mixed $v): bool => \is_string($v) && ctype_digit($v))));
-    }
-
-    /**
-     * Paramètres de source à reporter dans le formulaire de choix du mode.
-     *
-     * @return list<array{string, string}>
-     */
-    private function carriedParameters(Request $request): array
-    {
-        $carried = [];
-        foreach (['variantes', 'produits'] as $name) {
-            foreach ($request->query->all($name) as $value) {
-                if (\is_string($value)) {
-                    $carried[] = [$name.'[]', $value];
-                }
-            }
-        }
-        foreach (['operation', 'sans_ean'] as $name) {
-            if ($request->query->has($name) && \is_scalar($request->query->all()[$name])) {
-                $carried[] = [$name, (string) $request->query->all()[$name]];
-            }
-        }
-
-        return $carried;
     }
 }

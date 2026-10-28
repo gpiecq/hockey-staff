@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Stock;
 
 use App\Catalogue\CurrentSeasonProvider;
-use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\StockLevel;
 use App\Entity\StockOperation;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\ItemStatus;
 use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
 use App\Stock\Input\StockEntry;
@@ -68,26 +67,16 @@ final class StockOutTransferRecorderTest extends KernelTestCase
         $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location, [new StockEntryLine($variant, $quantity, $cost)]));
     }
 
-    private function level(Variant $variant, Location $location): ?StockLevel
+    private function level(Variant $variant, Location $location, StockCondition $condition = StockCondition::New): ?StockLevel
     {
         $this->em->clear();
 
-        return $this->em->getRepository(StockLevel::class)->findOneBy(['variant' => $variant->getId(), 'location' => $location->getId()]);
+        return $this->em->getRepository(StockLevel::class)->findOneBy(['variant' => $variant->getId(), 'location' => $location->getId(), 'condition' => $condition]);
     }
 
     private function operations(): int
     {
         return (int) $this->em->createQuery('SELECT COUNT(o.id) FROM '.StockOperation::class.' o')->getSingleScalarResult();
-    }
-
-    private function serialized(int $cost = 8000, ?Location $location = null): Item
-    {
-        $variant = $this->variant(ProductKind::Equipment);
-        $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location ?? $this->a, [new StockEntryLine($variant, 1, $cost)]));
-        $item = $this->em->getRepository(Item::class)->findOneBy([]);
-        self::assertNotNull($item);
-
-        return $item;
     }
 
     public function testOutOfQuantityUsesAverageCost(): void
@@ -109,19 +98,6 @@ final class StockOutTransferRecorderTest extends KernelTestCase
         self::assertSame(4500, $level->getValueHt());
     }
 
-    public function testOutOfSerializedItem(): void
-    {
-        $item = $this->serialized();
-
-        $operation = $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($item->getVariant(), 1, $item)]));
-
-        self::assertSame(ItemStatus::Removed, $item->getStatus());
-        $movement = $operation->getMovements()->first();
-        self::assertNotFalse($movement);
-        self::assertSame(8000, $movement->getUnitCostHt());
-        self::assertSame($item->getId(), $movement->getItem()?->getId());
-    }
-
     public function testSecondOutOfLastUnitIsRefused(): void
     {
         $variant = $this->variant();
@@ -133,39 +109,13 @@ final class StockOutTransferRecorderTest extends KernelTestCase
             $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($variant, 1)]));
             self::fail('StockException attendue.');
         } catch (StockException $e) {
-            self::assertSame('Stock insuffisant pour « REF-1 M » à « Local A » : 0 disponible(s).', $e->getMessage());
+            self::assertSame('Stock insuffisant pour « REF-1 M » (Neuf) à « Local A » : 0 disponible(s).', $e->getMessage());
         }
 
         self::assertSame($before, $this->operations());
         $level = $this->level($variant, $this->a);
         self::assertSame(0, $level?->getQuantity());
         self::assertSame(0, $level->getValueHt());
-    }
-
-    public function testItemFromOtherLocationIsRefused(): void
-    {
-        $item = $this->serialized();
-        $code = $item->getCode();
-        $before = $this->operations();
-
-        try {
-            $this->recorder->recordOut(new StockOut($this->b, StockOutReason::Lost, [new StockLine($item->getVariant(), 1, $item)]));
-            self::fail('StockException attendue.');
-        } catch (StockException $e) {
-            self::assertSame(\sprintf('La pièce %s n\'est pas en stock à « Local B ».', $code), $e->getMessage());
-        }
-
-        self::assertSame(ItemStatus::InStock, $item->getStatus());
-        self::assertSame($before, $this->operations());
-    }
-
-    public function testStaleItemIsRereadBeforeCheck(): void
-    {
-        $item = $this->serialized();
-        $this->em->getConnection()->executeStatement("UPDATE item SET status = 'removed' WHERE id = ?", [$item->getId()]);
-
-        $this->expectException(StockException::class);
-        $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($item->getVariant(), 1, $item)]));
     }
 
     public function testTransferMovesQuantityAndValue(): void
@@ -184,16 +134,6 @@ final class StockOutTransferRecorderTest extends KernelTestCase
         $levelB = $this->level($variant, $this->b);
         self::assertSame(1, $levelB?->getQuantity());
         self::assertSame(1500, $levelB->getValueHt());
-    }
-
-    public function testTransferMovesItemKeepingCost(): void
-    {
-        $item = $this->serialized();
-
-        $this->recorder->recordTransfer(new StockTransfer($this->a, $this->b, [new StockLine($item->getVariant(), 1, $item)]));
-
-        self::assertSame($this->b->getId(), $item->getLocation()->getId());
-        self::assertSame(8000, $item->getPurchaseCostHt());
     }
 
     public function testSameLocationTransferIsRefused(): void
@@ -224,75 +164,62 @@ final class StockOutTransferRecorderTest extends KernelTestCase
         $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Other, [new StockLine($variant, 1)]));
     }
 
-    public function testSerializedLineWithoutItemIsRefused(): void
-    {
-        $variant = $this->variant(ProductKind::Equipment);
-
-        $this->expectException(StockException::class);
-        $this->expectExceptionMessage('Indiquez la pièce (code HS-) pour « REF-1 M ».');
-        $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($variant, 1)]));
-    }
-
-    public function testSameItemTwiceIsRefused(): void
-    {
-        $item = $this->serialized();
-
-        $this->expectException(StockException::class);
-        $this->expectExceptionMessage(\sprintf('La pièce %s figure deux fois.', $item->getCode()));
-        $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($item->getVariant(), 1, $item), new StockLine($item->getVariant(), 1, $item)]));
-    }
-
     public function testLinesOnSameVariantAreSummed(): void
     {
         $variant = $this->variant();
         $this->receive($variant, $this->a, 2, 1000);
 
         $this->expectException(StockException::class);
-        $this->expectExceptionMessage('Stock insuffisant pour « REF-1 M » à « Local A » : 2 disponible(s).');
+        $this->expectExceptionMessage('Stock insuffisant pour « REF-1 M » (Neuf) à « Local A » : 2 disponible(s).');
         $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($variant, 2), new StockLine($variant, 2)]));
     }
 
-    private function assertMismatchRefused(Item $item, StockLine $line, string $message): void
+    public function testOutAndTransferByCondition(): void
     {
-        $code = $item->getCode();
+        $store = StockFixtures::location($this->em, 'Local matériel');
+        $lockers = StockFixtures::location($this->em, 'Vestiaire');
+        $variant = $this->variant(ProductKind::Equipment);
+        $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $store, [new StockEntryLine($variant, 2, 3000, StockCondition::Worn)]));
+        $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $store, [new StockEntryLine($variant, 1, 9000)]));
+
+        $operation = $this->recorder->recordTransfer(new StockTransfer($store, $lockers, [new StockLine($variant, 1, StockCondition::Worn)]));
+
         $before = $this->operations();
-        $inputs = [
-            fn () => $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [$line])),
-            fn () => $this->recorder->recordTransfer(new StockTransfer($this->a, $this->b, [$line])),
-        ];
-        foreach ($inputs as $run) {
-            try {
-                $run();
-                self::fail('StockException attendue.');
-            } catch (StockException $e) {
-                self::assertSame(str_replace('{code}', $code, $message), $e->getMessage());
-            }
+        try {
+            $this->recorder->recordOut(new StockOut($store, StockOutReason::Broken, [new StockLine($variant, 1, StockCondition::Damaged)]));
+            self::fail('StockException attendue.');
+        } catch (StockException $e) {
+            self::assertSame('Stock insuffisant pour « REF-1 M » (Abîmé) à « Local matériel » : 0 disponible(s).', $e->getMessage());
         }
-
-        $this->em->clear();
         self::assertSame($before, $this->operations());
-        $fresh = $this->em->getRepository(Item::class)->findOneBy(['code' => $code]);
-        self::assertSame(ItemStatus::InStock, $fresh?->getStatus());
-        self::assertSame($this->a->getId(), $fresh->getLocation()->getId());
+
+        $movement = $operation->getMovements()->first();
+        self::assertNotFalse($movement);
+        self::assertSame(StockCondition::Worn, $movement->getCondition());
+        self::assertSame(3000, $movement->getUnitCostHt());
+        $moved = $this->level($variant, $lockers, StockCondition::Worn);
+        self::assertSame(1, $moved?->getQuantity());
+        self::assertSame(3000, $moved->getValueHt());
+        $left = $this->level($variant, $store, StockCondition::Worn);
+        self::assertSame(1, $left?->getQuantity());
+        self::assertSame(3000, $left->getValueHt());
+        self::assertSame(1, $this->level($variant, $store)?->getQuantity());
+        self::assertNull($this->level($variant, $lockers));
     }
 
-    public function testItemOfOtherVariantIsRefused(): void
+    public function testOutOfEquipmentByCondition(): void
     {
-        $item = $this->serialized();
-        $other = $this->variant(ProductKind::Equipment, 'REF-2', '1234567890124');
+        $variant = $this->variant(ProductKind::Equipment);
+        $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $this->a, [new StockEntryLine($variant, 2, 4000, StockCondition::Good)]));
 
-        $this->assertMismatchRefused($item, new StockLine($other, 1, $item), 'La pièce {code} ne correspond pas à « REF-2 M ».');
-    }
+        $operation = $this->recorder->recordOut(new StockOut($this->a, StockOutReason::Lost, [new StockLine($variant, 1, StockCondition::Good)]));
 
-    public function testQuantityLineWithItemIsRefused(): void
-    {
-        $item = $this->serialized();
-        $quantity = $this->variant(ProductKind::Consumable, 'REF-2', '1234567890124');
-        $this->receive($quantity, $this->a, 3, 1000);
-
-        $this->assertMismatchRefused($item, new StockLine($quantity, 1, $item), '« REF-2 M » est suivi en quantité : n\'indiquez pas de pièce.');
-        $level = $this->level($quantity, $this->a);
-        self::assertSame(3, $level?->getQuantity());
-        self::assertSame(3000, $level->getValueHt());
+        $movement = $operation->getMovements()->first();
+        self::assertNotFalse($movement);
+        self::assertSame(StockCondition::Good, $movement->getCondition());
+        self::assertSame(4000, $movement->getUnitCostHt());
+        $level = $this->level($variant, $this->a, StockCondition::Good);
+        self::assertSame(1, $level?->getQuantity());
+        self::assertSame(4000, $level->getValueHt());
     }
 }

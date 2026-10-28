@@ -3,7 +3,7 @@
 {% block title %}{{ product.designation }} · {{ variant.label ?: 'Unique' }}{% endblock %}
 
 {% block body %}
-    {% set serialized = product.kind.value == 'equipment' %}
+    {% set equipment = product.kind.value == 'equipment' %}
     <a class="back" href="{{ path('stock_index') }}">‹ Stock</a>
     <div class="page-head">
         <h1>{{ product.designation }}</h1>
@@ -13,7 +13,7 @@
 
     {% if is_granted('STOCK_MOVE') %}
         <div class="actions variant-actions">
-            {% if serialized %}
+            {% if equipment %}
                 <a class="btn btn-primary" href="{{ path('stock_loan_new', {id: variant.id}) }}">Prêter</a>
                 {% if holders is not empty %}<a class="btn" href="{{ path('stock_loan_return', {id: variant.id}) }}">Retour</a>{% endif %}
             {% endif %}
@@ -22,7 +22,7 @@
         </div>
     {% endif %}
 
-    {% if serialized and secondHand is not empty and is_granted('SALE_MANAGE') %}
+    {% if equipment and secondHand is not empty and is_granted('SALE_MANAGE') %}
         <div class="actions variant-actions">
             <a class="btn" href="{{ path('sale_new', {variant: variant.id}) }}">Vendre</a>
         </div>
@@ -48,7 +48,7 @@
         <ul class="plain-list">
             {% for name, data in locations %}
                 <li><strong>{{ name }}</strong> :
-                    {% if serialized %}
+                    {% if equipment %}
                         {% for label, n in data.conditions %}{{ label }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
                     {% else %}
                         {{ data.quantity }}
@@ -58,7 +58,7 @@
         </ul>
     {% endif %}
 
-    {% if serialized and secondHand is not empty and is_granted('SALE_MANAGE') %}
+    {% if equipment and secondHand is not empty and is_granted('SALE_MANAGE') %}
         <h2>Occasion en stock</h2>
         <table class="table second-hand">
             <thead><tr><th>Lieu</th><th>État</th><th class="num">Quantité</th><th></th></tr></thead>
@@ -75,7 +75,7 @@
         </table>
     {% endif %}
 
-    {% if serialized or holders is not empty %}
+    {% if equipment or holders is not empty %}
         <h2>Détenteurs</h2>
         {% if holders is empty %}
             <p class="empty">Aucun joueur ne détient cet article.</p>

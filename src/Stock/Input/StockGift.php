@@ -11,7 +11,7 @@ use App\Entity\Variant;
 use App\Enum\StockCondition;
 
 /**
- * Don à un joueur ou à une équipe ; `$condition` est requis pour une variante suivie à la pièce, ignoré sinon.
+ * Don à un joueur ou à une équipe ; `$condition` est requis pour un équipement, ignoré (Neuf) pour un consommable.
  */
 final readonly class StockGift
 {

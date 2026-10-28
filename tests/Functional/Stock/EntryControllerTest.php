@@ -9,6 +9,7 @@ use App\Entity\StockLevel;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\UserRole;
 use App\Tests\Support\ImportFixtures;
 use App\Tests\Support\StockFixtures;
@@ -53,9 +54,9 @@ final class EntryControllerTest extends WebTestCase
     }
 
     /** @return array{location: string, documentReference: string, comment: string, lines: array<int, array<string, string>>} */
-    private function payload(Location $location, Variant $variant, int $quantity, ?string $cost = null, string $serials = ''): array
+    private function payload(Location $location, Variant $variant, int $quantity, ?string $cost = null, string $condition = 'new'): array
     {
-        $line = ['variant' => (string) $variant->getId(), 'quantity' => (string) $quantity, 'condition' => 'new', 'serialNumbers' => $serials];
+        $line = ['variant' => (string) $variant->getId(), 'quantity' => (string) $quantity, 'condition' => $condition];
         if (null !== $cost) {
             $line['unitCostHt'] = $cost;
         }
@@ -103,7 +104,7 @@ final class EntryControllerTest extends WebTestCase
         self::assertSelectorTextContains('.table', "12,50\u{00A0}€");
     }
 
-    public function testSerializedPurchaseShowsCreatedCodes(): void
+    public function testEquipmentPurchaseCreatesConditionLevel(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
@@ -111,12 +112,15 @@ final class EntryControllerTest extends WebTestCase
         $variant = $this->variant($client, ProductKind::Equipment);
 
         $crawler = $client->request('GET', '/stock/entree/achat');
-        $this->submit($client, $crawler, $this->payload($location, $variant, 2, '10,00'));
+        $this->submit($client, $crawler, $this->payload($location, $variant, 2, '10,00', 'worn'));
         $client->followRedirect();
 
-        self::assertSelectorTextContains('.flash-success', '2 pièce(s) créée(s)');
-        preg_match_all('/HS-[A-Z0-9-]+/', (string) $client->getResponse()->getContent(), $matches);
-        self::assertGreaterThanOrEqual(2, \count(array_unique($matches[0])));
+        self::assertSelectorTextContains('.flash-success', 'Entrée enregistrée.');
+        self::assertSelectorTextNotContains('.flash-success', 'pièce');
+        $level = $this->em($client)->getRepository(StockLevel::class)->findOneBy(['variant' => $variant->getId()]);
+        self::assertSame(StockCondition::Worn, $level?->getCondition());
+        self::assertSame(2, $level->getQuantity());
+        self::assertSame(2000, $level->getValueHt());
     }
 
     public function testDonationFormHasNoCostField(): void
@@ -129,7 +133,10 @@ final class EntryControllerTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertStringNotContainsString('unitCostHt', (string) $client->getResponse()->getContent());
-        self::assertCount(1, $crawler->filter('textarea[name$="[serialNumbers]"]'));
+        self::assertStringNotContainsString('serialNumbers', (string) $client->getResponse()->getContent());
+        self::assertStringNotContainsString('Numéros de série', (string) $client->getResponse()->getContent());
+        self::assertCount(1, $crawler->filter('select[name$="[condition]"]'));
+        self::assertSelectorTextContains('.entry-line', 'Ignoré pour un consommable.');
     }
 
     public function testRecorderErrorIsShownAndNothingWritten(): void

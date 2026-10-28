@@ -6,8 +6,8 @@ doctrine:
         # either here or in the DATABASE_URL env var (see .env file)
         #server_version: '16'
 
-        # La séquence des codes pièces n'est pas mappée par l'ORM
-        schema_filter: ~^(?!(item_code_seq|variant_code_seq)$)~
+        # La séquence des codes variantes (HV-) n'est pas mappée par l'ORM
+        schema_filter: ~^(?!variant_code_seq$)~
 
         profiling_collect_backtrace: '%kernel.debug%'
     orm:

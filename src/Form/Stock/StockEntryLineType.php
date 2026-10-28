@@ -10,7 +10,6 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\MoneyType;
-use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\GreaterThanOrEqual;
@@ -49,12 +48,7 @@ final class StockEntryLineType extends AbstractType
                 'label' => 'État',
                 'class' => StockCondition::class,
                 'choice_label' => static fn (StockCondition $condition): string => $condition->label(),
-            ])
-            ->add('serialNumbers', TextareaType::class, [
-                'label' => 'Numéros de série',
-                'required' => false,
-                'help' => 'Un numéro par ligne (articles sérialisés, facultatif).',
-                'attr' => ['rows' => 2],
+                'help' => 'Ignoré pour un consommable.',
             ]);
     }
 

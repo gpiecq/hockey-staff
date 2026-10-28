@@ -36,11 +36,8 @@ final class VariantSheetTest extends WebTestCase
         $local = StockFixtures::location($em, 'Local');
         $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
         $recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [
-            new StockEntryLine($helmet, 3, 15000, StockCondition::New),
-            new StockEntryLine($helmet, 1, 15000, StockCondition::Worn),
+            new StockEntryLine($helmet, 4, 15000, StockCondition::New),
         ]));
-        // Le prêt se fait en quantité, sur un niveau de stock.
-        StockFixtures::level($em, $helmet, $local, 1, 15000);
         $recorder->recordLoan(new StockLoan($local, PlayerFixtures::player($em, 'Martin', 'Léo'), $helmet, StockCondition::New, 1));
 
         return $helmet;
@@ -58,13 +55,13 @@ final class VariantSheetTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $variant = $this->sheet($client);
+        $this->secondHand($client, $variant);
 
         $client->request('GET', '/stock/variantes/'.$variant->getId());
 
         self::assertResponseIsSuccessful();
         $text = str_replace("\u{00A0}", ' ', $client->getCrawler()->filter('body')->text());
-        self::assertStringContainsString('Neuf 3', $text);
-        self::assertStringContainsString('Usé 1', $text);
+        self::assertStringContainsString('Local : Neuf 3 · Usé 2', $text);
         self::assertStringContainsString('Léo Martin', $text);
         foreach (['Prêter', 'Retour', 'Donner', 'Sortie'] as $label) {
             self::assertGreaterThan(0, $client->getCrawler()->selectLink($label)->count(), $label);
@@ -89,7 +86,7 @@ final class VariantSheetTest extends WebTestCase
         $this->login($client, UserRole::Manager);
         $variant = $this->sheet($client);
 
-        // Les pièces d'occasion ne comptent plus : seule l'occasion en quantité se vend.
+        // Sans occasion en stock (seulement du neuf) : pas de bouton Vendre.
         $client->request('GET', '/stock/variantes/'.$variant->getId());
         self::assertSame(0, $client->getCrawler()->selectLink('Vendre')->count());
 

@@ -11,8 +11,14 @@ use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\UserRole;
 use App\Repository\CategoryRepository;
+use App\Stock\Input\StockLoan;
+use App\Stock\StockMovementRecorder;
+use App\Tests\Support\PlayerFixtures;
+use App\Tests\Support\StockFixtures;
+use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -244,6 +250,36 @@ final class ProductBrowseTest extends WebTestCase
         self::assertStringNotContainsString('9,99', $text);
         self::assertSame(1, substr_count($text, 'Tarif absent'));
         self::assertSame(1, substr_count($text, 'Plus au catalogue'));
+    }
+
+    public function testProductSheetShowsStockByConditionAndHeld(): void
+    {
+        $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $store = StockFixtures::location($this->em, 'Local matériel');
+        $lockers = StockFixtures::location($this->em, 'Vestiaire');
+        $helmet = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-E', 'Casque');
+        StockScenario::receive($recorder, $helmet, $store, 3, 8000);
+        StockScenario::receive($recorder, $helmet, $store, 4, 5000, StockCondition::Worn);
+        StockScenario::receive($recorder, $helmet, $lockers, 1, 6000, StockCondition::Good);
+        $recorder->recordLoan(new StockLoan($store, PlayerFixtures::player($this->em), $helmet, StockCondition::Worn, 2));
+        $tape = StockScenario::variant($this->em, ProductKind::Consumable, 'REF-C', 'Ruban');
+        StockScenario::receive($recorder, $tape, $store, 5, 100);
+
+        $this->client->request('GET', '/catalogue/'.$helmet->getProduct()?->getId());
+        self::assertResponseIsSuccessful();
+        $cell = $this->text($this->client->getCrawler()->filter('td[data-label="Stock"]'));
+        self::assertStringContainsString('8 ', $cell);
+        self::assertStringContainsString('Local matériel : Neuf 3 · Usé 2', $cell);
+        self::assertStringContainsString('Vestiaire : Bon 1', $cell);
+        self::assertStringContainsString('dont 2 prêté(s)', $cell);
+        self::assertSame(1, substr_count($cell, 'Local matériel'));
+
+        $this->client->request('GET', '/catalogue/'.$tape->getProduct()?->getId());
+        $cell = $this->text($this->client->getCrawler()->filter('td[data-label="Stock"]'));
+        self::assertStringContainsString('Local matériel : 5', $cell);
+        self::assertStringNotContainsString('Neuf', $cell);
+        self::assertStringNotContainsString('prêté', $cell);
     }
 
     public function testShowWithoutCurrentSeasonSaysTarifAbsent(): void

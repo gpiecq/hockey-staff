@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Stock;
 
-use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\SeasonPrice;
+use App\Entity\StockLevel;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use App\Enum\StockOutReason;
@@ -91,14 +91,14 @@ final class StockPageTest extends WebTestCase
         self::assertStringNotContainsString('Casque série', $client->getCrawler()->filter('table.stock-table')->text());
     }
 
-    public function testRemovedItemsAreNotCounted(): void
+    public function testRemovedStockIsNotCounted(): void
     {
         $client = static::createClient();
         $client->loginUser(UserFactory::create($this->em($client), UserRole::Stock, 'u@example.test'));
         [, $b] = $this->scenario($client);
-        $item = $this->em($client)->getRepository(Item::class)->findOneBy([]);
-        self::assertNotNull($item);
-        $this->recorder($client)->recordOut(new StockOut($b, StockOutReason::Broken, [new StockLine($item->getVariant(), 1, $item)]));
+        $level = $this->em($client)->getRepository(StockLevel::class)->findOneBy(['location' => $b]);
+        self::assertNotNull($level);
+        $this->recorder($client)->recordOut(new StockOut($b, StockOutReason::Broken, [new StockLine($level->getVariant(), 1)]));
 
         $client->request('GET', '/stock');
 
@@ -224,6 +224,6 @@ final class StockPageTest extends WebTestCase
         $client->request('GET', '/catalogue/'.$variant->getProduct()?->getId());
 
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('dont 1 prêtée', $this->text($client));
+        self::assertStringContainsString('dont 1 prêté(s)', $this->text($client));
     }
 }

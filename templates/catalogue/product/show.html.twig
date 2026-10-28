@@ -28,6 +28,7 @@
         <p class="empty">Aucune variante.</p>
     {% else %}
         {% set printable = is_granted('STOCK_MOVE') %}
+        {% set equipment = product.kind.value == 'equipment' %}
         {% if printable %}<form method="get" action="{{ path('label_print') }}" data-turbo-frame="_top">{% endif %}
         <table class="table">
             <thead>
@@ -51,21 +52,22 @@
                         {% else %}
                             <td colspan="3" class="muted">Tarif absent</td>
                         {% endif %}
-                        {% set vstock = stock[variant.id]|default({levels: [], items: [], loaned: [], held: 0}) %}
-                        {% set lent = vstock.loaned|length + vstock.held %}
-                        {% set qty = vstock.items|length + lent %}
+                        {% set vstock = stock[variant.id]|default({levels: [], held: 0}) %}
+                        {% set qty = vstock.held %}
                         {% for level in vstock.levels %}{% set qty = qty + level.quantity %}{% endfor %}
                         <td class="num" data-label="Stock">
                             <strong>{{ qty }}</strong>
-                            {% if qty > 0 %}
-                                <small class="muted">
-                                    {% for level in vstock.levels %}{{ level.location.name }} : {{ level.quantity }}{% if not loop.last or vstock.items is not empty %} · {% endif %}{% endfor %}
-                                    {% set byLocation = {} %}
-                                    {% for item in vstock.items %}{% set byLocation = byLocation|merge({(item.location.name): (byLocation[item.location.name]|default(0)) + 1}) %}{% endfor %}
-                                    {% for name, n in byLocation %}{{ name }} : {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
-                                </small>
-                            {% endif %}
-                            {% if lent > 0 %}<small class="muted block">dont {{ lent }} prêtée{{ lent > 1 ? 's' : '' }}</small>{% endif %}
+                            {# Une ligne par lieu ; l'équipement est ventilé par état (« Neuf 3 · Usé 2 »). #}
+                            {% set current = null %}
+                            {% for level in vstock.levels %}
+                                {%- if level.location.id != current -%}
+                                    {%- if current is not null %}</small>{% endif -%}
+                                    <small class="muted block">{{ level.location.name }} : {% set current = level.location.id -%}
+                                {%- else %} · {% endif -%}
+                                {%- if equipment %}{{ level.condition.label }} {% endif %}{{ level.quantity -}}
+                            {%- endfor -%}
+                            {%- if current is not null %}</small>{% endif %}
+                            {% if vstock.held > 0 %}<small class="muted block">dont {{ vstock.held }} prêté(s)</small>{% endif %}
                             <small><a href="{{ path('stock_operation_index', {variante: variant.id}) }}">Historique</a></small>
                         </td>
                         {% if is_granted('CATALOGUE_EDIT') %}

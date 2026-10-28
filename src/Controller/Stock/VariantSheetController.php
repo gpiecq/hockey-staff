@@ -9,7 +9,6 @@ use App\Entity\StockLevel;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
-use App\Repository\ItemRepository;
 use App\Repository\PlayerHoldingRepository;
 use App\Repository\SeasonPriceRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,20 +24,15 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class VariantSheetController extends AbstractController
 {
     #[Route('/stock/variantes/{id}', name: 'stock_variant_show', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(int $id, EntityManagerInterface $em, ItemRepository $items, PlayerHoldingRepository $holdings, SeasonPriceRepository $prices, CurrentSeasonProvider $seasons): Response
+    public function show(int $id, EntityManagerInterface $em, PlayerHoldingRepository $holdings, SeasonPriceRepository $prices, CurrentSeasonProvider $seasons): Response
     {
         $variant = $em->find(Variant::class, $id) ?? throw $this->createNotFoundException('Variante introuvable.');
 
         /** @var list<StockLevel> $levels */
         $levels = $em->getRepository(StockLevel::class)->findBy(['variant' => $variant]);
 
-        // Stock par lieu : pièces et niveaux ventilés par état (équipement), quantités (consommable).
+        // Stock par lieu : niveaux ventilés par état (équipement), quantités (consommable).
         $locations = [];
-        foreach ($items->findInStockByVariants([$variant]) as $item) {
-            $name = $item->getLocation()->getName();
-            $locations[$name]['conditions'][$item->getCondition()->value] = ($locations[$name]['conditions'][$item->getCondition()->value] ?? 0) + 1;
-            $locations[$name]['quantity'] = ($locations[$name]['quantity'] ?? 0) + 1;
-        }
         foreach ($levels as $level) {
             if ($level->getQuantity() > 0) {
                 $name = $level->getLocation()->getName();

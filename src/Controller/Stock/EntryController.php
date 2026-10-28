@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller\Stock;
 
 use App\Entity\Location;
-use App\Entity\StockOperation;
 use App\Entity\Variant;
 use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
@@ -51,7 +50,7 @@ final class EntryController extends AbstractController
 
                 return $this->renderForm($form, $title, $type, Response::HTTP_UNPROCESSABLE_ENTITY);
             }
-            $this->addFlash('success', $this->flash($operation));
+            $this->addFlash('success', 'Entrée enregistrée.');
 
             return $this->redirectToRoute('stock_operation_show', ['id' => $operation->getId()]);
         }
@@ -66,30 +65,13 @@ final class EntryController extends AbstractController
 
     private function toEntry(StockMovementType $type, FormInterface $form): StockEntry
     {
-        /** @var array{location: Location, documentReference: ?string, comment: ?string, lines: list<array{variant: Variant, quantity: int, unitCostHt?: int|float|null, condition?: StockCondition|null, serialNumbers?: string|null}>} $data */
+        /** @var array{location: Location, documentReference: ?string, comment: ?string, lines: list<array{variant: Variant, quantity: int, unitCostHt?: int|float|null, condition?: StockCondition|null}>} $data */
         $data = $form->getData();
         $lines = [];
         foreach ($data['lines'] as $row) {
-            $serials = preg_split('/\R/', $row['serialNumbers'] ?? '') ?: [];
-            $lines[] = new StockEntryLine($row['variant'], $row['quantity'], isset($row['unitCostHt']) ? (int) round($row['unitCostHt']) : null, $row['condition'] ?? StockCondition::New, $serials);
+            $lines[] = new StockEntryLine($row['variant'], $row['quantity'], isset($row['unitCostHt']) ? (int) round($row['unitCostHt']) : null, $row['condition'] ?? StockCondition::New);
         }
 
         return new StockEntry($type, $data['location'], $lines, $this->nullIfBlank($data['documentReference'] ?? null), $this->nullIfBlank($data['comment'] ?? null));
-    }
-
-    private function flash(StockOperation $operation): string
-    {
-        $codes = [];
-        foreach ($operation->getMovements() as $movement) {
-            $code = $movement->getItem()?->getCode();
-            if (null !== $code) {
-                $codes[] = $code;
-            }
-        }
-        if ([] === $codes) {
-            return 'Entrée enregistrée.';
-        }
-
-        return \sprintf('Entrée enregistrée : %d pièce(s) créée(s) : %s', \count($codes), implode(', ', $codes));
     }
 }

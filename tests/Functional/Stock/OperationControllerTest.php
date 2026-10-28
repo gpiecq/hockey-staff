@@ -6,10 +6,15 @@ namespace App\Tests\Functional\Stock;
 
 use App\Entity\StockOperation;
 use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\UserRole;
+use App\Stock\Input\StockGift;
 use App\Stock\Input\StockLine;
+use App\Stock\Input\StockLoan;
+use App\Stock\Input\StockReturn;
 use App\Stock\Input\StockTransfer;
 use App\Stock\StockMovementRecorder;
+use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
 use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
@@ -178,5 +183,79 @@ final class OperationControllerTest extends WebTestCase
         self::assertCount(1, $client->getCrawler()->filter('table.operations tbody tr'));
         $client->request('GET', '/stock/operations?au='.$yesterday);
         self::assertCount(0, $client->getCrawler()->filter('table.operations tbody tr'));
+    }
+
+    /** @return array{StockOperation, StockOperation} prêt au joueur, puis don à l'équipe */
+    private function loanAndGift(KernelBrowser $client): array
+    {
+        $em = $this->em($client);
+        $a = StockFixtures::location($em, 'Local A');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque');
+        StockScenario::receive($this->recorder($client), $variant, $a, 3, 8000, StockCondition::Worn);
+        $player = PlayerFixtures::player($em, 'Durand', 'Hugo');
+        $team = PlayerFixtures::team($em, 'U17');
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $variant, StockCondition::Worn, 2));
+        $gift = $this->recorder($client)->recordGift(new StockGift($a, $variant, 1, StockCondition::Worn, null, $team));
+
+        return [$loan, $gift];
+    }
+
+    private function page(KernelBrowser $client, StockOperation $operation): string
+    {
+        $client->request('GET', '/stock/operations/'.$operation->getId());
+        self::assertResponseIsSuccessful();
+
+        return str_replace("\u{00A0}", ' ', $client->getCrawler()->filter('body')->text());
+    }
+
+    public function testOperationShowsLoanPlayerAndGiftTeam(): void
+    {
+        $client = static::createClient();
+        $this->viewer($client);
+        [$loan, $gift] = $this->loanAndGift($client);
+
+        $page = $this->page($client, $loan);
+        self::assertSelectorTextContains('dl.product-meta', 'Joueur');
+        self::assertStringContainsString('Hugo', $page);
+        self::assertStringContainsString('Durand', $page);
+        self::assertStringContainsString('Casque', $page);
+
+        $this->page($client, $gift);
+        self::assertSelectorTextContains('dl.product-meta', 'Équipe');
+        self::assertSelectorTextContains('dl.product-meta', 'U17');
+    }
+
+    public function testHistoryStaysReadableAfterPlayerAndTeamAreDeleted(): void
+    {
+        $client = static::createClient();
+        $this->viewer($client);
+        [$loan, $gift] = $this->loanAndGift($client);
+        $em = $this->em($client);
+        $player = $loan->getPlayer();
+        $team = $gift->getTeam();
+        self::assertNotNull($player);
+        self::assertNotNull($team);
+        $movement = $loan->getMovements()->first();
+        self::assertNotFalse($movement);
+        $source = $loan->getSource();
+        self::assertNotNull($source);
+        // Joueur soldé (aucune détention) : il peut être supprimé.
+        $this->recorder($client)->recordReturn(new StockReturn($player, $movement->getVariant(), 2, $source, StockCondition::Worn));
+        $em->remove($player);
+        $em->remove($team);
+        $em->flush();
+        $em->clear();
+
+        $page = $this->page($client, $loan);
+        self::assertStringContainsString('Durand', $page);
+        self::assertStringContainsString('(supprimé)', $page);
+        self::assertSelectorTextContains('dl.product-meta', 'Joueur');
+        $this->page($client, $gift);
+        self::assertSelectorTextContains('dl.product-meta', 'Équipe');
+        self::assertSelectorTextContains('dl.product-meta', 'U17');
+
+        $client->request('GET', '/stock/operations');
+        self::assertResponseIsSuccessful();
+        self::assertCount(4, $client->getCrawler()->filter('table.operations tbody tr'));
     }
 }

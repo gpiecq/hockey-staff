@@ -21,12 +21,8 @@
         <div class="field">
             {{ form_label(line.condition) }}
             {{ form_widget(line.condition) }}
+            {{ form_help(line.condition) }}
         </div>
-    </div>
-    <div class="field">
-        {{ form_label(line.serialNumbers) }}
-        {{ form_widget(line.serialNumbers) }}
-        {{ form_help(line.serialNumbers) }}
     </div>
     <button type="button" class="btn" data-action="form-collection#remove">Retirer la ligne</button>
 </div>

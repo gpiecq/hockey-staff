@@ -121,7 +121,6 @@ final class SaleRecorderTest extends KernelTestCase
         self::assertSame(2, $movement->getQuantity());
         self::assertSame(StockCondition::Worn, $movement->getCondition());
         self::assertSame(15000, $movement->getUnitCostHt());
-        self::assertNull($movement->getItem());
         $sale = $operation->getSale();
         self::assertNotNull($sale);
         self::assertSame('Mme Dupont', $sale->getBuyer());

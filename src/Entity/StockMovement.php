@@ -28,10 +28,6 @@ class StockMovement
     #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
     private Variant $variant;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
-    private ?Item $item;
-
     #[ORM\Column]
     private int $quantity;
 
@@ -56,7 +52,6 @@ class StockMovement
         Variant $variant,
         int $quantity,
         int $unitCostHt,
-        ?Item $item = null,
         ?int $catalogueValueHt = null,
         ?Season $season = null,
         StockCondition $condition = StockCondition::New,
@@ -65,7 +60,6 @@ class StockMovement
         $this->variant = $variant;
         $this->quantity = $quantity;
         $this->unitCostHt = $unitCostHt;
-        $this->item = $item;
         $this->catalogueValueHt = $catalogueValueHt;
         $this->season = $season;
         $this->condition = $condition;
@@ -84,11 +78,6 @@ class StockMovement
     public function getVariant(): Variant
     {
         return $this->variant;
-    }
-
-    public function getItem(): ?Item
-    {
-        return $this->item;
     }
 
     public function getQuantity(): int

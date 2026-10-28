@@ -7,6 +7,7 @@ namespace App\Controller\Stock;
 use App\Entity\Location;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
+use App\Enum\StockCondition;
 use App\Form\Stock\StockLineMapper;
 use App\Repository\LocationRepository;
 use App\Repository\VariantRepository;
@@ -33,7 +34,7 @@ trait StockOperationScreen
      */
     private function initialData(Request $request, VariantRepository $variants, LocationRepository $locations, string $locationField): array
     {
-        $data = ['lines' => [['itemCode' => null, 'variant' => null, 'quantity' => 1]]];
+        $data = ['lines' => [['variant' => null, 'condition' => StockCondition::New, 'quantity' => 1]]];
 
         $variantId = $request->query->getString('variant');
         $variant = ctype_digit($variantId) ? $variants->find((int) $variantId) : null;

@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Stock;
 
-use App\Entity\Item;
 use App\Entity\PlayerHolding;
 use App\Entity\Product;
 use App\Entity\StockLevel;
 use App\Entity\StockMovement;
-use App\Enum\ItemStatus;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -23,7 +21,7 @@ final readonly class StockPresence
     }
 
     /**
-     * Variantes qui ont une pièce en stock ou prêtée (elle appartient toujours au stock du club), un niveau de quantité positif ou une détention de joueur.
+     * Variantes qui ont un niveau de stock positif (tout lieu, tout état) ou une détention de joueur (le matériel prêté appartient toujours au stock du club).
      *
      * @param list<int> $variantIds
      *
@@ -36,16 +34,13 @@ final readonly class StockPresence
         }
 
         $found = [];
-        $items = $this->em->createQuery(
-            'SELECT DISTINCT IDENTITY(i.variant) FROM '.Item::class.' i WHERE IDENTITY(i.variant) IN (:ids) AND i.status IN (:statuses)',
-        )->setParameter('ids', $variantIds)->setParameter('statuses', [ItemStatus::InStock, ItemStatus::Loaned])->getSingleColumnResult();
         $levels = $this->em->createQuery(
             'SELECT DISTINCT IDENTITY(l.variant) FROM '.StockLevel::class.' l WHERE IDENTITY(l.variant) IN (:ids) AND l.quantity > 0',
         )->setParameter('ids', $variantIds)->getSingleColumnResult();
         $held = $this->em->createQuery(
             'SELECT DISTINCT IDENTITY(h.variant) FROM '.PlayerHolding::class.' h WHERE IDENTITY(h.variant) IN (:ids)',
         )->setParameter('ids', $variantIds)->getSingleColumnResult();
-        foreach ([...$items, ...$levels, ...$held] as $id) {
+        foreach ([...$levels, ...$held] as $id) {
             \assert(\is_int($id) || \is_string($id));
             $found[(int) $id] = true;
         }
@@ -78,18 +73,11 @@ final readonly class StockPresence
         return $found;
     }
 
-    /** Vrai si le produit a une pièce en stock ou prêtée, un niveau de quantité positif ou une détention de joueur (c'est ce qui verrouille son type). */
+    /** Vrai si le produit a un niveau de stock positif ou une détention de joueur (c'est ce qui verrouille son type). */
     public function productHasStock(Product $product): bool
     {
         if (null === $product->getId()) {
             return false;
-        }
-
-        $items = (int) $this->em->createQuery(
-            'SELECT COUNT(i.id) FROM '.Item::class.' i JOIN i.variant v WHERE IDENTITY(v.product) = :product AND i.status IN (:statuses)',
-        )->setParameter('product', $product->getId())->setParameter('statuses', [ItemStatus::InStock, ItemStatus::Loaned])->getSingleScalarResult();
-        if ($items > 0) {
-            return true;
         }
 
         $levels = (int) $this->em->createQuery(

@@ -10,7 +10,6 @@ final readonly class Label
         public string $designation,
         public string $attributes,
         public LabelBarcode $barcode,
-        public ?string $itemCode = null,
     ) {
     }
 }

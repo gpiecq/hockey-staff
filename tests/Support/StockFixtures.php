@@ -21,10 +21,7 @@ final class StockFixtures
         return $location;
     }
 
-    /**
-     * Niveau de stock posé directement (sans opération) : seule façon de créer du stock d'équipement en quantité
-     * tant que l'entrée d'équipement crée encore des pièces.
-     */
+    /** Niveau de stock posé directement (sans opération ni mouvement). */
     public static function level(EntityManagerInterface $em, Variant $variant, Location $location, int $quantity, int $unitCostHt, StockCondition $condition = StockCondition::New): StockLevel
     {
         $level = new StockLevel($variant, $location, $condition);

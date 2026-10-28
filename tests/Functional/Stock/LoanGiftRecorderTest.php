@@ -138,7 +138,6 @@ final class LoanGiftRecorderTest extends KernelTestCase
         self::assertSame(2, $movement->getQuantity());
         self::assertSame(StockCondition::Worn, $movement->getCondition());
         self::assertSame(10000, $movement->getUnitCostHt());
-        self::assertNull($movement->getItem());
 
         $this->em->clear();
         $level = $this->level($helmet, StockCondition::Worn);
@@ -328,7 +327,6 @@ final class LoanGiftRecorderTest extends KernelTestCase
         self::assertNotFalse($movement);
         self::assertSame(4, $movement->getQuantity());
         self::assertSame(100, $movement->getUnitCostHt());
-        self::assertNull($movement->getItem());
         $this->em->clear();
         $level = $this->em->getRepository(StockLevel::class)->findOneBy(['variant' => $pucks->getId(), 'location' => $this->local->getId()]);
         self::assertSame(6, $level?->getQuantity());

@@ -5,15 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Catalogue;
 
 use App\Catalogue\CodeResolver;
-use App\Entity\Item;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\ProductKind;
 use App\Enum\UserRole;
-use App\Stock\StockMovementRecorder;
 use App\Tests\Support\ImportFixtures;
-use App\Tests\Support\StockFixtures;
-use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -48,18 +43,6 @@ final class CodeResolverTest extends WebTestCase
         return ImportFixtures::variant($this->em, $product, $ean, 'SR L');
     }
 
-    private function item(): Item
-    {
-        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque série');
-        $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
-        \assert($recorder instanceof StockMovementRecorder);
-        StockScenario::receive($recorder, $variant, StockFixtures::location($this->em), 1, 8000);
-        $item = $this->em->getRepository(Item::class)->findOneBy([]);
-        self::assertNotNull($item);
-
-        return $item;
-    }
-
     public function testEanWithOrWithoutLeadingZeroResolves(): void
     {
         $short = $this->variant('123456789012', 'A1');
@@ -74,14 +57,6 @@ final class CodeResolverTest extends WebTestCase
         $variant = $this->variant();
 
         self::assertSame($variant, $this->resolver()->resolve('  '.strtolower((string) $variant->getCode()).' '));
-    }
-
-    public function testPieceCodeNoLongerResolves(): void
-    {
-        $item = $this->item();
-
-        self::assertNull($this->resolver()->resolve($item->getCode()));
-        self::assertNull($this->resolver()->resolve('HS-000001'));
     }
 
     public function testArchivedVariantResolves(): void

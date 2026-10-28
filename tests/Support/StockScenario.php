@@ -8,6 +8,7 @@ use App\Entity\Location;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -28,8 +29,9 @@ final class StockScenario
         return $variant;
     }
 
-    public static function receive(StockMovementRecorder $recorder, Variant $variant, Location $location, int $quantity, int $unitCostHt): void
+    /** Achat : crée ou alimente le niveau (variante, lieu, état) pour tout type de produit (état forcé à Neuf pour un consommable). */
+    public static function receive(StockMovementRecorder $recorder, Variant $variant, Location $location, int $quantity, int $unitCostHt, StockCondition $condition = StockCondition::New): void
     {
-        $recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location, [new StockEntryLine($variant, $quantity, $unitCostHt)]));
+        $recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location, [new StockEntryLine($variant, $quantity, $unitCostHt, $condition)]));
     }
 }

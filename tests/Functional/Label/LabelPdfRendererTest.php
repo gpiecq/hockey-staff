@@ -62,7 +62,7 @@ final class LabelPdfRendererTest extends KernelTestCase
         $labels = [
             new Label('UPC', 'Taille 52', new LabelBarcode(Symbology::UpcA, '012345678905')),
             new Label('EAN', '', new LabelBarcode(Symbology::Ean13, '4006381333931')),
-            new Label('Interne', 'Noir', new LabelBarcode(Symbology::Code128, 'HV-000001'), 'HS-000001'),
+            new Label('Interne', 'Noir', new LabelBarcode(Symbology::Code128, 'HV-000001')),
         ];
 
         foreach ([LabelFormat::Sheet, LabelFormat::Roll] as $format) {

@@ -7,7 +7,6 @@ namespace App\Tests\Functional\Stock;
 use App\Entity\PlayerHolding;
 use App\Entity\StockLevel;
 use App\Enum\StockCondition;
-use App\Repository\ItemRepository;
 use App\Tests\Support\ImportFixtures;
 use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
@@ -86,15 +85,14 @@ final class StockSchemaTest extends KernelTestCase
         );
     }
 
-    public function testItemCodesAreSequential(): void
+    public function testItemTableIsGone(): void
     {
-        $repository = static::getContainer()->get(ItemRepository::class);
-        \assert($repository instanceof ItemRepository);
+        $connection = $this->em->getConnection();
 
-        $first = $repository->nextCode();
-        $second = $repository->nextCode();
-
-        self::assertMatchesRegularExpression('/^HS-\d{6}$/', $first);
-        self::assertSame((int) substr($first, 3) + 1, (int) substr($second, 3));
+        self::assertFalse($connection->fetchOne("SELECT to_regclass('public.item') IS NOT NULL"));
+        self::assertFalse($connection->fetchOne("SELECT to_regclass('public.item_code_seq') IS NOT NULL"));
+        self::assertFalse($connection->fetchOne(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_movement' AND column_name = 'item_id')",
+        ));
     }
 }

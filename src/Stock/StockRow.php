@@ -9,7 +9,7 @@ use App\Entity\Variant;
 final readonly class StockRow
 {
     /**
-     * @param array<int, int> $quantityByLocation id du lieu → quantité (physique uniquement) ; `quantity` et `valueHt` incluent les pièces prêtées
+     * @param array<int, int> $quantityByLocation id du lieu → quantité (physique uniquement) ; `quantity` et `valueHt` incluent les quantités prêtées (détentions des joueurs, sans filtre de lieu)
      */
     public function __construct(
         public Variant $variant,

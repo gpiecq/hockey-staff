@@ -8,25 +8,22 @@
         .page { position: relative; overflow: hidden; }
         .page + .page { page-break-before: always; }
         .label { overflow: hidden; text-align: center; }
-        .code { font-weight: bold; }
         .designation { overflow: hidden; line-height: 1.15; }
         .attributes { overflow: hidden; white-space: nowrap; height: 3mm; color: #333; }
         .bars { display: block; margin: 0 auto; }
-        .code, .attributes, .value { overflow: hidden; }
+        .attributes, .value { overflow: hidden; }
         .value { letter-spacing: 0.5px; }
 
         {% if format == 'a4' %}
         .page { width: 210mm; height: 296mm; }
-        .label { position: absolute; width: 63.5mm; height: 36.1mm; padding-top: 2mm; }
-        .code { font-size: 10pt; height: 4.5mm; }
+        .label { position: absolute; width: 63.5mm; height: 31.6mm; padding-top: 6.5mm; }
         .designation { font-size: 7.5pt; height: 8mm; padding: 0 2mm; }
         .attributes { font-size: 7pt; padding: 0 2mm; }
         .bars { width: 50mm; height: 12mm; margin-top: 1mm; }
         .value { font-size: 7pt; height: 3mm; }
         {% else %}
         .page { width: 62mm; height: 28.5mm; }
-        .label { width: 62mm; height: 27.3mm; padding-top: 1.2mm; }
-        .code { font-size: 8pt; height: 3.2mm; }
+        .label { width: 62mm; height: 24.1mm; padding-top: 4.4mm; }
         .designation { font-size: 6.5pt; height: 6.9mm; line-height: 1.08; padding: 0 2mm; }
         .attributes { font-size: 6pt; padding: 0 2mm; }
         .bars { height: 10mm; margin-top: 0.3mm; }
@@ -39,7 +36,6 @@
     <div class="page">
     {% for cell in page %}
         <div class="label"{% if format == 'a4' %} style="left: {{ cell.x }}mm; top: {{ cell.y }}mm;"{% endif %}>
-            <div class="code">{{ cell.label.itemCode ?? '' }}</div>
             <div class="designation">{{ cell.label.designation }}</div>
             <div class="attributes">{{ cell.label.attributes }}</div>
             <img class="bars" src="{{ cell.image }}" alt=""{% if cell.width is defined %} style="width: {{ cell.width }}mm;"{% endif %}>

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Stock;
 
 use App\Catalogue\CurrentSeasonProvider;
-use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\PlayerHolding;
@@ -15,12 +14,10 @@ use App\Entity\StockLevel;
 use App\Entity\StockMovement;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ItemStatus;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
-use App\Repository\ItemRepository;
 use App\Repository\PlayerHoldingRepository;
 use App\Repository\StockLevelRepository;
 use App\Sale\SalePricing;
@@ -44,7 +41,6 @@ final readonly class StockMovementRecorder
         private EntityManagerInterface $em,
         private StockLevelRepository $levels,
         private PlayerHoldingRepository $holdings,
-        private ItemRepository $items,
         private EntryCostProvider $costs,
         private CurrentSeasonProvider $seasons,
         private SalePricing $pricing,
@@ -69,29 +65,22 @@ final readonly class StockMovementRecorder
         }
         $season = $this->seasons->get();
 
-        return $this->em->wrapInTransaction(function () use ($entry, $plans, $season): StockOperation {
+        $targets = [];
+        foreach ($plans as $plan) {
+            $targets[$this->levelKey($plan['line']->variant, $entry->location, $plan['condition'])] = [$plan['line']->variant, $entry->location, $plan['condition']];
+        }
+
+        return $this->em->wrapInTransaction(function () use ($entry, $plans, $targets, $season): StockOperation {
+            $levels = $this->lockLevels($targets);
             $operation = new StockOperation($entry->type, null, $entry->location, null, $entry->documentReference, $entry->comment);
             $this->em->persist($operation);
-            /** @var array<int, StockLevel> $levels */
-            $levels = [];
 
             foreach ($plans as $plan) {
                 $line = $plan['line'];
-                $variant = $line->variant;
-
-                if (ProductKind::Equipment === $variant->getProduct()?->getKind()) {
-                    for ($i = 0; $i < $line->quantity; ++$i) {
-                        $item = new Item($this->items->nextCode(), $variant, $entry->location, $plan['cost'], $line->condition, $plan['serials'][$i] ?? null);
-                        $this->em->persist($item);
-                        $operation->addMovement(new StockMovement($operation, $variant, 1, $plan['cost'], $item, $plan['catalogueValue'], $season));
-                    }
-                    continue;
-                }
-
-                $key = (int) $variant->getId();
-                $level = $levels[$key] ??= $this->levels->findForUpdate($variant, $entry->location) ?? $this->newLevel($variant, $entry->location);
+                $key = $this->levelKey($line->variant, $entry->location, $plan['condition']);
+                $level = $levels[$key] ??= $this->newLevel($line->variant, $entry->location, $plan['condition']);
                 $level->add($line->quantity, $line->quantity * $plan['cost']);
-                $operation->addMovement(new StockMovement($operation, $variant, $line->quantity, $plan['cost'], null, $plan['catalogueValue'], $season));
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, $plan['cost'], $plan['catalogueValue'], $season, $plan['condition']));
             }
 
             $this->em->flush();
@@ -109,19 +98,14 @@ final readonly class StockMovementRecorder
         $season = $this->seasons->get();
 
         return $this->em->wrapInTransaction(function () use ($out, $season): StockOperation {
-            $locked = $this->lockAndCheck($out->location, $out->lines);
+            ['sources' => $sources] = $this->lockAndCheck($out->location, $out->lines);
             $operation = new StockOperation(StockMovementType::Out, $out->location, null, $out->reason, null, $out->comment);
             $this->em->persist($operation);
 
             foreach ($out->lines as $line) {
-                if (null !== $line->item) {
-                    $item = $locked['items'][(int) $line->item->getId()];
-                    $item->remove();
-                    $operation->addMovement(new StockMovement($operation, $line->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
-                    continue;
-                }
-                $value = $locked['levels'][(int) $line->variant->getId()]->remove($line->quantity);
-                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, null, $season));
+                $condition = $this->conditionOf($line->variant, $line->condition);
+                $value = $sources[$this->levelKey($line->variant, $out->location, $condition)]->remove($line->quantity);
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, $season, $condition));
             }
 
             $this->em->flush();
@@ -142,23 +126,18 @@ final readonly class StockMovementRecorder
         $season = $this->seasons->get();
 
         return $this->em->wrapInTransaction(function () use ($transfer, $season): StockOperation {
-            $locked = $this->lockAndCheck($transfer->from, $transfer->lines);
+            ['sources' => $sources, 'destinations' => $destinations] = $this->lockAndCheck($transfer->from, $transfer->lines, $transfer->to);
             $operation = new StockOperation(StockMovementType::Transfer, $transfer->from, $transfer->to, null, null, $transfer->comment);
             $this->em->persist($operation);
-            $destinations = [];
 
+            // Le transfert conserve l'état et la valeur (CUMP du niveau de départ).
             foreach ($transfer->lines as $line) {
-                if (null !== $line->item) {
-                    $item = $locked['items'][(int) $line->item->getId()];
-                    $item->moveTo($transfer->to);
-                    $operation->addMovement(new StockMovement($operation, $line->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
-                    continue;
-                }
-                $key = (int) $line->variant->getId();
-                $value = $locked['levels'][$key]->remove($line->quantity);
-                $destination = $destinations[$key] ??= $this->levels->findForUpdate($line->variant, $transfer->to) ?? $this->newLevel($line->variant, $transfer->to);
+                $condition = $this->conditionOf($line->variant, $line->condition);
+                $value = $sources[$this->levelKey($line->variant, $transfer->from, $condition)]->remove($line->quantity);
+                $key = $this->levelKey($line->variant, $transfer->to, $condition);
+                $destination = $destinations[$key] ??= $this->newLevel($line->variant, $transfer->to, $condition);
                 $destination->add($line->quantity, $value);
-                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, null, $season));
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, $season, $condition));
             }
 
             $this->em->flush();
@@ -192,7 +171,7 @@ final readonly class StockMovementRecorder
             $this->em->persist($operation);
             $value = $level->remove($loan->quantity);
             $holding->add($loan->quantity, $value);
-            $operation->addMovement(new StockMovement($operation, $loan->variant, $loan->quantity, (int) round($value / $loan->quantity), null, null, $season, $loan->condition));
+            $operation->addMovement(new StockMovement($operation, $loan->variant, $loan->quantity, (int) round($value / $loan->quantity), null, $season, $loan->condition));
 
             $this->em->flush();
 
@@ -223,7 +202,7 @@ final readonly class StockMovementRecorder
             $this->em->persist($operation);
             $value = $holding->remove($return->quantity);
             ($level ?? $this->newLevel($return->variant, $return->location, $return->condition))->add($return->quantity, $value);
-            $operation->addMovement(new StockMovement($operation, $return->variant, $return->quantity, (int) round($value / $return->quantity), null, null, $season, $return->condition));
+            $operation->addMovement(new StockMovement($operation, $return->variant, $return->quantity, (int) round($value / $return->quantity), null, $season, $return->condition));
             // Détention soldée : supprimée, la trace reste dans les mouvements.
             if ($return->quantity === $held) {
                 $this->em->remove($holding);
@@ -260,7 +239,7 @@ final readonly class StockMovementRecorder
             $operation = new StockOperation(StockMovementType::GiftOut, $gift->location, null, null, null, $gift->comment, $gift->player, $gift->team);
             $this->em->persist($operation);
             $value = $level->remove($gift->quantity);
-            $operation->addMovement(new StockMovement($operation, $gift->variant, $gift->quantity, (int) round($value / $gift->quantity), null, null, $season, $condition));
+            $operation->addMovement(new StockMovement($operation, $gift->variant, $gift->quantity, (int) round($value / $gift->quantity), null, $season, $condition));
 
             $this->em->flush();
 
@@ -325,7 +304,7 @@ final readonly class StockMovementRecorder
             foreach ($plans as [$line, $level, $price]) {
                 $record->addLine(new SaleLine($record, $line->variant, $line->condition, $line->quantity, $price));
                 $value = $level->remove($line->quantity);
-                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, null, $season, $line->condition));
+                $operation->addMovement(new StockMovement($operation, $line->variant, $line->quantity, (int) round($value / $line->quantity), null, $season, $line->condition));
             }
 
             $this->em->flush();
@@ -345,82 +324,87 @@ final readonly class StockMovementRecorder
             throw new StockException('Ajoutez au moins une ligne.');
         }
 
-        $codes = [];
         foreach ($lines as $line) {
             if ($line->quantity < 1) {
                 throw new StockException('La quantité doit être au moins 1.');
             }
-            if (ProductKind::Equipment !== $line->variant->getProduct()?->getKind()) {
-                if (null !== $line->item) {
-                    throw new StockException(\sprintf('« %s » est suivi en quantité : n\'indiquez pas de pièce.', $this->label($line->variant)));
-                }
-                continue;
-            }
-            if (null === $line->item) {
-                throw new StockException(\sprintf('Indiquez la pièce (code HS-) pour « %s ».', $this->label($line->variant)));
-            }
-            if ($line->item->getVariant()->getId() !== $line->variant->getId()) {
-                throw new StockException(\sprintf('La pièce %s ne correspond pas à « %s ».', $line->item->getCode(), $this->label($line->variant)));
-            }
-            if (1 !== $line->quantity) {
-                throw new StockException(\sprintf('La quantité de la pièce %s doit être 1.', $line->item->getCode()));
-            }
-            if (isset($codes[$line->item->getCode()])) {
-                throw new StockException(\sprintf('La pièce %s figure deux fois.', $line->item->getCode()));
-            }
-            $codes[$line->item->getCode()] = true;
         }
     }
 
     /**
-     * Verrouille (PESSIMISTIC_WRITE) les niveaux et pièces visés, puis contrôle la disponibilité ; à appeler dans la transaction.
+     * Verrouille (PESSIMISTIC_WRITE) les niveaux de départ (et d'arrivée pour un transfert), puis contrôle la
+     * disponibilité par (variante, état) ; à appeler dans la transaction. Les lignes d'une même variante dans
+     * un même état sont cumulées.
      *
      * @param list<StockLine> $lines
      *
-     * @return array{levels: array<int, StockLevel>, items: array<int, Item>}
+     * @return array{sources: array<string, StockLevel>, destinations: array<string, ?StockLevel>}
      */
-    private function lockAndCheck(Location $from, array $lines): array
+    private function lockAndCheck(Location $from, array $lines, ?Location $to = null): array
     {
         $wanted = [];
-        $variants = [];
-        $items = [];
+        $targets = [];
         foreach ($lines as $line) {
-            if (null !== $line->item) {
-                $items[(int) $line->item->getId()] = $line->item;
+            $condition = $this->conditionOf($line->variant, $line->condition);
+            $key = $this->levelKey($line->variant, $from, $condition);
+            $wanted[$key] = ($wanted[$key] ?? 0) + $line->quantity;
+            $targets[$key] = [$line->variant, $from, $condition];
+            if (null !== $to) {
+                $targets[$this->levelKey($line->variant, $to, $condition)] = [$line->variant, $to, $condition];
+            }
+        }
+
+        $locked = $this->lockLevels($targets);
+
+        $sources = [];
+        $destinations = [];
+        foreach ($locked as $key => $level) {
+            if (!isset($wanted[$key])) {
+                $destinations[$key] = $level;
                 continue;
             }
-            $key = (int) $line->variant->getId();
-            $wanted[$key] = ($wanted[$key] ?? 0) + $line->quantity;
-            $variants[$key] = $line->variant;
-        }
-
-        // Ordre de verrouillage stable (identifiant croissant) pour éviter les deadlocks entre saisies concurrentes.
-        ksort($variants);
-        ksort($items);
-
-        $levels = [];
-        foreach ($variants as $key => $variant) {
-            $level = $this->levels->findForUpdate($variant, $from);
+            [$variant, , $condition] = $targets[$key];
             if (null === $level || $wanted[$key] > $level->getQuantity()) {
-                throw new StockException(\sprintf('Stock insuffisant pour « %s » à « %s » : %d disponible(s).', $this->label($variant), $from->getName(), $level?->getQuantity() ?? 0));
+                throw $this->shortStock($variant, $condition, $from, $level?->getQuantity() ?? 0);
             }
-            $levels[$key] = $level;
+            $sources[$key] = $level;
         }
 
-        $locked = [];
-        foreach ($items as $key => $item) {
-            $fresh = $this->items->findForUpdate($item);
-            if (ItemStatus::InStock !== $fresh->getStatus() || $fresh->getLocation()->getId() !== $from->getId()) {
-                throw new StockException(\sprintf('La pièce %s n\'est pas en stock à « %s ».', $fresh->getCode(), $from->getName()));
-            }
-            $locked[$key] = $fresh;
-        }
-
-        return ['levels' => $levels, 'items' => $locked];
+        return ['sources' => $sources, 'destinations' => $destinations];
     }
 
     /**
-     * @return array{line: StockEntryLine, cost: int, catalogueValue: ?int, serials: list<string>}
+     * Verrouille les niveaux visés dans l'ordre global (variante id, lieu id, état) pour éviter les deadlocks
+     * entre saisies concurrentes ; null pour un niveau qui n'existe pas encore.
+     *
+     * @param array<string, array{Variant, Location, StockCondition}> $targets clés issues de levelKey()
+     *
+     * @return array<string, ?StockLevel>
+     */
+    private function lockLevels(array $targets): array
+    {
+        ksort($targets);
+        $levels = [];
+        foreach ($targets as $key => [$variant, $location, $condition]) {
+            $levels[$key] = $this->levels->findForUpdate($variant, $location, $condition);
+        }
+
+        return $levels;
+    }
+
+    private function levelKey(Variant $variant, Location $location, StockCondition $condition): string
+    {
+        return \sprintf('%012d-%012d-%s', (int) $variant->getId(), (int) $location->getId(), $condition->value);
+    }
+
+    /** Consommable : état toujours Neuf, le choix éventuel est ignoré. */
+    private function conditionOf(Variant $variant, StockCondition $condition): StockCondition
+    {
+        return ProductKind::Equipment === $variant->getProduct()?->getKind() ? $condition : StockCondition::New;
+    }
+
+    /**
+     * @return array{line: StockEntryLine, cost: int, catalogueValue: ?int, condition: StockCondition}
      */
     private function planLine(StockEntryLine $line, bool $isPurchase): array
     {
@@ -443,18 +427,7 @@ final readonly class StockMovementRecorder
             $cost = 0;
         }
 
-        $serials = [];
-        if (ProductKind::Equipment === $variant->getProduct()?->getKind()) {
-            $serials = array_values(array_filter(
-                array_map(trim(...), $line->serialNumbers),
-                static fn (string $serial): bool => '' !== $serial,
-            ));
-            if (\count($serials) > $line->quantity) {
-                throw new StockException(\sprintf('Plus de numéros de série que de pièces pour « %s ».', $this->label($variant)));
-            }
-        }
-
-        return ['line' => $line, 'cost' => $cost, 'catalogueValue' => $isPurchase ? null : $clubPrice, 'serials' => $serials];
+        return ['line' => $line, 'cost' => $cost, 'catalogueValue' => $isPurchase ? null : $clubPrice, 'condition' => $this->conditionOf($variant, $line->condition)];
     }
 
     private function newLevel(Variant $variant, Location $location, StockCondition $condition = StockCondition::New): StockLevel
