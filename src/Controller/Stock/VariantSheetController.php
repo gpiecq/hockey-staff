@@ -7,6 +7,7 @@ namespace App\Controller\Stock;
 use App\Catalogue\CurrentSeasonProvider;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
+use App\Enum\ItemCondition;
 use App\Repository\ItemRepository;
 use App\Repository\SeasonPriceRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,10 +32,12 @@ final class VariantSheetController extends AbstractController
 
         // Stock par lieu : pièces ventilées par état (sérialisé), quantités (produit en quantité).
         $locations = [];
+        $secondHandInStock = false;
         foreach ($items->findInStockByVariants([$variant]) as $item) {
             $name = $item->getLocation()->getName();
             $locations[$name]['conditions'][$item->getCondition()->value] = ($locations[$name]['conditions'][$item->getCondition()->value] ?? 0) + 1;
             $locations[$name]['quantity'] = ($locations[$name]['quantity'] ?? 0) + 1;
+            $secondHandInStock = $secondHandInStock || ItemCondition::New !== $item->getCondition();
         }
         foreach ($levels as $level) {
             if ($level->getQuantity() > 0) {
@@ -54,6 +57,7 @@ final class VariantSheetController extends AbstractController
             'price' => null === $season ? null : $prices->findOneBy(['variant' => $variant, 'season' => $season]),
             'locations' => $locations,
             'loaned' => $loaned,
+            'secondHandInStock' => $secondHandInStock,
         ]);
     }
 }

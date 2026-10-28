@@ -22,6 +22,12 @@
         </div>
     {% endif %}
 
+    {% if serialized and secondHandInStock and is_granted('SALE_MANAGE') %}
+        <div class="actions variant-actions">
+            <a class="btn" href="{{ path('sale_new', {variant: variant.id}) }}">Vendre</a>
+        </div>
+    {% endif %}
+
     <dl class="product-meta">
         <dt>Référence</dt><dd><a href="{{ path('catalogue_product_show', {id: product.id}) }}">{{ product.reference }}</a></dd>
         <dt>EAN</dt><dd>{{ variant.ean ?? '—' }}</dd>

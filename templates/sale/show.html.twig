@@ -1,0 +1,44 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Vente n° {{ sale.id }}{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Vente n° {{ sale.id }}</h1>
+        <span class="actions">
+            <a class="btn" href="{{ path('stock_operation_show', {id: sale.operation.id}) }}">Opération de stock</a>
+            <a class="btn" href="{{ path('sale_index') }}">Toutes les ventes</a>
+        </span>
+    </div>
+
+    <dl class="product-meta">
+        <dt>Date</dt><dd>{{ sale.operation.occurredAt|date('d/m/Y H:i') }}</dd>
+        <dt>Acheteur</dt><dd>{{ sale.buyer }}</dd>
+        {% if sale.player %}<dt>Joueur</dt><dd><a href="{{ path('player_show', {id: sale.player.id}) }}">{{ sale.player.fullName }}</a></dd>{% endif %}
+        {% if sale.comment %}<dt>Commentaire</dt><dd>{{ sale.comment }}</dd>{% endif %}
+    </dl>
+
+    <table class="table">
+        <thead>
+            <tr><th>Pièce</th><th class="num">Prix public</th><th class="num">Réduction</th><th class="num">Prix TTC</th><th class="num">Prix HT</th></tr>
+        </thead>
+        <tbody>
+            {% for line in sale.lines %}
+                {% set variant = line.item.variant %}
+                <tr>
+                    <td data-label="Pièce">
+                        <a href="{{ path('stock_item_show', {code: line.item.code}) }}">{{ line.item.code }}</a>
+                        — {{ variant.product.reference }} — {{ variant.product.designation }}{% if variant.label %} — {{ variant.label }}{% endif %}
+                    </td>
+                    <td class="num" data-label="Prix public">{{ line.basePriceTtc is null ? '—' : line.basePriceTtc|euros }}</td>
+                    <td class="num" data-label="Réduction">{{ line.discountRate is null ? '—' : (line.discountRate / 100)|number_format(0) ~ ' %' }}</td>
+                    <td class="num" data-label="Prix TTC">{{ line.priceTtc|euros }}</td>
+                    <td class="num" data-label="Prix HT">{{ line.priceHt|euros }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><th colspan="3">Total</th><th class="num">{{ sale.totalTtc|euros }}</th><th class="num">{{ sale.lines|reduce((sum, l) => sum + l.priceHt, 0)|euros }}</th></tr>
+        </tfoot>
+    </table>
+{% endblock %}

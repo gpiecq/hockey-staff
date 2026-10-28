@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Stock;
 
+use App\Entity\Item;
 use App\Entity\Variant;
 use App\Enum\ItemCondition;
 use App\Enum\StockMovementType;
@@ -12,6 +13,8 @@ use App\Enum\UserRole;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\Input\StockLoan;
+use App\Stock\Input\StockSale;
+use App\Stock\Input\StockSaleLine;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
@@ -41,11 +44,11 @@ final class VariantSheetTest extends WebTestCase
         return $helmet;
     }
 
-    private function login(KernelBrowser $client, UserRole $role): void
+    private function login(KernelBrowser $client, UserRole $role, string $email = 'u@example.test'): void
     {
         $em = $client->getContainer()->get(EntityManagerInterface::class);
         \assert($em instanceof EntityManagerInterface);
-        $client->loginUser(UserFactory::create($em, $role, 'u@example.test'));
+        $client->loginUser(UserFactory::create($em, $role, $email));
     }
 
     public function testSheetShowsStockByConditionAndHolders(): void
@@ -64,6 +67,34 @@ final class VariantSheetTest extends WebTestCase
         foreach (['Prêter', 'Retour', 'Donner', 'Sortie'] as $label) {
             self::assertGreaterThan(0, $client->getCrawler()->selectLink($label)->count(), $label);
         }
+    }
+
+    public function testSellButtonOnlyForManagerWithSecondHandStock(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $variant = $this->sheet($client);
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+        self::assertSame(0, $client->getCrawler()->selectLink('Vendre')->count());
+
+        $manager = $client;
+        $this->login($manager, UserRole::Manager, 'm@example.test');
+        $manager->request('GET', '/stock/variantes/'.$variant->getId());
+        $link = $manager->getCrawler()->selectLink('Vendre');
+        self::assertSame(1, $link->count());
+        self::assertSame('/ventes/new?variant='.$variant->getId(), $link->attr('href'));
+
+        // Sans pièce d'occasion en stock (la seule pièce usée est vendue), le bouton disparaît.
+        $em = $manager->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $recorder = $manager->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => ItemCondition::Worn]);
+        \assert($worn instanceof Item);
+        $recorder->recordSale(new StockSale($worn->getLocation(), 'Mme Dupont', [new StockSaleLine($worn, null, 1000)]));
+        $manager->request('GET', '/stock/variantes/'.$variant->getId());
+        self::assertSame(0, $manager->getCrawler()->selectLink('Vendre')->count());
     }
 
     public function testViewerSeesNoActionButton(): void

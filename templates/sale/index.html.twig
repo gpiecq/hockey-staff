@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ventes{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Ventes d'occasion</h1>
+        <a class="btn btn-primary" href="{{ path('sale_new') }}">Nouvelle vente</a>
+    </div>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucune vente.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Date</th><th>Acheteur</th><th class="num">Pièces</th><th class="num">Total TTC</th></tr>
+            </thead>
+            <tbody>
+                {% for sale in page.items %}
+                    <tr>
+                        <td data-label="Date"><a href="{{ path('sale_show', {id: sale.id}) }}">{{ sale.operation.occurredAt|date('d/m/Y H:i') }}</a></td>
+                        <td data-label="Acheteur">{{ sale.buyer }}</td>
+                        <td class="num" data-label="Pièces">{{ counts[sale.id]|default(0) }}</td>
+                        <td class="num" data-label="Total TTC">{{ sale.totalTtc|euros }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'ventes'} %}
+{% endblock %}

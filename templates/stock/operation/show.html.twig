@@ -9,6 +9,9 @@
             {% if operation.type.value in ['purchase_in', 'donation_in'] and is_granted('STOCK_MOVE') %}
                 <a class="btn" href="{{ path('label_print', {operation: operation.id}) }}">Imprimer les étiquettes</a>
             {% endif %}
+            {% if operation.sale and is_granted('SALE_MANAGE') %}
+                <a class="btn" href="{{ path('sale_show', {id: operation.sale.id}) }}">Voir la vente</a>
+            {% endif %}
             <a class="btn" href="{{ path('stock_operation_index') }}">Toutes les opérations</a>
         </span>
     </div>

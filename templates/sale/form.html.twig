@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Vente d'occasion{% endblock %}
+
+{% block body %}
+    <a class="back" href="{{ path('sale_index') }}">‹ Ventes</a>
+    <h1>Vente d'occasion</h1>
+
+    {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate'}}) }}
+        {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
+
+        <div class="field">
+            {{ form_label(form.location) }}
+            {{ form_widget(form.location) }}
+            {% for error in form.location.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            {{ form_label(form.buyer) }}
+            {{ form_widget(form.buyer) }}
+            {% for error in form.buyer.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            {{ form_label(form.player) }}
+            {{ form_widget(form.player) }}
+            {% for error in form.player.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            {{ form_label(form.comment) }}
+            {{ form_widget(form.comment) }}
+        </div>
+
+        {{ include('sale/_lines.html.twig') }}
+
+        {{ form_rest(form) }}
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a class="btn" href="{{ path('sale_index') }}">Annuler</a>
+        </div>
+    {{ form_end(form) }}
+{% endblock %}
