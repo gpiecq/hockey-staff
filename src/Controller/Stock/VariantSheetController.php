@@ -9,6 +9,7 @@ use App\Entity\StockLevel;
 use App\Entity\Variant;
 use App\Enum\StockCondition;
 use App\Repository\ItemRepository;
+use App\Repository\PlayerHoldingRepository;
 use App\Repository\SeasonPriceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,14 +24,14 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 final class VariantSheetController extends AbstractController
 {
     #[Route('/stock/variantes/{id}', name: 'stock_variant_show', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function show(int $id, EntityManagerInterface $em, ItemRepository $items, SeasonPriceRepository $prices, CurrentSeasonProvider $seasons): Response
+    public function show(int $id, EntityManagerInterface $em, ItemRepository $items, PlayerHoldingRepository $holdings, SeasonPriceRepository $prices, CurrentSeasonProvider $seasons): Response
     {
         $variant = $em->find(Variant::class, $id) ?? throw $this->createNotFoundException('Variante introuvable.');
 
         /** @var list<StockLevel> $levels */
         $levels = $em->getRepository(StockLevel::class)->findBy(['variant' => $variant]);
 
-        // Stock par lieu : pièces ventilées par état (sérialisé), quantités (produit en quantité).
+        // Stock par lieu : pièces et niveaux ventilés par état (équipement), quantités (consommable).
         $locations = [];
         $secondHand = [];
         foreach ($items->findInStockByVariants([$variant]) as $item) {
@@ -44,13 +45,23 @@ final class VariantSheetController extends AbstractController
         foreach ($levels as $level) {
             if ($level->getQuantity() > 0) {
                 $name = $level->getLocation()->getName();
+                $locations[$name]['conditions'][$level->getCondition()->value] = ($locations[$name]['conditions'][$level->getCondition()->value] ?? 0) + $level->getQuantity();
                 $locations[$name]['quantity'] = ($locations[$name]['quantity'] ?? 0) + $level->getQuantity();
             }
         }
         ksort($locations);
+        // États dans l'ordre Neuf, Bon, Usé, Abîmé.
+        foreach ($locations as $name => $data) {
+            $conditions = [];
+            foreach (StockCondition::cases() as $condition) {
+                if (isset($data['conditions'][$condition->value])) {
+                    $conditions[$condition->label()] = $data['conditions'][$condition->value];
+                }
+            }
+            $locations[$name]['conditions'] = $conditions;
+        }
 
         $season = $seasons->get();
-        $loaned = $items->findLoanedByVariant($variant);
 
         return $this->render('stock/variant/show.html.twig', [
             'variant' => $variant,
@@ -58,7 +69,7 @@ final class VariantSheetController extends AbstractController
             'season' => $season,
             'price' => null === $season ? null : $prices->findOneBy(['variant' => $variant, 'season' => $season]),
             'locations' => $locations,
-            'loaned' => $loaned,
+            'holders' => $holdings->findByVariant($variant),
             'secondHand' => $secondHand,
         ]);
     }

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Player;
 
-use App\Entity\Item;
+use App\Entity\PlayerHolding;
 use App\Pagination\Page;
-use App\Repository\ItemRepository;
+use App\Repository\PlayerHoldingRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\TeamRepository;
 use App\Security\Voter\PlayerVoter;
@@ -20,17 +20,17 @@ final class LoanListController extends AbstractController
 {
     #[Route('/prets', name: 'loan_index', methods: ['GET'])]
     #[IsGranted(PlayerVoter::VIEW)]
-    public function index(Request $request, ItemRepository $items, TeamRepository $teams, SeasonRepository $seasons): Response
+    public function index(Request $request, PlayerHoldingRepository $holdings, TeamRepository $teams, SeasonRepository $seasons): Response
     {
         $team = $request->query->getInt('equipe') > 0 ? $teams->find($request->query->getInt('equipe')) : null;
         $season = $request->query->getInt('saison') > 0 ? $seasons->find($request->query->getInt('saison')) : null;
 
-        /** @var Page<Item> $page */
-        $page = Page::fromQuery($items->loanedQuery($team, $season), $request->query->getString('page'));
+        /** @var Page<PlayerHolding> $page */
+        $page = Page::fromQuery($holdings->listQuery($team, $season), $request->query->getString('page'));
 
         return $this->render('player/loan/index.html.twig', [
             'page' => $page,
-            'loanDates' => $items->loanDates($page->items),
+            'loanDates' => $holdings->loanDates($page->items),
             'teams' => $teams->findAllOrdered(),
             'seasons' => $seasons->findBy([], ['startsOn' => 'DESC']),
             'team' => $team,

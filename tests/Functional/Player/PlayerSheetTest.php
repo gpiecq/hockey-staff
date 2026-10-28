@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Player;
 
-use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
-use App\Enum\StockMovementType;
 use App\Enum\UserRole;
-use App\Stock\Input\StockEntry;
-use App\Stock\Input\StockEntryLine;
 use App\Stock\Input\StockLoan;
 use App\Stock\Input\StockReturn;
 use App\Stock\StockMovementRecorder;
@@ -47,45 +43,38 @@ final class PlayerSheetTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), $role, 'u@example.test'));
     }
 
-    /** @return array{Variant, Location} un casque (3 Neuf) au Local */
+    /** @return array{Variant, Location} un casque (3 Neuf à 150 €) au Local */
     private function helmet(KernelBrowser $client): array
     {
         $em = $this->em($client);
         $local = StockFixtures::location($em, 'Local');
         $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
-        $this->recorder($client)->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [new StockEntryLine($helmet, 3, 15000, StockCondition::New)]));
+        StockFixtures::level($em, $helmet, $local, 3, 15000);
 
         return [$helmet, $local];
     }
 
-    /** @return list<Item> */
-    private function items(KernelBrowser $client, Variant $variant): array
-    {
-        /** @var list<Item> $items */
-        $items = $this->em($client)->getRepository(Item::class)->findBy(['variant' => $variant], ['code' => 'ASC']);
-
-        return $items;
-    }
-
-    public function testSheetListsHeldItemsWithReturnLink(): void
+    public function testSheetListsHoldingsWithQuantityAndLoanDate(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         [$helmet, $local] = $this->helmet($client);
         $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New, 2));
 
         $crawler = $client->request('GET', '/joueurs/'.$player->getId());
 
         self::assertResponseIsSuccessful();
-        $codes = array_map(static fn (Item $i): string => $i->getCode(), \array_slice($this->items($client, $helmet), 0, 2));
-        foreach ($codes as $code) {
-            self::assertStringContainsString($code, $crawler->filter('body')->text());
-        }
-        $links = $crawler->filter('a[href*="/retour?item=HS-"]');
-        self::assertCount(2, $links);
-        self::assertStringContainsString('/stock/variantes/'.$helmet->getId().'/retour?item=', (string) $links->first()->attr('href'));
+        self::assertStringContainsString('Matériel détenu', $crawler->filter('body')->text());
+        $rows = $crawler->filter('table.holdings tbody tr');
+        self::assertCount(1, $rows);
+        $row = str_replace("\u{00A0}", ' ', $rows->text());
+        self::assertStringContainsString('Casque Re-Akt · M', $row);
+        self::assertSame('2', trim($rows->filter('td[data-label="Quantité"]')->text()));
+        self::assertStringContainsString('300,00 €', $row);
+        self::assertStringContainsString((new \DateTimeImmutable())->format('d/m/Y'), $row);
+        self::assertCount(1, $rows->filter('a[href="/stock/variantes/'.$helmet->getId().'"]'));
+        self::assertCount(1, $rows->filter('a[href="/stock/variantes/'.$helmet->getId().'/retour?joueur='.$player->getId().'"]'));
     }
 
     public function testSheetShowsRosterAndHistory(): void
@@ -96,9 +85,8 @@ final class PlayerSheetTest extends WebTestCase
         $em = $this->em($client);
         $player = PlayerFixtures::player($em, 'Martin', 'Léo');
         PlayerFixtures::rosterEntry($em, PlayerFixtures::team($em, 'U15'), PlayerFixtures::season($em, 2026), $player, 9);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
-        $item = $this->items($client, $helmet)[0];
-        $this->recorder($client)->recordReturn(new StockReturn($item, $player, $local, StockCondition::Good));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New, 1));
+        $this->recorder($client)->recordReturn(new StockReturn($player, $helmet, 1, $local, StockCondition::Good));
 
         $client->request('GET', '/joueurs/'.$player->getId());
 
@@ -107,30 +95,8 @@ final class PlayerSheetTest extends WebTestCase
         self::assertStringContainsString('Retour de prêt', $text);
         self::assertStringContainsString('U15', $text);
         self::assertStringContainsString('2026-2027', $text);
-        self::assertCount(0, $client->getCrawler()->filter('a[href*="/retour?item=HS-"]'));
-    }
-
-    public function testLoanListFiltersByTeamSeason(): void
-    {
-        $client = static::createClient();
-        $this->login($client);
-        [$helmet, $local] = $this->helmet($client);
-        $em = $this->em($client);
-        $leo = PlayerFixtures::player($em, 'Martin', 'Léo');
-        $hugo = PlayerFixtures::player($em, 'Durand', 'Hugo');
-        $team = PlayerFixtures::team($em, 'U15');
-        $season = PlayerFixtures::season($em, 2026);
-        PlayerFixtures::rosterEntry($em, $team, $season, $leo, 7);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $leo, $helmet, StockCondition::New));
-        $this->recorder($client)->recordLoan(new StockLoan($local, $hugo, $helmet, StockCondition::New));
-
-        $crawler = $client->request('GET', '/prets');
-        self::assertResponseIsSuccessful();
-        self::assertCount(2, $crawler->filter('tbody tr'));
-
-        $crawler = $client->request('GET', '/prets?equipe='.$team->getId().'&saison='.$season->getId());
-        self::assertCount(1, $crawler->filter('tbody tr'));
-        self::assertStringContainsString('Léo Martin', $crawler->filter('tbody')->text());
+        self::assertStringContainsString('Aucun matériel détenu.', $text);
+        self::assertCount(0, $client->getCrawler()->filter('a[href*="/retour?joueur="]'));
     }
 
     public function testViewerSeesNoReturnLink(): void
@@ -139,12 +105,29 @@ final class PlayerSheetTest extends WebTestCase
         $this->login($client);
         [$helmet, $local] = $this->helmet($client);
         $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New, 1));
 
         $crawler = $client->request('GET', '/joueurs/'.$player->getId());
 
-        self::assertCount(0, $crawler->filter('a[href*="/retour?item=HS-"]'));
-        self::assertStringContainsString('HS-', $crawler->filter('body')->text());
+        self::assertCount(0, $crawler->filter('a[href*="/retour?joueur="]'));
+        self::assertStringContainsString('Casque Re-Akt', $crawler->filter('table.holdings')->text());
+    }
+
+    public function testPlayerWithHoldingCannotBeDeleted(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Manager);
+        [$helmet, $local] = $this->helmet($client);
+        $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New, 1));
+
+        $crawler = $client->request('GET', '/joueurs/'.$player->getId().'/delete');
+        $client->submit($crawler->selectButton('Confirmer la suppression')->form());
+
+        self::assertResponseRedirects('/joueurs');
+        $client->followRedirect();
+        self::assertSelectorTextContains('body', 'Ce joueur détient encore du matériel prêté : enregistrez d\'abord le retour.');
+        self::assertNull($this->em($client)->getConnection()->fetchOne('SELECT deleted_at FROM player WHERE id = ?', [$player->getId()]));
     }
 
     public function testNavShowsCurrentLoansLink(): void

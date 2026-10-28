@@ -11,12 +11,15 @@ use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockOutReason;
 use App\Enum\UserRole;
 use App\Repository\CategoryRepository;
 use App\Stock\Input\StockLine;
+use App\Stock\Input\StockLoan;
 use App\Stock\Input\StockOut;
 use App\Stock\StockMovementRecorder;
+use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
 use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
@@ -230,6 +233,29 @@ final class ProductEditTest extends WebTestCase
         $this->client->request('POST', $form->getUri(), $values);
 
         self::assertSame(ProductKind::Consumable, $this->findProduct('S1')->getKind());
+    }
+
+    public function testKindLockedWhileHeldByPlayer(): void
+    {
+        $this->login(UserRole::Manager);
+        $product = $this->product('S3');
+        $product->setKind(ProductKind::Equipment);
+        $variant = $this->variant($product, null);
+        $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $location = StockFixtures::location($this->em);
+        StockFixtures::level($this->em, $variant, $location, 1, 1000);
+        $recorder->recordLoan(new StockLoan($location, PlayerFixtures::player($this->em), $variant, StockCondition::New, 1));
+
+        $crawler = $this->client->request('GET', '/catalogue/'.$product->getId().'/edit');
+        self::assertCount(2, $crawler->filter('input[type=radio][name="product[kind]"][disabled]'));
+
+        $form = $crawler->selectButton('Enregistrer')->form();
+        $values = $form->getPhpValues();
+        $values['product']['kind'] = 'consumable';
+        $this->client->request('POST', $form->getUri(), $values);
+
+        self::assertSame(ProductKind::Equipment, $this->findProduct('S3')->getKind());
     }
 
     public function testKindEditableAfterStockLeft(): void

@@ -7,7 +7,7 @@ namespace App\Controller\Player;
 use App\Entity\Player;
 use App\Form\PlayerType;
 use App\Pagination\Page;
-use App\Repository\ItemRepository;
+use App\Repository\PlayerHoldingRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\RosterEntryRepository;
 use App\Repository\SeasonRepository;
@@ -81,14 +81,14 @@ final class PlayerController extends AbstractController
 
     #[Route('/{id}', name: 'player_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     #[IsGranted(PlayerVoter::VIEW)]
-    public function show(Player $player, ItemRepository $items, RosterEntryRepository $entries, StockOperationRepository $operations): Response
+    public function show(Player $player, PlayerHoldingRepository $holdings, RosterEntryRepository $entries, StockOperationRepository $operations): Response
     {
-        $held = $items->findLoanedByPlayer($player);
+        $held = $holdings->findByPlayer($player);
 
         return $this->render('player/player/show.html.twig', [
             'player' => $player,
             'held' => $held,
-            'loanDates' => $items->loanDates($held),
+            'loanDates' => $holdings->loanDates($held),
             'rosters' => $entries->findForPlayer($player),
             'history' => $operations->findByPlayer($player),
         ]);
@@ -117,14 +117,14 @@ final class PlayerController extends AbstractController
     /** GET : page de confirmation ; POST : suppression (douce) après contrôle du jeton CSRF. */
     #[Route('/{id}/delete', name: 'player_delete', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted(PlayerVoter::MANAGE)]
-    public function delete(Player $player, Request $request, EntityManagerInterface $em, ItemRepository $items): Response
+    public function delete(Player $player, Request $request, EntityManagerInterface $em, PlayerHoldingRepository $holdings): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('player_delete_'.$player->getId(), $request->request->getString('_token'))) {
                 throw $this->createAccessDeniedException('Jeton CSRF invalide.');
             }
 
-            if ([] !== $items->findLoanedByPlayer($player)) {
+            if ($holdings->playerHoldsAnything($player)) {
                 $this->addFlash('error', 'Ce joueur détient encore du matériel prêté : enregistrez d\'abord le retour.');
 
                 return $this->redirectToRoute('player_index');

@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Catalogue\Ean;
 use App\Entity\Item;
+use App\Entity\PlayerHolding;
 use App\Entity\Product;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
@@ -91,7 +92,7 @@ class VariantRepository extends ServiceEntityRepository
     }
 
     /**
-     * Variantes étiquetables (non supprimées, actives ou en stock — pièce en stock ou prêtée) dont l'EAN est absent ou n'a pas de clé de contrôle valide,
+     * Variantes étiquetables (non supprimées, actives ou en stock — pièce en stock ou prêtée, niveau > 0 ou détenue par un joueur) dont l'EAN est absent ou n'a pas de clé de contrôle valide,
      * triées par référence produit puis id. L'EAN est jugé en PHP sur une requête scalaire, puis la règle « étiquetable » en SQL.
      *
      * @return list<Variant>
@@ -119,7 +120,8 @@ class VariantRepository extends ServiceEntityRepository
             ->innerJoin('v.product', 'p')
             ->where('v.id IN (:ids)')
             ->andWhere('v.active = true OR EXISTS (SELECT 1 FROM '.Item::class.' i WHERE i.variant = v AND i.status IN (:statuses))'
-                .' OR EXISTS (SELECT 1 FROM '.StockLevel::class.' l WHERE l.variant = v AND l.quantity > 0)')
+                .' OR EXISTS (SELECT 1 FROM '.StockLevel::class.' l WHERE l.variant = v AND l.quantity > 0)'
+                .' OR EXISTS (SELECT 1 FROM '.PlayerHolding::class.' h WHERE h.variant = v)')
             ->setParameter('ids', $ids)
             ->setParameter('statuses', [ItemStatus::InStock, ItemStatus::Loaned])
             ->orderBy('p.reference')

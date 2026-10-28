@@ -18,7 +18,6 @@ use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
-use App\Stock\Input\StockLoan;
 use App\Stock\Input\StockSale;
 use App\Stock\Input\StockSaleLine;
 use App\Stock\StockException;
@@ -244,19 +243,16 @@ final class SaleRecorderTest extends KernelTestCase
         $this->sell($item, null, -1);
     }
 
-    public function testSaleRejectsNewLoanedOrOtherLocationItem(): void
+    public function testSaleRejectsNewOrOtherLocationItem(): void
     {
         $helmet = $this->helmet();
         $this->price($helmet, PlayerFixtures::season($this->em, 2026, true), 30000);
         $reserve = StockFixtures::location($this->em, 'Réserve');
         $new = $this->receiveItem($helmet, StockCondition::New);
-        $loaned = $this->receiveItem($helmet, StockCondition::Worn);
         $elsewhere = $this->receiveItem($helmet, StockCondition::Good, $reserve);
-        $this->recorder->recordLoan(new StockLoan($this->local, PlayerFixtures::player($this->em), $helmet, StockCondition::Worn));
 
         $cases = [
             [$new->getId(), \sprintf('La pièce %s est neuve : seule l\'occasion se vend.', $new->getCode())],
-            [$loaned->getId(), \sprintf('La pièce %s n\'est pas en stock à « Local ».', $loaned->getCode())],
             [$elsewhere->getId(), \sprintf('La pièce %s n\'est pas en stock à « Local ».', $elsewhere->getCode())],
         ];
         foreach ($cases as [$id, $message]) {

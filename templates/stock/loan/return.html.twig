@@ -10,20 +10,21 @@
         {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
 
         <div class="field">
-            {{ form_label(form.item) }}
-            {{ form_widget(form.item) }}
-            {% for error in form.item.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            {{ form_label(form.player) }}
+            {{ form_widget(form.player) }}
+            {% for error in form.player.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            {{ form_label(form.quantity) }}
+            {{ form_widget(form.quantity) }}
+            {% for error in form.quantity.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
         </div>
         <div class="field">
             {{ form_label(form.location) }}
             {{ form_widget(form.location) }}
             {% for error in form.location.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
         </div>
-        <fieldset class="field">
-            <legend>{{ form_label(form.condition) }}</legend>
-            {{ form_widget(form.condition) }}
-            {% for error in form.condition.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
-        </fieldset>
+        {{ include('stock/_condition_field.html.twig', {field: form.condition}) }}
         <div class="field">
             {{ form_label(form.comment) }}
             {{ form_widget(form.comment) }}

@@ -6,19 +6,12 @@ namespace App\Repository;
 
 use App\Entity\Item;
 use App\Entity\Location;
-use App\Entity\Player;
-use App\Entity\RosterEntry;
-use App\Entity\Season;
-use App\Entity\StockMovement;
-use App\Entity\Team;
 use App\Entity\Variant;
 use App\Enum\ItemStatus;
 use App\Enum\StockCondition;
-use App\Enum\StockMovementType;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\Query;
-use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -185,123 +178,5 @@ class ItemRepository extends ServiceEntityRepository
         }
 
         return $counts;
-    }
-
-    /**
-     * Pièces prêtées de la variante, détenteur joint (même supprimé), triées par nom de joueur.
-     *
-     * @return list<Item>
-     */
-    public function findLoanedByVariant(Variant $variant): array
-    {
-        /** @var list<Item> $items */
-        $items = $this->includingDeletedPeople(fn (): mixed => $this->createQueryBuilder('i')
-            ->addSelect('h')
-            ->join('i.holder', 'h')
-            ->where('i.variant = :variant')
-            ->andWhere('i.status = :status')
-            ->setParameter('variant', $variant)
-            ->setParameter('status', ItemStatus::Loaned)
-            ->orderBy('h.lastName')
-            ->addOrderBy('h.firstName')
-            ->addOrderBy('i.code')
-            ->getQuery()
-            ->getResult());
-
-        return $items;
-    }
-
-    /**
-     * Pièces prêtées au joueur, triées par code.
-     *
-     * @return list<Item>
-     */
-    public function findLoanedByPlayer(Player $player): array
-    {
-        /** @var list<Item> $items */
-        $items = $this->createQueryBuilder('i')
-            ->addSelect('v', 'p')
-            ->join('i.variant', 'v')
-            ->join('v.product', 'p')
-            ->where('i.holder = :player')
-            ->andWhere('i.status = :status')
-            ->setParameter('player', $player)
-            ->setParameter('status', ItemStatus::Loaned)
-            ->orderBy('i.code')
-            ->getQuery()
-            ->getResult();
-
-        return $items;
-    }
-
-    /**
-     * Pièces prêtées, détenteur et variante joints, triées par joueur puis code. Avec équipe et/ou saison :
-     * seules les pièces dont le détenteur figure dans un effectif correspondant.
-     */
-    public function loanedQuery(?Team $team, ?Season $season): QueryBuilder
-    {
-        $qb = $this->createQueryBuilder('i')
-            ->addSelect('h', 'v', 'p')
-            ->join('i.holder', 'h')
-            ->join('i.variant', 'v')
-            ->join('v.product', 'p')
-            ->where('i.status = :status')
-            ->setParameter('status', ItemStatus::Loaned)
-            ->orderBy('h.lastName')
-            ->addOrderBy('h.firstName')
-            ->addOrderBy('i.code');
-
-        if (null !== $team || null !== $season) {
-            $sub = $this->getEntityManager()->createQueryBuilder()
-                ->select('IDENTITY(re.player)')
-                ->from(RosterEntry::class, 're')
-                ->join('re.teamSeason', 'ts');
-            if (null !== $team) {
-                $sub->andWhere('ts.team = :team');
-                $qb->setParameter('team', $team);
-            }
-            if (null !== $season) {
-                $sub->andWhere('ts.season = :season');
-                $qb->setParameter('season', $season);
-            }
-            $qb->andWhere($qb->expr()->in('h.id', $sub->getDQL()));
-        }
-
-        return $qb;
-    }
-
-    /**
-     * Date du dernier prêt de chaque pièce (occurredAt du dernier LoanOut), en une requête.
-     *
-     * @param iterable<Item> $items
-     *
-     * @return array<int, \DateTimeImmutable> date par identifiant de pièce
-     */
-    public function loanDates(iterable $items): array
-    {
-        $list = [...$items];
-        if ([] === $list) {
-            return [];
-        }
-
-        /** @var list<array{id: int|string, since: string}> $rows */
-        $rows = $this->getEntityManager()->createQueryBuilder()
-            ->select('IDENTITY(m.item) AS id', 'MAX(o.occurredAt) AS since')
-            ->from(StockMovement::class, 'm')
-            ->join('m.operation', 'o')
-            ->where('m.item IN (:items)')
-            ->andWhere('o.type = :type')
-            ->setParameter('items', $list)
-            ->setParameter('type', StockMovementType::LoanOut)
-            ->groupBy('m.item')
-            ->getQuery()
-            ->getArrayResult();
-
-        $dates = [];
-        foreach ($rows as $row) {
-            $dates[(int) $row['id']] = new \DateTimeImmutable($row['since']);
-        }
-
-        return $dates;
     }
 }

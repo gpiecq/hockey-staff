@@ -35,21 +35,22 @@
         </table>
     {% endif %}
 
-    <h2>Pièces détenues</h2>
+    <h2>Matériel détenu</h2>
     {% if held is empty %}
-        <p class="empty">Aucune pièce prêtée.</p>
+        <p class="empty">Aucun matériel détenu.</p>
     {% else %}
-        <table class="table">
-            <thead><tr><th>Pièce</th><th>Variante</th><th>Prêtée le</th><th></th></tr></thead>
+        <table class="table holdings">
+            <thead><tr><th>Article</th><th class="num">Quantité</th><th class="num">Valeur au coût HT</th><th>Dernier prêt</th><th></th></tr></thead>
             <tbody>
-                {% for item in held %}
+                {% for holding in held %}
                     <tr>
-                        <td><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
-                        <td>{{ item.variant.product.designation }} · {{ item.variant.label ?: 'Unique' }}</td>
-                        <td>{{ loanDates[item.id] is defined ? loanDates[item.id]|date('d/m/Y') : '—' }}</td>
+                        <td data-label="Article"><a href="{{ path('stock_variant_show', {id: holding.variant.id}) }}">{{ holding.variant.product.designation }} · {{ holding.variant.label ?: 'Unique' }}</a></td>
+                        <td class="num" data-label="Quantité">{{ holding.quantity }}</td>
+                        <td class="num" data-label="Valeur au coût HT">{{ holding.valueHt|euros }}</td>
+                        <td data-label="Dernier prêt">{{ loanDates[holding.id] is defined ? loanDates[holding.id]|date('d/m/Y') : '—' }}</td>
                         <td>
                             {% if is_granted('STOCK_MOVE') %}
-                                <a class="btn" href="{{ path('stock_loan_return', {id: item.variant.id, item: item.code}) }}">Retour</a>
+                                <a class="btn" href="{{ path('stock_loan_return', {id: holding.variant.id, joueur: player.id}) }}">Retour</a>
                             {% endif %}
                         </td>
                     </tr>

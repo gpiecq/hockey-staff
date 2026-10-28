@@ -29,11 +29,7 @@
                 {{ form_widget(form.team) }}
             </div>
             {% if form.condition is defined %}
-                <fieldset class="field">
-                    <legend>{{ form_label(form.condition) }}</legend>
-                    {{ form_widget(form.condition) }}
-                    {% for error in form.condition.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
-                </fieldset>
+                {{ include('stock/_condition_field.html.twig', {field: form.condition}) }}
             {% else %}
                 <div class="field">
                     {{ form_label(form.quantity) }}

@@ -10,7 +10,7 @@ use App\Entity\Variant;
 use App\Enum\StockCondition;
 
 /**
- * Prêt d'une pièce : l'appli prend la plus ancienne pièce de l'état demandé dans le lieu.
+ * Prêt d'équipement à un joueur : quantité prise dans le stock (lieu, état).
  */
 final readonly class StockLoan
 {
@@ -19,6 +19,7 @@ final readonly class StockLoan
         public Player $player,
         public Variant $variant,
         public StockCondition $condition,
+        public int $quantity,
         public ?string $comment = null,
     ) {
     }

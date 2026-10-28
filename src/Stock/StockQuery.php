@@ -8,6 +8,7 @@ use App\Catalogue\Ean;
 use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Player;
+use App\Entity\PlayerHolding;
 use App\Entity\Product;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
@@ -39,12 +40,14 @@ final readonly class StockQuery
             .(null !== $location ? ' AND xi.location = :location' : '').')';
         $levels = 'EXISTS (SELECT 1 FROM '.StockLevel::class.' xl WHERE xl.variant = v AND xl.quantity > 0'
             .(null !== $location ? ' AND xl.location = :location' : '').')';
+        // Sans filtre de lieu, une variante entièrement détenue par des joueurs reste listée.
+        $held = null === $location ? ' OR EXISTS (SELECT 1 FROM '.PlayerHolding::class.' xh WHERE xh.variant = v)' : '';
 
         $qb = $this->em->createQueryBuilder()
             ->select('v', 'p')
             ->from(Variant::class, 'v')
             ->join('v.product', 'p')
-            ->where($inStock.' OR '.$levels)
+            ->where($inStock.' OR '.$levels.$held)
             ->setParameter('statuses', $this->statuses($location))
             ->orderBy('p.designation')
             ->addOrderBy('v.size')
@@ -101,13 +104,22 @@ final readonly class StockQuery
         if (null !== $location) {
             $items->andWhere('i.location = :location')->setParameter('location', $location);
             $levels->where('l.location = :location')->setParameter('location', $location);
+
+            return $this->int($items->getQuery()->getSingleScalarResult()) + $this->int($levels->getQuery()->getSingleScalarResult());
         }
 
-        return $this->int($items->getQuery()->getSingleScalarResult()) + $this->int($levels->getQuery()->getSingleScalarResult());
+        // Sans filtre de lieu : le matériel détenu par les joueurs (prêts en cours) compte dans la valeur.
+        $held = $this->em->createQueryBuilder()
+            ->select('COALESCE(SUM(h.valueHt), 0)')
+            ->from(PlayerHolding::class, 'h');
+
+        return $this->int($items->getQuery()->getSingleScalarResult())
+            + $this->int($levels->getQuery()->getSingleScalarResult())
+            + $this->int($held->getQuery()->getSingleScalarResult());
     }
 
     /**
-     * @return array<int, array{levels: list<StockLevel>, items: list<Item>, loaned: list<Item>}> id de variante → niveaux > 0, pièces en stock et pièces prêtées (détenteur joint)
+     * @return array<int, array{levels: list<StockLevel>, items: list<Item>, loaned: list<Item>, held: int}> id de variante → niveaux > 0, pièces en stock, pièces prêtées (détenteur joint) et quantité détenue par les joueurs
      */
     public function byVariant(Product $product): array
     {
@@ -146,8 +158,21 @@ final readonly class StockQuery
             $result[(int) $item->getVariant()->getId()]['loaned'][] = $item;
         }
 
+        /** @var list<array{variant: int|string, held: int|string}> $held */
+        $held = $this->em->createQueryBuilder()
+            ->select('IDENTITY(h.variant) AS variant', 'SUM(h.quantity) AS held')
+            ->from(PlayerHolding::class, 'h')
+            ->join('h.variant', 'v')
+            ->where('v.product = :product')
+            ->setParameter('product', $product)
+            ->groupBy('h.variant')
+            ->getQuery()->getArrayResult();
+        foreach ($held as $row) {
+            $result[(int) $row['variant']]['held'] = (int) $row['held'];
+        }
+
         foreach ($result as $id => $entry) {
-            $result[$id] = ['levels' => $entry['levels'] ?? [], 'items' => $entry['items'] ?? [], 'loaned' => $entry['loaned'] ?? []];
+            $result[$id] = ['levels' => $entry['levels'] ?? [], 'items' => $entry['items'] ?? [], 'loaned' => $entry['loaned'] ?? [], 'held' => $entry['held'] ?? 0];
         }
 
         return $result;
@@ -234,6 +259,25 @@ final readonly class StockQuery
                 } else {
                     $totals[$variant]['locations'][$loc] = ($totals[$variant]['locations'][$loc] ?? 0) + (int) $row['qty'];
                 }
+            }
+        }
+
+        // Sans filtre de lieu : les quantités détenues par les joueurs comptent comme prêtées.
+        if (null === $location) {
+            /** @var list<array{variant: int|string, qty: int|string, value: int|string}> $held */
+            $held = $this->em->createQueryBuilder()
+                ->select('IDENTITY(h.variant) AS variant', 'SUM(h.quantity) AS qty', 'SUM(h.valueHt) AS value')
+                ->from(PlayerHolding::class, 'h')
+                ->where('h.variant IN (:ids)')
+                ->setParameter('ids', $variantIds)
+                ->groupBy('h.variant')
+                ->getQuery()->getArrayResult();
+            foreach ($held as $row) {
+                $variant = (int) $row['variant'];
+                $totals[$variant] ??= ['quantity' => 0, 'value' => 0, 'locations' => [], 'loaned' => 0];
+                $totals[$variant]['quantity'] += (int) $row['qty'];
+                $totals[$variant]['value'] += (int) $row['value'];
+                $totals[$variant]['loaned'] += (int) $row['qty'];
             }
         }
 

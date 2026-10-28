@@ -7,6 +7,8 @@ namespace App\Stock;
 use App\Catalogue\CurrentSeasonProvider;
 use App\Entity\Item;
 use App\Entity\Location;
+use App\Entity\Player;
+use App\Entity\PlayerHolding;
 use App\Entity\Sale;
 use App\Entity\SaleLine;
 use App\Entity\StockLevel;
@@ -19,6 +21,7 @@ use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
 use App\Repository\ItemRepository;
+use App\Repository\PlayerHoldingRepository;
 use App\Repository\StockLevelRepository;
 use App\Sale\SalePricing;
 use App\Stock\Input\StockEntry;
@@ -40,6 +43,7 @@ final readonly class StockMovementRecorder
     public function __construct(
         private EntityManagerInterface $em,
         private StockLevelRepository $levels,
+        private PlayerHoldingRepository $holdings,
         private ItemRepository $items,
         private EntryCostProvider $costs,
         private CurrentSeasonProvider $seasons,
@@ -166,7 +170,10 @@ final readonly class StockMovementRecorder
     public function recordLoan(StockLoan $loan): StockOperation
     {
         if (ProductKind::Equipment !== $loan->variant->getProduct()?->getKind()) {
-            throw new StockException(\sprintf('« %s » est suivi en quantité : il ne se prête pas.', $this->label($loan->variant)));
+            throw new StockException(\sprintf('« %s » est un consommable : il ne se prête pas.', $this->label($loan->variant)));
+        }
+        if ($loan->quantity < 1) {
+            throw new StockException('La quantité doit être au moins 1.');
         }
         if (!$loan->location->isActive()) {
             throw new StockException(\sprintf('Le lieu « %s » est inactif.', $loan->location->getName()));
@@ -174,11 +181,18 @@ final readonly class StockMovementRecorder
         $season = $this->seasons->get();
 
         return $this->em->wrapInTransaction(function () use ($loan, $season): StockOperation {
-            $item = $this->lockOldestInStock($loan->variant, $loan->location, $loan->condition);
+            // Verrous (niveau puis détention) et contrôles avant la première écriture.
+            $level = $this->levels->findForUpdate($loan->variant, $loan->location, $loan->condition);
+            if (null === $level || $loan->quantity > $level->getQuantity()) {
+                throw $this->shortStock($loan->variant, $loan->condition, $loan->location, $level?->getQuantity() ?? 0);
+            }
+            $holding = $this->holdings->findForUpdate($loan->player, $loan->variant) ?? $this->newHolding($loan->player, $loan->variant);
+
             $operation = new StockOperation(StockMovementType::LoanOut, $loan->location, null, null, null, $loan->comment, $loan->player);
             $this->em->persist($operation);
-            $item->lendTo($loan->player);
-            $operation->addMovement(new StockMovement($operation, $loan->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
+            $value = $level->remove($loan->quantity);
+            $holding->add($loan->quantity, $value);
+            $operation->addMovement(new StockMovement($operation, $loan->variant, $loan->quantity, (int) round($value / $loan->quantity), null, null, $season, $loan->condition));
 
             $this->em->flush();
 
@@ -188,20 +202,32 @@ final readonly class StockMovementRecorder
 
     public function recordReturn(StockReturn $return): StockOperation
     {
+        if ($return->quantity < 1) {
+            throw new StockException('La quantité doit être au moins 1.');
+        }
         if (!$return->location->isActive()) {
             throw new StockException(\sprintf('Le lieu « %s » est inactif.', $return->location->getName()));
         }
         $season = $this->seasons->get();
 
         return $this->em->wrapInTransaction(function () use ($return, $season): StockOperation {
-            $item = $this->items->findForUpdate($return->item);
-            if (ItemStatus::Loaned !== $item->getStatus() || $item->getHolder()?->getId() !== $return->player->getId()) {
-                throw new StockException(\sprintf('La pièce %s n\'est pas prêtée à %s.', $item->getCode(), $return->player->getFullName()));
+            // Verrous (niveau puis détention) et contrôles avant la première écriture.
+            $level = $this->levels->findForUpdate($return->variant, $return->location, $return->condition);
+            $holding = $this->holdings->findForUpdate($return->player, $return->variant);
+            $held = $holding?->getQuantity() ?? 0;
+            if (null === $holding || $return->quantity > $held) {
+                throw new StockException(\sprintf('%s détient %d « %s » : retour de %d impossible.', $return->player->getFullName(), $held, $this->label($return->variant), $return->quantity));
             }
+
             $operation = new StockOperation(StockMovementType::LoanReturn, null, $return->location, null, null, $return->comment, $return->player);
             $this->em->persist($operation);
-            $item->giveBack($return->location, $return->condition);
-            $operation->addMovement(new StockMovement($operation, $item->getVariant(), 1, $item->getPurchaseCostHt(), $item, null, $season));
+            $value = $holding->remove($return->quantity);
+            ($level ?? $this->newLevel($return->variant, $return->location, $return->condition))->add($return->quantity, $value);
+            $operation->addMovement(new StockMovement($operation, $return->variant, $return->quantity, (int) round($value / $return->quantity), null, null, $season, $return->condition));
+            // Détention soldée : supprimée, la trace reste dans les mouvements.
+            if ($return->quantity === $held) {
+                $this->em->remove($holding);
+            }
 
             $this->em->flush();
 
@@ -437,12 +463,25 @@ final readonly class StockMovementRecorder
         return ['line' => $line, 'cost' => $cost, 'catalogueValue' => $isPurchase ? null : $clubPrice, 'serials' => $serials];
     }
 
-    private function newLevel(Variant $variant, Location $location): StockLevel
+    private function newLevel(Variant $variant, Location $location, StockCondition $condition = StockCondition::New): StockLevel
     {
-        $level = new StockLevel($variant, $location);
+        $level = new StockLevel($variant, $location, $condition);
         $this->em->persist($level);
 
         return $level;
+    }
+
+    private function newHolding(Player $player, Variant $variant): PlayerHolding
+    {
+        $holding = new PlayerHolding($player, $variant);
+        $this->em->persist($holding);
+
+        return $holding;
+    }
+
+    private function shortStock(Variant $variant, StockCondition $condition, Location $location, int $available): StockException
+    {
+        return new StockException(\sprintf('Stock insuffisant pour « %s » (%s) à « %s » : %d disponible(s).', $this->label($variant), $condition->label(), $location->getName(), $available));
     }
 
     /**

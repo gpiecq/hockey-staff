@@ -24,15 +24,15 @@
     {% else %}
         <table class="table">
             <thead>
-                <tr><th>Joueur</th><th>Pièce</th><th>Variante</th><th>Depuis le</th></tr>
+                <tr><th>Joueur</th><th>Article</th><th class="num">Quantité</th><th>Depuis le</th></tr>
             </thead>
             <tbody>
-                {% for item in page.items %}
+                {% for holding in page.items %}
                     <tr>
-                        <td><a href="{{ path('player_show', {id: item.holder.id}) }}">{{ item.holder.fullName }}</a></td>
-                        <td><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
-                        <td><a href="{{ path('stock_variant_show', {id: item.variant.id}) }}">{{ item.variant.product.designation }} · {{ item.variant.label ?: 'Unique' }}</a></td>
-                        <td>{{ loanDates[item.id]|default(null) ? loanDates[item.id]|date('d/m/Y') : '—' }}</td>
+                        <td data-label="Joueur"><a href="{{ path('player_show', {id: holding.player.id}) }}">{{ holding.player.fullName }}</a></td>
+                        <td data-label="Article"><a href="{{ path('stock_variant_show', {id: holding.variant.id}) }}">{{ holding.variant.product.designation }} · {{ holding.variant.label ?: 'Unique' }}</a></td>
+                        <td class="num" data-label="Quantité">{{ holding.quantity }}</td>
+                        <td data-label="Depuis le">{{ loanDates[holding.id] is defined ? loanDates[holding.id]|date('d/m/Y') : '—' }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

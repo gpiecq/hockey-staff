@@ -52,6 +52,7 @@ class Item
     /** Joueur détenteur, renseigné tant que la pièce est prêtée. */
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+    // @phpstan-ignore property.unusedType (plus de prêt pièce par pièce : lu jusqu'à la suppression des pièces)
     private ?Player $holder = null;
 
     public function __construct(
@@ -129,26 +130,6 @@ class Item
     public function remove(): void
     {
         $this->status = ItemStatus::Removed;
-    }
-
-    /**
-     * @internal réservé au StockMovementRecorder ; le lieu de départ est conservé
-     */
-    public function lendTo(Player $player): void
-    {
-        $this->status = ItemStatus::Loaned;
-        $this->holder = $player;
-    }
-
-    /**
-     * @internal réservé au StockMovementRecorder
-     */
-    public function giveBack(Location $location, StockCondition $condition): void
-    {
-        $this->status = ItemStatus::InStock;
-        $this->holder = null;
-        $this->location = $location;
-        $this->condition = $condition;
     }
 
     /**

@@ -36,10 +36,12 @@ final class VariantSheetTest extends WebTestCase
         $local = StockFixtures::location($em, 'Local');
         $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
         $recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [
-            new StockEntryLine($helmet, 4, 15000, StockCondition::New),
+            new StockEntryLine($helmet, 3, 15000, StockCondition::New),
             new StockEntryLine($helmet, 1, 15000, StockCondition::Worn),
         ]));
-        $recorder->recordLoan(new StockLoan($local, PlayerFixtures::player($em, 'Martin', 'Léo'), $helmet, StockCondition::New));
+        // Le prêt se fait en quantité, sur un niveau de stock.
+        StockFixtures::level($em, $helmet, $local, 1, 15000);
+        $recorder->recordLoan(new StockLoan($local, PlayerFixtures::player($em, 'Martin', 'Léo'), $helmet, StockCondition::New, 1));
 
         return $helmet;
     }

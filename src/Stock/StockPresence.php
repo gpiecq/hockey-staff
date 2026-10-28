@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Stock;
 
 use App\Entity\Item;
+use App\Entity\PlayerHolding;
 use App\Entity\Product;
 use App\Entity\StockLevel;
 use App\Entity\StockMovement;
@@ -22,7 +23,7 @@ final readonly class StockPresence
     }
 
     /**
-     * Variantes qui ont une pièce en stock ou prêtée (elle appartient toujours au stock du club) ou un niveau de quantité positif.
+     * Variantes qui ont une pièce en stock ou prêtée (elle appartient toujours au stock du club), un niveau de quantité positif ou une détention de joueur.
      *
      * @param list<int> $variantIds
      *
@@ -41,7 +42,10 @@ final readonly class StockPresence
         $levels = $this->em->createQuery(
             'SELECT DISTINCT IDENTITY(l.variant) FROM '.StockLevel::class.' l WHERE IDENTITY(l.variant) IN (:ids) AND l.quantity > 0',
         )->setParameter('ids', $variantIds)->getSingleColumnResult();
-        foreach ([...$items, ...$levels] as $id) {
+        $held = $this->em->createQuery(
+            'SELECT DISTINCT IDENTITY(h.variant) FROM '.PlayerHolding::class.' h WHERE IDENTITY(h.variant) IN (:ids)',
+        )->setParameter('ids', $variantIds)->getSingleColumnResult();
+        foreach ([...$items, ...$levels, ...$held] as $id) {
             \assert(\is_int($id) || \is_string($id));
             $found[(int) $id] = true;
         }
@@ -74,7 +78,7 @@ final readonly class StockPresence
         return $found;
     }
 
-    /** Vrai si le produit a une pièce en stock ou prêtée, ou un niveau de quantité positif (c'est ce qui verrouille son type). */
+    /** Vrai si le produit a une pièce en stock ou prêtée, un niveau de quantité positif ou une détention de joueur (c'est ce qui verrouille son type). */
     public function productHasStock(Product $product): bool
     {
         if (null === $product->getId()) {
@@ -88,8 +92,15 @@ final readonly class StockPresence
             return true;
         }
 
-        return (int) $this->em->createQuery(
+        $levels = (int) $this->em->createQuery(
             'SELECT COUNT(l.id) FROM '.StockLevel::class.' l JOIN l.variant v WHERE IDENTITY(v.product) = :product AND l.quantity > 0',
+        )->setParameter('product', $product->getId())->getSingleScalarResult();
+        if ($levels > 0) {
+            return true;
+        }
+
+        return (int) $this->em->createQuery(
+            'SELECT COUNT(h.id) FROM '.PlayerHolding::class.' h JOIN h.variant v WHERE IDENTITY(v.product) = :product',
         )->setParameter('product', $product->getId())->getSingleScalarResult() > 0;
     }
 

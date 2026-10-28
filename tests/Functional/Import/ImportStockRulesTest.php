@@ -126,14 +126,14 @@ final class ImportStockRulesTest extends WebTestCase
         self::assertFalse($absent->isArchived());
     }
 
-    public function testAbsentVariantWhoseOnlyItemIsLoanedIsNotArchived(): void
+    public function testAbsentVariantWhoseOnlyStockIsHeldIsNotArchived(): void
     {
         $absent = $this->absentVariant();
         $absent->getProduct()?->setKind(ProductKind::Equipment);
         $this->em->flush();
         $location = StockFixtures::location($this->em);
-        StockScenario::receive($this->recorder, $absent, $location, 1, 5000);
-        $this->recorder->recordLoan(new StockLoan($location, PlayerFixtures::player($this->em), $absent, StockCondition::New));
+        StockFixtures::level($this->em, $absent, $location, 1, 5000);
+        $this->recorder->recordLoan(new StockLoan($location, PlayerFixtures::player($this->em), $absent, StockCondition::New, 1));
 
         $diff = $this->analyzer->analyze(ImportFixtures::run($this->em, $this->supplier, $this->season, [self::row()]));
         self::assertSame([], $diff->archivedVariantIds);

@@ -37,7 +37,8 @@ final class GiftController extends AbstractController
         $serialized = ProductKind::Equipment === $variant->getProduct()?->getKind();
         $location = $this->selectedLocation($request, $locations, 'stock_gift');
         $form = $this->createForm(StockGiftType::class, ['location' => $location, 'recipient' => 'player', 'quantity' => 1], [
-            'counts' => $this->countsAt($items, $variant, $location),
+            // Don d'équipement encore pièce par pièce (jusqu'au passage du don en quantité) : pièces en stock par état.
+            'counts' => null === $location ? [] : $items->countInStockByCondition($variant, $location),
             'serialized' => $serialized,
         ]);
         $form->handleRequest($request);

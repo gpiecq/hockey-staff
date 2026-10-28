@@ -6,8 +6,8 @@ namespace App\Controller\Stock;
 
 use App\Entity\Location;
 use App\Entity\Variant;
-use App\Repository\ItemRepository;
 use App\Repository\LocationRepository;
+use App\Repository\StockLevelRepository;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -21,7 +21,8 @@ trait VariantFormScreen
     }
 
     /**
-     * Lieu actif choisi : valeur soumise du formulaire, sinon `?lieu=` (rechargement du cadre), sinon null.
+     * Lieu actif choisi : valeur soumise du formulaire, sinon `?lieu=` (rechargement du cadre),
+     * sinon le lieu actif s'il est le seul, sinon null.
      */
     private function selectedLocation(Request $request, LocationRepository $locations, string $formName): ?Location
     {
@@ -33,15 +34,23 @@ trait VariantFormScreen
                 return $location;
             }
         }
+        if (null === $submitted && '' === $raw) {
+            $active = $locations->findActive();
+            if (1 === \count($active)) {
+                return $active[0];
+            }
+        }
 
         return null;
     }
 
     /**
+     * Quantités disponibles par état dans le lieu choisi.
+     *
      * @return array<string, int>
      */
-    private function countsAt(ItemRepository $items, Variant $variant, ?Location $location): array
+    private function countsAt(StockLevelRepository $levels, Variant $variant, ?Location $location): array
     {
-        return null === $location ? [] : $items->countInStockByCondition($variant, $location);
+        return null === $location ? [] : $levels->quantitiesByCondition($variant, $location);
     }
 }

@@ -176,8 +176,8 @@ final class StockPageTest extends WebTestCase
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $local = StockFixtures::location($em, 'Local');
         $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
-        StockScenario::receive($this->recorder($client), $variant, $local, 1, 5000);
-        $this->recorder($client)->recordLoan(new StockLoan($local, PlayerFixtures::player($em), $variant, StockCondition::New));
+        StockFixtures::level($em, $variant, $local, 1, 5000, StockCondition::Worn);
+        $this->recorder($client)->recordLoan(new StockLoan($local, PlayerFixtures::player($em), $variant, StockCondition::Worn, 1));
 
         $client->request('GET', '/stock');
 
@@ -214,9 +214,9 @@ final class StockPageTest extends WebTestCase
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $local = StockFixtures::location($em, 'Local');
         $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
-        StockScenario::receive($this->recorder($client), $variant, $local, 2, 5000);
+        StockFixtures::level($em, $variant, $local, 2, 5000);
         $player = PlayerFixtures::player($em);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $variant, StockCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $variant, StockCondition::New, 1));
         $em->remove($player);
         $em->flush();
         $em->clear();

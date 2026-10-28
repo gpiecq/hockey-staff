@@ -128,25 +128,18 @@ final class ItemPageTest extends WebTestCase
         self::assertSelectorTextContains('td[data-label="Stock"]', '4');
     }
 
-    public function testLoanedItemShowsHolderAndOperationsShowRecipient(): void
+    public function testOperationsShowRecipient(): void
     {
         $client = static::createClient();
         $client->loginUser(UserFactory::create($this->em($client), UserRole::Stock, 'u@example.test'));
         [$item, $a] = $this->serialized($client);
         $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
-        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), StockCondition::New));
+        StockFixtures::level($this->em($client), $item->getVariant(), $a, 1, 8000);
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), StockCondition::New, 1));
         $team = PlayerFixtures::team($this->em($client), 'U15');
         $pucks = StockScenario::variant($this->em($client), ProductKind::Consumable, 'PALET', 'Palet');
         StockScenario::receive($this->recorder($client), $pucks, $a, 10, 100);
         $gift = $this->recorder($client)->recordGift(new StockGift($a, $pucks, 2, null, null, $team));
-
-        $client->request('GET', '/stock/pieces/'.$item->getCode());
-        self::assertResponseIsSuccessful();
-        $meta = $client->getCrawler()->filter('dl.product-meta')->text();
-        self::assertStringContainsString('Prêtée', $meta);
-        self::assertStringContainsString('DétenteurLéo Martin', $meta);
-        self::assertStringContainsString('Joueur : Léo Martin', $client->getCrawler()->filter('table.history')->text());
-        self::assertCount(0, $client->getCrawler()->filter('.page-head a[href^="/stock/sortie?item="]'));
 
         $client->request('GET', '/stock/operations/'.$loan->getId());
         self::assertResponseIsSuccessful();
@@ -168,7 +161,8 @@ final class ItemPageTest extends WebTestCase
         [$item, $a] = $this->serialized($client);
         $em = $this->em($client);
         $player = PlayerFixtures::player($em, 'Martin', 'Léo');
-        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), StockCondition::New));
+        StockFixtures::level($em, $item->getVariant(), $a, 1, 8000);
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), StockCondition::New, 1));
         $team = PlayerFixtures::team($em, 'U15');
         $pucks = StockScenario::variant($em, ProductKind::Consumable, 'PALET', 'Palet');
         StockScenario::receive($this->recorder($client), $pucks, $a, 10, 100);
@@ -178,12 +172,6 @@ final class ItemPageTest extends WebTestCase
         $em->remove($team);
         $em->flush();
         $em->clear();
-
-        $client->request('GET', '/stock/pieces/'.$item->getCode());
-        self::assertResponseIsSuccessful();
-        self::assertStringContainsString('DétenteurLéo Martin (supprimé)', $client->getCrawler()->filter('dl.product-meta')->text());
-        self::assertCount(0, $client->getCrawler()->filter('dl.product-meta a[href^="/joueurs/"]'));
-        self::assertStringContainsString('Joueur : Léo Martin', $client->getCrawler()->filter('table.history')->text());
 
         $client->request('GET', '/stock/variantes/'.$item->getVariant()->getId());
         self::assertResponseIsSuccessful();

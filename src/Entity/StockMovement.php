@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\StockCondition;
 use App\Repository\StockMovementRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -46,6 +47,10 @@ class StockMovement
     #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?Season $season;
 
+    /** État des unités déplacées (toujours Neuf pour un consommable). */
+    #[ORM\Column(length: 20, enumType: StockCondition::class, options: ['default' => 'new'])]
+    private StockCondition $condition;
+
     public function __construct(
         StockOperation $operation,
         Variant $variant,
@@ -54,6 +59,7 @@ class StockMovement
         ?Item $item = null,
         ?int $catalogueValueHt = null,
         ?Season $season = null,
+        StockCondition $condition = StockCondition::New,
     ) {
         $this->operation = $operation;
         $this->variant = $variant;
@@ -62,6 +68,7 @@ class StockMovement
         $this->item = $item;
         $this->catalogueValueHt = $catalogueValueHt;
         $this->season = $season;
+        $this->condition = $condition;
     }
 
     public function getId(): ?int
@@ -102,5 +109,10 @@ class StockMovement
     public function getSeason(): ?Season
     {
         return $this->season;
+    }
+
+    public function getCondition(): StockCondition
+    {
+        return $this->condition;
     }
 }
