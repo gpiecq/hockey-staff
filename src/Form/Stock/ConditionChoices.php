@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Form\Stock;
+
+use App\Enum\ItemCondition;
+
+/**
+ * Options d'un champ « état » dont les libellés portent le nombre de pièces disponibles dans le lieu choisi.
+ */
+final class ConditionChoices
+{
+    /**
+     * @param array<string, int> $counts
+     *
+     * @return array<string, mixed>
+     */
+    public static function options(string $label, array $counts): array
+    {
+        return [
+            'label' => $label,
+            'class' => ItemCondition::class,
+            'expanded' => true,
+            'choice_label' => static fn (ItemCondition $condition): string => \sprintf('%s (%d)', $condition->label(), $counts[$condition->value] ?? 0),
+            'choice_attr' => static fn (ItemCondition $condition): array => 0 === ($counts[$condition->value] ?? 0) ? ['data-empty' => '1'] : [],
+        ];
+    }
+}

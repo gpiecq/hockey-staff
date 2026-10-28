@@ -56,7 +56,7 @@
                     <tr>
                         <td data-label="Référence">{{ row.variant.product.reference }}</td>
                         <td><a href="{{ path('catalogue_product_show', {id: row.variant.product.id}) }}">{{ row.variant.product.designation }}</a></td>
-                        <td data-label="Variante">{{ row.variant.label ?: 'Unique' }}{% if not row.variant.active %} <span class="badge badge-warn">Plus au catalogue</span>{% endif %}</td>
+                        <td data-label="Variante"><a href="{{ path('stock_variant_show', {id: row.variant.id}) }}">{{ row.variant.label ?: 'Unique' }}</a>{% if not row.variant.active %} <span class="badge badge-warn">Plus au catalogue</span>{% endif %}</td>
                         <td class="num" data-label="Quantité">{{ row.quantity }}</td>
                         <td class="num" data-label="Prêtées">{{ row.loanedQuantity }}</td>
                         <td data-label="Lieux">{% for id, qty in row.quantityByLocation %}{{ names[id]|default('?') }} : {{ qty }}{% if not loop.last %} · {% endif %}{% endfor %}</td>

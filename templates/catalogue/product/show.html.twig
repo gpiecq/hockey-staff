@@ -39,7 +39,7 @@
                     <tr>
                         <td>
                             {% if printable %}<input type="checkbox" name="variantes[]" value="{{ variant.id }}" checked aria-label="Imprimer une étiquette pour {{ variant.label ?: 'Unique' }}">{% endif %}
-                            <strong>{{ variant.label ?: 'Unique' }}</strong>
+                            {% if is_granted('STOCK_VIEW') %}<a href="{{ path('stock_variant_show', {id: variant.id}) }}"><strong>{{ variant.label ?: 'Unique' }}</strong></a>{% else %}<strong>{{ variant.label ?: 'Unique' }}</strong>{% endif %}
                             {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}
                             <small class="muted block">{{ variant.code }}</small>
                         </td>

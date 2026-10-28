@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Prêter{% endblock %}
+
+{% block body %}
+    {{ include('stock/_variant_head.html.twig') }}
+    <h1>Prêter · {{ variant.product.designation }} · {{ variant.label ?: 'Unique' }}</h1>
+
+    <turbo-frame id="variant-form" data-reload-url="{{ path('stock_loan_new', {id: variant.id}) }}" data-controller="variant-location">
+        {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate', 'data-turbo-frame': '_top'}}) }}
+            {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
+
+            <div class="field">
+                {{ form_label(form.location) }}
+                {{ form_widget(form.location) }}
+                {% for error in form.location.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+            <div class="field">
+                {{ form_label(form.player) }}
+                {{ form_widget(form.player) }}
+                {% for error in form.player.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
+            <fieldset class="field">
+                <legend>{{ form_label(form.condition) }}</legend>
+                {{ form_widget(form.condition) }}
+                {% for error in form.condition.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </fieldset>
+            <div class="field">
+                {{ form_label(form.comment) }}
+                {{ form_widget(form.comment) }}
+            </div>
+
+            {{ form_rest(form) }}
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Prêter</button>
+                <a class="btn" href="{{ path('stock_variant_show', {id: variant.id}) }}" data-turbo-frame="_top">Annuler</a>
+            </div>
+        {{ form_end(form) }}
+    </turbo-frame>
+{% endblock %}

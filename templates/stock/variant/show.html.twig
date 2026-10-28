@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ product.designation }} · {{ variant.label ?: 'Unique' }}{% endblock %}
+
+{% block body %}
+    {% set serialized = product.trackingMode.value == 'serialized' %}
+    <a class="back" href="{{ path('stock_index') }}">‹ Stock</a>
+    <div class="page-head">
+        <h1>{{ product.designation }}</h1>
+    </div>
+    <p><strong>{{ variant.label ?: 'Unique' }}</strong>
+        {% if variant.archived %}<span class="badge badge-warn">Archivée</span>{% elseif not variant.active %}<span class="badge badge-warn">Plus au catalogue</span>{% endif %}</p>
+
+    {% if is_granted('STOCK_MOVE') %}
+        <div class="actions variant-actions">
+            {% if serialized %}
+                <a class="btn btn-primary" href="{{ path('stock_loan_new', {id: variant.id}) }}">Prêter</a>
+                {% if loaned is not empty %}<a class="btn" href="{{ path('stock_loan_return', {id: variant.id}) }}">Retour</a>{% endif %}
+            {% endif %}
+            <a class="btn" href="{{ path('stock_gift_new', {id: variant.id}) }}">Donner</a>
+            <a class="btn" href="{{ path('stock_out_new') }}">Sortie</a>
+        </div>
+    {% endif %}
+
+    <dl class="product-meta">
+        <dt>Référence</dt><dd><a href="{{ path('catalogue_product_show', {id: product.id}) }}">{{ product.reference }}</a></dd>
+        <dt>EAN</dt><dd>{{ variant.ean ?? '—' }}</dd>
+        <dt>Code</dt><dd>{{ variant.code }}</dd>
+        <dt>Suivi</dt><dd>{{ product.trackingMode.label }}</dd>
+        {% if price %}
+            <dt>Prix club{% if season %} {{ season.label }}{% endif %}</dt><dd>{{ price.clubPriceTtc is null ? '—' : price.clubPriceTtc|euros ~ ' TTC' }}</dd>
+            <dt>Prix public</dt><dd>{{ price.publicPriceTtc is null ? '—' : price.publicPriceTtc|euros ~ ' TTC' }}</dd>
+        {% else %}
+            <dt>Tarif</dt><dd class="muted">Tarif absent</dd>
+        {% endif %}
+    </dl>
+
+    <h2>Stock par lieu</h2>
+    {% if locations is empty %}
+        <p class="empty">Aucun article en stock.</p>
+    {% else %}
+        <ul class="plain-list">
+            {% for name, data in locations %}
+                <li><strong>{{ name }}</strong> :
+                    {% if serialized %}
+                        {% for value, n in data.conditions|default({}) %}{{ ({new: 'Neuf', good: 'Bon', worn: 'Usé', damaged: 'Abîmé'})[value]|default(value) }} {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+                    {% else %}
+                        {{ data.quantity }}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if serialized %}
+        <h2>Pièces prêtées</h2>
+        {% if loaned is empty %}
+            <p class="empty">Aucune pièce prêtée.</p>
+        {% else %}
+            <table class="table">
+                <thead><tr><th>Pièce</th><th>Détenteur</th><th>État</th><th></th></tr></thead>
+                <tbody>
+                    {% for item in loaned %}
+                        <tr>
+                            <td data-label="Pièce"><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
+                            <td data-label="Détenteur">{% if item.holder %}<a href="{{ path('player_show', {id: item.holder.id}) }}">{{ item.holder.fullName }}</a>{% else %}—{% endif %}</td>
+                            <td data-label="État">{{ item.condition.label }}</td>
+                            <td>{% if is_granted('STOCK_MOVE') %}<a href="{{ path('stock_loan_return', {id: variant.id, item: item.code}) }}">Retour</a>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endif %}
+{% endblock %}
