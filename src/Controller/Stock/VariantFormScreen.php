@@ -23,7 +23,7 @@ trait VariantFormScreen
     /**
      * Lieu actif choisi : valeur soumise du formulaire, sinon `?lieu=` (rechargement du cadre), sinon null.
      */
-    private function selectedLocation(Request $request, LocationRepository $locations, string $formName, ?Location $default = null): ?Location
+    private function selectedLocation(Request $request, LocationRepository $locations, string $formName): ?Location
     {
         $submitted = $request->request->all($formName)['location'] ?? null;
         $raw = \is_scalar($submitted) ? (string) $submitted : $request->query->getString('lieu');
@@ -34,7 +34,7 @@ trait VariantFormScreen
             }
         }
 
-        return $default;
+        return null;
     }
 
     /**
