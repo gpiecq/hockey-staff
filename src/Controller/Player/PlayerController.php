@@ -11,6 +11,7 @@ use App\Repository\ItemRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\RosterEntryRepository;
 use App\Repository\SeasonRepository;
+use App\Repository\StockOperationRepository;
 use App\Repository\TeamRepository;
 use App\Repository\TeamSeasonRepository;
 use App\Security\Voter\PlayerVoter;
@@ -80,9 +81,17 @@ final class PlayerController extends AbstractController
 
     #[Route('/{id}', name: 'player_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     #[IsGranted(PlayerVoter::VIEW)]
-    public function show(Player $player): Response
+    public function show(Player $player, ItemRepository $items, RosterEntryRepository $entries, StockOperationRepository $operations): Response
     {
-        return $this->render('player/player/show.html.twig', ['player' => $player]);
+        $held = $items->findLoanedByPlayer($player);
+
+        return $this->render('player/player/show.html.twig', [
+            'player' => $player,
+            'held' => $held,
+            'loanDates' => $items->loanDates($held),
+            'rosters' => $entries->findForPlayer($player),
+            'history' => $operations->findByPlayer($player),
+        ]);
     }
 
     #[Route('/{id}/edit', name: 'player_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]

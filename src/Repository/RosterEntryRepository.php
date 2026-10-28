@@ -57,4 +57,27 @@ class RosterEntryRepository extends ServiceEntityRepository
 
         return $numbers;
     }
+
+    /**
+     * Effectifs du joueur, équipe et saison joints, saison la plus récente d'abord.
+     *
+     * @return list<RosterEntry>
+     */
+    public function findForPlayer(Player $player): array
+    {
+        /** @var list<RosterEntry> $entries */
+        $entries = $this->createQueryBuilder('re')
+            ->join('re.teamSeason', 'ts')
+            ->join('ts.team', 't')
+            ->join('ts.season', 's')
+            ->addSelect('ts', 't', 's')
+            ->where('re.player = :player')
+            ->setParameter('player', $player)
+            ->orderBy('s.startsOn', 'DESC')
+            ->addOrderBy('t.name')
+            ->getQuery()
+            ->getResult();
+
+        return $entries;
+    }
 }

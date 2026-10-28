@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Location;
+use App\Entity\Player;
 use App\Entity\StockMovement;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
@@ -106,5 +107,24 @@ class StockOperationRepository extends ServiceEntityRepository
         }
 
         return $counts;
+    }
+
+    /**
+     * Opérations du joueur (prêts, retours, dons, achats), de la plus récente à la plus ancienne.
+     *
+     * @return list<StockOperation>
+     */
+    public function findByPlayer(Player $player): array
+    {
+        /** @var list<StockOperation> $operations */
+        $operations = $this->createQueryBuilder('o')
+            ->where('o.player = :player')
+            ->setParameter('player', $player)
+            ->orderBy('o.occurredAt', 'DESC')
+            ->addOrderBy('o.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        return $operations;
     }
 }

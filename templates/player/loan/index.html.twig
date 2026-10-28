@@ -1,0 +1,43 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Prêts en cours{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Prêts en cours</h1>
+    </div>
+
+    <form method="get" class="filters" role="search">
+        <select name="equipe" aria-label="Équipe">
+            <option value="">Toutes les équipes</option>
+            {% for t in teams %}<option value="{{ t.id }}"{% if team and t.id == team.id %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+        </select>
+        <select name="saison" aria-label="Saison">
+            <option value="">Toutes les saisons</option>
+            {% for s in seasons %}<option value="{{ s.id }}"{% if season and s.id == season.id %} selected{% endif %}>{{ s.label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn">Filtrer</button>
+    </form>
+
+    {% if page.items is empty %}
+        <p class="empty">Aucun prêt en cours.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr><th>Joueur</th><th>Pièce</th><th>Variante</th><th>Depuis le</th></tr>
+            </thead>
+            <tbody>
+                {% for item in page.items %}
+                    <tr>
+                        <td><a href="{{ path('player_show', {id: item.holder.id}) }}">{{ item.holder.fullName }}</a></td>
+                        <td><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
+                        <td><a href="{{ path('stock_variant_show', {id: item.variant.id}) }}">{{ item.variant.product.designation }} · {{ item.variant.label ?: 'Unique' }}</a></td>
+                        <td>{{ loanDates[item.id]|default(null) ? loanDates[item.id]|date('d/m/Y') : '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% include '_pagination.html.twig' with {page: page, noun: 'prêts'} %}
+{% endblock %}
