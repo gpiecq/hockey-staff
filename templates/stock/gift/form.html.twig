@@ -7,7 +7,7 @@
     <h1>Donner · {{ variant.product.designation }} · {{ variant.label ?: 'Unique' }}</h1>
 
     <turbo-frame id="variant-form" data-reload-url="{{ path('stock_gift_new', {id: variant.id}) }}" data-controller="variant-location">
-        {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate', 'data-turbo-frame': '_top'}}) }}
+        {{ form_start(form, {attr: {class: 'form', novalidate: 'novalidate', 'data-turbo-frame': '_top', 'data-controller': 'recipient', 'data-action': 'change->recipient#toggle'}}) }}
             {% for error in form.vars.errors %}<p class="form-error" role="alert">{{ error.message }}</p>{% endfor %}
 
             <div class="field">
@@ -20,23 +20,22 @@
                 {{ form_widget(form.recipient) }}
                 {% for error in form.recipient.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
             </fieldset>
-            <div class="field">
+            <div class="field" data-recipient-target="player">
                 {{ form_label(form.player) }}
                 {{ form_widget(form.player) }}
             </div>
-            <div class="field">
+            <div class="field" data-recipient-target="team">
                 {{ form_label(form.team) }}
                 {{ form_widget(form.team) }}
             </div>
             {% if form.condition is defined %}
                 {{ include('stock/_condition_field.html.twig', {field: form.condition}) }}
-            {% else %}
-                <div class="field">
-                    {{ form_label(form.quantity) }}
-                    {{ form_widget(form.quantity) }}
-                    {% for error in form.quantity.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
-                </div>
             {% endif %}
+            <div class="field">
+                {{ form_label(form.quantity) }}
+                {{ form_widget(form.quantity) }}
+                {% for error in form.quantity.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
+            </div>
             <div class="field">
                 {{ form_label(form.comment) }}
                 {{ form_widget(form.comment) }}

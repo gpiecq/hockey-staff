@@ -229,6 +229,42 @@ final class LoanGiftControllerTest extends WebTestCase
         self::assertStringContainsString('Don enregistré.', $client->getCrawler()->filter('body')->text());
     }
 
+    public function testGiftFormHasRecipientToggleAndQuantity(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [$helmet, $local] = $this->helmet($client);
+        $pucks = StockScenario::variant($this->em($client), ProductKind::Consumable, 'PALET-1', 'Palet');
+        StockFixtures::level($this->em($client), $pucks, $local, 5, 100);
+
+        $crawler = $client->request('GET', '/stock/variantes/'.$helmet->getId().'/don');
+        self::assertResponseIsSuccessful();
+        self::assertCount(1, $crawler->filter('form[data-controller~="recipient"]'));
+        self::assertCount(1, $crawler->filter('[name="stock_gift[quantity]"]'));
+        self::assertGreaterThan(0, $crawler->filter('[name="stock_gift[condition]"]')->count());
+        self::assertCount(1, $crawler->filter('[data-recipient-target="player"]'));
+        self::assertCount(1, $crawler->filter('[data-recipient-target="team"]'));
+
+        $crawler = $client->request('GET', '/stock/variantes/'.$pucks->getId().'/don');
+        self::assertCount(1, $crawler->filter('[name="stock_gift[quantity]"]'));
+        self::assertCount(0, $crawler->filter('[name="stock_gift[condition]"]'));
+    }
+
+    public function testGiftEquipmentFromSheet(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [$helmet, $local, $player] = $this->helmet($client);
+
+        $this->submit($client, '/stock/variantes/'.$helmet->getId().'/don', 'Donner', 'stock_gift', [
+            'location' => (string) $local->getId(), 'recipient' => 'player', 'player' => (string) $player->getId(), 'condition' => 'new', 'quantity' => '2',
+        ]);
+
+        self::assertResponseRedirects('/stock/variantes/'.$helmet->getId());
+        $quantity = $this->em($client)->getConnection()->fetchOne('SELECT quantity FROM stock_level WHERE variant_id = ?', [$helmet->getId()]);
+        self::assertSame(1, is_numeric($quantity) ? (int) $quantity : 0);
+    }
+
     public function testViewerCannotLoan(): void
     {
         $client = static::createClient();

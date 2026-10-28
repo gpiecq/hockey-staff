@@ -243,35 +243,24 @@ final readonly class StockMovementRecorder
         if ($gift->quantity < 1) {
             throw new StockException('La quantité doit être au moins 1.');
         }
-        // État de la pièce à donner ; null pour un produit suivi en quantité.
-        $condition = null;
+        // Consommable : état toujours Neuf, le choix éventuel est ignoré.
         if (ProductKind::Equipment === $gift->variant->getProduct()?->getKind()) {
-            $condition = $gift->condition ?? throw new StockException('Choisissez l\'état de la pièce.');
-            if (1 !== $gift->quantity) {
-                throw new StockException('Une pièce se donne à l\'unité : quantité 1.');
-            }
+            $condition = $gift->condition ?? throw new StockException('Choisissez l\'état.');
+        } else {
+            $condition = StockCondition::New;
         }
         $season = $this->seasons->get();
 
         return $this->em->wrapInTransaction(function () use ($gift, $condition, $season): StockOperation {
-            // Verrous et contrôles avant la première écriture.
-            $item = null;
-            $level = null;
-            if (null !== $condition) {
-                $item = $this->lockOldestInStock($gift->variant, $gift->location, $condition);
-            } else {
-                $level = $this->lockAndCheck($gift->location, [new StockLine($gift->variant, $gift->quantity)])['levels'][(int) $gift->variant->getId()];
+            // Verrou et contrôle avant la première écriture.
+            $level = $this->levels->findForUpdate($gift->variant, $gift->location, $condition);
+            if (null === $level || $gift->quantity > $level->getQuantity()) {
+                throw $this->shortStock($gift->variant, $condition, $gift->location, $level?->getQuantity() ?? 0);
             }
             $operation = new StockOperation(StockMovementType::GiftOut, $gift->location, null, null, null, $gift->comment, $gift->player, $gift->team);
             $this->em->persist($operation);
-
-            if (null !== $item) {
-                $item->gift();
-                $operation->addMovement(new StockMovement($operation, $gift->variant, 1, $item->getPurchaseCostHt(), $item, null, $season));
-            } else {
-                $value = $level->remove($gift->quantity);
-                $operation->addMovement(new StockMovement($operation, $gift->variant, $gift->quantity, (int) round($value / $gift->quantity), null, null, $season));
-            }
+            $value = $level->remove($gift->quantity);
+            $operation->addMovement(new StockMovement($operation, $gift->variant, $gift->quantity, (int) round($value / $gift->quantity), null, null, $season, $condition));
 
             $this->em->flush();
 
@@ -414,15 +403,6 @@ final readonly class StockMovementRecorder
         }
 
         return ['levels' => $levels, 'items' => $locked];
-    }
-
-    /**
-     * Verrouille la plus ancienne pièce en stock de l'état demandé dans le lieu ; à appeler dans la transaction.
-     */
-    private function lockOldestInStock(Variant $variant, Location $location, StockCondition $condition): Item
-    {
-        return $this->items->findOldestInStockForUpdate($variant, $location, $condition)
-            ?? throw new StockException(\sprintf('Aucune pièce « %s » à l\'état %s disponible à « %s ».', $this->label($variant), $condition->label(), $location->getName()));
     }
 
     /**

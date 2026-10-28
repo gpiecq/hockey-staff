@@ -11,8 +11,8 @@ use App\Entity\Variant;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use App\Form\Stock\StockGiftType;
-use App\Repository\ItemRepository;
 use App\Repository\LocationRepository;
+use App\Repository\StockLevelRepository;
 use App\Stock\Input\StockGift;
 use App\Stock\StockException;
 use App\Stock\StockMovementRecorder;
@@ -31,15 +31,14 @@ final class GiftController extends AbstractController
     use VariantFormScreen;
 
     #[Route('/stock/variantes/{id}/don', name: 'stock_gift_new', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function new(int $id, Request $request, EntityManagerInterface $em, ItemRepository $items, LocationRepository $locations, StockMovementRecorder $recorder): Response
+    public function new(int $id, Request $request, EntityManagerInterface $em, StockLevelRepository $levels, LocationRepository $locations, StockMovementRecorder $recorder): Response
     {
         $variant = $em->find(Variant::class, $id) ?? throw $this->createNotFoundException('Variante introuvable.');
-        $serialized = ProductKind::Equipment === $variant->getProduct()?->getKind();
+        $equipment = ProductKind::Equipment === $variant->getProduct()?->getKind();
         $location = $this->selectedLocation($request, $locations, 'stock_gift');
         $form = $this->createForm(StockGiftType::class, ['location' => $location, 'recipient' => 'player', 'quantity' => 1], [
-            // Don d'équipement encore pièce par pièce (jusqu'au passage du don en quantité) : pièces en stock par état.
-            'counts' => null === $location ? [] : $items->countInStockByCondition($variant, $location),
-            'serialized' => $serialized,
+            'counts' => $this->countsAt($levels, $variant, $location),
+            'equipment' => $equipment,
         ]);
         $form->handleRequest($request);
 
@@ -57,8 +56,8 @@ final class GiftController extends AbstractController
                 $recorder->recordGift(new StockGift(
                     $values['location'],
                     $variant,
-                    $serialized ? 1 : ($values['quantity'] ?? 1),
-                    $serialized ? ($values['condition'] ?? null) : null,
+                    $values['quantity'] ?? 1,
+                    $equipment ? ($values['condition'] ?? null) : null,
                     $player,
                     $team,
                     $this->nullIfBlank($values['comment'] ?? null),

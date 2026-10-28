@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Stock;
 
-use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\PlayerHolding;
 use App\Entity\StockLevel;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ItemStatus;
 use App\Enum\ProductKind;
 use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
@@ -67,17 +65,6 @@ final class LoanGiftRecorderTest extends KernelTestCase
     private function receive(Variant $variant, int $quantity, int $cost, StockCondition $condition = StockCondition::New): void
     {
         $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $this->local, [new StockEntryLine($variant, $quantity, $cost, $condition)]));
-    }
-
-    /**
-     * @return list<Item>
-     */
-    private function items(Variant $variant): array
-    {
-        /** @var list<Item> $items */
-        $items = $this->em->getRepository(Item::class)->findBy(['variant' => $variant], ['code' => 'ASC']);
-
-        return $items;
     }
 
     /**
@@ -354,7 +341,7 @@ final class LoanGiftRecorderTest extends KernelTestCase
         $this->receive($pucks, 2, 100);
 
         $this->expectException(StockException::class);
-        $this->expectExceptionMessage('Stock insuffisant pour « PALET-1 M » à « Local matériel » : 2 disponible(s).');
+        $this->expectExceptionMessage('Stock insuffisant pour « PALET-1 M » (Neuf) à « Local matériel » : 2 disponible(s).');
         $this->recorder->recordGift(new StockGift($this->local, $pucks, 3, null, $this->player1, null));
     }
 
@@ -377,42 +364,58 @@ final class LoanGiftRecorderTest extends KernelTestCase
         self::assertSame($before, $this->operations());
     }
 
-    public function testGiftOfItemNeedsConditionAndSingleQuantity(): void
+    public function testGiftEquipmentNeedsCondition(): void
     {
         $helmet = $this->helmet();
-        $this->receive($helmet, 2, 15000);
-
-        foreach ([[1, null, 'Choisissez l\'état de la pièce.'], [2, StockCondition::New, 'Une pièce se donne à l\'unité : quantité 1.']] as [$quantity, $condition, $message]) {
-            try {
-                $this->recorder->recordGift(new StockGift($this->local, $helmet, $quantity, $condition, $this->player1, null));
-                self::fail('StockException attendue.');
-            } catch (StockException $e) {
-                self::assertSame($message, $e->getMessage());
-            }
-        }
-    }
-
-    public function testGiftOfItemToPlayer(): void
-    {
-        $helmet = $this->helmet();
-        $this->receive($helmet, 1, 15000, StockCondition::Good);
-        [$item] = $this->items($helmet);
-
-        $operation = $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, StockCondition::Good, $this->player1, null));
-
-        self::assertSame(StockMovementType::GiftOut, $operation->getType());
-        self::assertSame($this->player1->getId(), $operation->getPlayer()?->getId());
-        self::assertNull($operation->getTeam());
-        $movement = $operation->getMovements()->first();
-        self::assertNotFalse($movement);
-        self::assertSame($item->getId(), $movement->getItem()?->getId());
-        self::assertSame(15000, $movement->getUnitCostHt());
-        self::assertSame(ItemStatus::Gifted, $item->getStatus());
-        self::assertNull($item->getHolder());
-        self::assertSame('Local matériel', $item->getLocation()->getName());
+        StockFixtures::level($this->em, $helmet, $this->local, 2, 15000, StockCondition::Worn);
 
         $this->expectException(StockException::class);
-        $this->expectExceptionMessage('Aucune pièce « CASQUE-1 M » à l\'état Bon disponible à « Local matériel ».');
-        $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, StockCondition::Good, $this->player1, null));
+        $this->expectExceptionMessage('Choisissez l\'état.');
+        $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, null, $this->player1, null));
+    }
+
+    public function testGiftEquipmentInQuantityWithCondition(): void
+    {
+        $helmet = $this->helmet();
+        StockFixtures::level($this->em, $helmet, $this->local, 3, 15000, StockCondition::Worn);
+        $team = PlayerFixtures::team($this->em, 'U15');
+
+        $operation = $this->recorder->recordGift(new StockGift($this->local, $helmet, 2, StockCondition::Worn, null, $team));
+
+        self::assertSame(StockMovementType::GiftOut, $operation->getType());
+        self::assertSame($team->getId(), $operation->getTeam()?->getId());
+        $movement = $operation->getMovements()->first();
+        self::assertNotFalse($movement);
+        self::assertSame(2, $movement->getQuantity());
+        self::assertSame(StockCondition::Worn, $movement->getCondition());
+        self::assertSame(15000, $movement->getUnitCostHt());
+        $this->em->clear();
+        $level = $this->em->getRepository(StockLevel::class)->findOneBy(['variant' => $helmet->getId(), 'location' => $this->local->getId(), 'condition' => StockCondition::Worn]);
+        self::assertSame(1, $level?->getQuantity());
+    }
+
+    public function testGiftConsumableIgnoresCondition(): void
+    {
+        $pucks = StockScenario::variant($this->em, ProductKind::Consumable, 'PALET-1', 'Palet');
+        $this->receive($pucks, 5, 100);
+
+        $operation = $this->recorder->recordGift(new StockGift($this->local, $pucks, 2, StockCondition::Worn, $this->player1, null));
+
+        $movement = $operation->getMovements()->first();
+        self::assertNotFalse($movement);
+        self::assertSame(StockCondition::New, $movement->getCondition());
+        $this->em->clear();
+        $level = $this->em->getRepository(StockLevel::class)->findOneBy(['variant' => $pucks->getId(), 'location' => $this->local->getId(), 'condition' => StockCondition::New]);
+        self::assertSame(3, $level?->getQuantity());
+    }
+
+    public function testGiftEquipmentBeyondStockIsRefused(): void
+    {
+        $helmet = $this->helmet();
+        StockFixtures::level($this->em, $helmet, $this->local, 1, 15000, StockCondition::Good);
+
+        $this->expectException(StockException::class);
+        $this->expectExceptionMessage('Stock insuffisant pour « CASQUE-1 M » (Bon) à « Local matériel » : 1 disponible(s).');
+        $this->recorder->recordGift(new StockGift($this->local, $helmet, 2, StockCondition::Good, $this->player1, null));
     }
 }

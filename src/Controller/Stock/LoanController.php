@@ -45,6 +45,7 @@ final class LoanController extends AbstractController
             try {
                 $recorder->recordLoan(new StockLoan($values['location'], $values['player'], $variant, $values['condition'], $values['quantity'], $this->nullIfBlank($values['comment'] ?? null)));
             } catch (StockException $e) {
+                // L'EntityManager peut être fermé après une StockException : plus aucune écriture à partir d'ici.
                 $form->addError(new FormError($e->getMessage()));
 
                 return $this->page($variant, $form, 'stock/loan/form.html.twig', Response::HTTP_UNPROCESSABLE_ENTITY);

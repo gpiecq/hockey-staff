@@ -42,24 +42,23 @@ final class StockGiftType extends AbstractType
                 'placeholder' => 'Choisir une équipe',
                 'query_builder' => static fn (EntityRepository $repository) => $repository->createQueryBuilder('t')->orderBy('t.name')->addOrderBy('t.id'),
             ]);
-        if ($options['serialized']) {
-            $builder->add('condition', EnumType::class, ConditionChoices::options('État de la pièce', $counts) + [
+        if ($options['equipment']) {
+            $builder->add('condition', EnumType::class, ConditionChoices::options('État', $counts) + [
                 'constraints' => [new NotNull(message: 'Choisissez un état.')],
             ]);
-        } else {
-            $builder->add('quantity', IntegerType::class, [
-                'label' => 'Quantité',
-                'attr' => ['min' => 1, 'inputmode' => 'numeric'],
-                'constraints' => [new NotNull(message: 'Indiquez la quantité.'), new Positive(message: 'La quantité doit être au moins 1.')],
-            ]);
         }
+        $builder->add('quantity', IntegerType::class, [
+            'label' => 'Quantité',
+            'attr' => ['min' => 1, 'inputmode' => 'numeric'],
+            'constraints' => [new NotNull(message: 'Indiquez la quantité.'), new Positive(message: 'La quantité doit être au moins 1.')],
+        ]);
         $builder->add('comment', TextareaType::class, ['label' => 'Commentaire', 'required' => false, 'attr' => ['rows' => 2]]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(['counts' => [], 'serialized' => true]);
+        $resolver->setDefaults(['counts' => [], 'equipment' => true]);
         $resolver->setAllowedTypes('counts', 'array');
-        $resolver->setAllowedTypes('serialized', 'bool');
+        $resolver->setAllowedTypes('equipment', 'bool');
     }
 }

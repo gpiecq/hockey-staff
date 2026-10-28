@@ -198,7 +198,7 @@ final class StockPageTest extends WebTestCase
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $local = StockFixtures::location($em, 'Local');
         $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
-        StockScenario::receive($this->recorder($client), $variant, $local, 2, 5000);
+        StockFixtures::level($em, $variant, $local, 2, 5000);
         $this->recorder($client)->recordGift(new StockGift($local, $variant, 1, StockCondition::New, PlayerFixtures::player($em), null));
 
         $client->request('GET', '/stock');
