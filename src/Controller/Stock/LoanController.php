@@ -8,7 +8,7 @@ use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 use App\Form\Stock\StockLoanType;
 use App\Form\Stock\StockReturnType;
 use App\Repository\ItemRepository;
@@ -40,7 +40,7 @@ final class LoanController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array{location: Location, player: Player, condition: ItemCondition, comment: ?string} $values */
+            /** @var array{location: Location, player: Player, condition: StockCondition, comment: ?string} $values */
             $values = $form->getData();
             try {
                 $operation = $recorder->recordLoan(new StockLoan($values['location'], $values['player'], $variant, $values['condition'], $this->nullIfBlank($values['comment'] ?? null)));
@@ -78,7 +78,7 @@ final class LoanController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array{item: Item, location: Location, condition: ItemCondition, comment: ?string} $values */
+            /** @var array{item: Item, location: Location, condition: StockCondition, comment: ?string} $values */
             $values = $form->getData();
             $holder = $values['item']->getHolder();
             if (null === $holder) {

@@ -6,9 +6,9 @@ namespace App\Tests\Functional\Stock;
 
 use App\Entity\Item;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -34,12 +34,12 @@ final class VariantSheetTest extends WebTestCase
         \assert($recorder instanceof StockMovementRecorder);
 
         $local = StockFixtures::location($em, 'Local');
-        $helmet = StockScenario::variant($em, TrackingMode::Serialized, 'CASQUE-1', 'Casque Re-Akt');
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
         $recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [
-            new StockEntryLine($helmet, 4, 15000, ItemCondition::New),
-            new StockEntryLine($helmet, 1, 15000, ItemCondition::Worn),
+            new StockEntryLine($helmet, 4, 15000, StockCondition::New),
+            new StockEntryLine($helmet, 1, 15000, StockCondition::Worn),
         ]));
-        $recorder->recordLoan(new StockLoan($local, PlayerFixtures::player($em, 'Martin', 'Léo'), $helmet, ItemCondition::New));
+        $recorder->recordLoan(new StockLoan($local, PlayerFixtures::player($em, 'Martin', 'Léo'), $helmet, StockCondition::New));
 
         return $helmet;
     }
@@ -90,7 +90,7 @@ final class VariantSheetTest extends WebTestCase
         \assert($em instanceof EntityManagerInterface);
         $recorder = $manager->getContainer()->get(StockMovementRecorder::class);
         \assert($recorder instanceof StockMovementRecorder);
-        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => ItemCondition::Worn]);
+        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => StockCondition::Worn]);
         \assert($worn instanceof Item);
         $recorder->recordSale(new StockSale($worn->getLocation(), 'Mme Dupont', [new StockSaleLine($worn, null, 1000)]));
         $manager->request('GET', '/stock/variantes/'.$variant->getId());
@@ -104,7 +104,7 @@ final class VariantSheetTest extends WebTestCase
         $variant = $this->sheet($client);
         $em = $client->getContainer()->get(EntityManagerInterface::class);
         \assert($em instanceof EntityManagerInterface);
-        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => ItemCondition::Worn]);
+        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => StockCondition::Worn]);
         \assert($worn instanceof Item);
         $href = '/ventes/new?item='.$worn->getCode();
 

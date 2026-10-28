@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form\Stock;
 
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 use App\Form\StockVariantAutocompleteField;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -47,8 +47,8 @@ final class StockEntryLineType extends AbstractType
         $builder
             ->add('condition', EnumType::class, [
                 'label' => 'État',
-                'class' => ItemCondition::class,
-                'choice_label' => static fn (ItemCondition $condition): string => $condition->label(),
+                'class' => StockCondition::class,
+                'choice_label' => static fn (StockCondition $condition): string => $condition->label(),
             ])
             ->add('serialNumbers', TextareaType::class, [
                 'label' => 'Numéros de série',

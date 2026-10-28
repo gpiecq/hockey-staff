@@ -8,8 +8,8 @@ use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Team;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Form\Stock\StockGiftType;
 use App\Repository\ItemRepository;
 use App\Repository\LocationRepository;
@@ -34,7 +34,7 @@ final class GiftController extends AbstractController
     public function new(int $id, Request $request, EntityManagerInterface $em, ItemRepository $items, LocationRepository $locations, StockMovementRecorder $recorder): Response
     {
         $variant = $em->find(Variant::class, $id) ?? throw $this->createNotFoundException('Variante introuvable.');
-        $serialized = TrackingMode::Serialized === $variant->getProduct()?->getTrackingMode();
+        $serialized = ProductKind::Equipment === $variant->getProduct()?->getKind();
         $location = $this->selectedLocation($request, $locations, 'stock_gift');
         $form = $this->createForm(StockGiftType::class, ['location' => $location, 'recipient' => 'player', 'quantity' => 1], [
             'counts' => $this->countsAt($items, $variant, $location),
@@ -43,7 +43,7 @@ final class GiftController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array{location: Location, recipient: string, player: ?Player, team: ?Team, quantity?: int, condition?: ItemCondition, comment: ?string} $values */
+            /** @var array{location: Location, recipient: string, player: ?Player, team: ?Team, quantity?: int, condition?: StockCondition, comment: ?string} $values */
             $values = $form->getData();
             $player = 'player' === $values['recipient'] ? $values['player'] : null;
             $team = 'team' === $values['recipient'] ? $values['team'] : null;

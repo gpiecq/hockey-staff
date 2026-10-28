@@ -20,7 +20,7 @@
         <dt>Fournisseur</dt><dd>{{ product.supplier.name }}</dd>
         <dt>Marque</dt><dd>{{ product.brand ? product.brand.name : '—' }}</dd>
         <dt>Catégorie</dt><dd>{{ product.category ? product.category.path : 'Sans catégorie' }}</dd>
-        <dt>Suivi</dt><dd>{{ product.trackingMode.label }}</dd>
+        <dt>Type</dt><dd>{{ product.kind.label }}</dd>
     </dl>
 
     <h2>Variantes{% if season %} · tarifs {{ season.label }}{% endif %}</h2>

@@ -7,7 +7,7 @@ namespace App\Controller\Stock;
 use App\Entity\Location;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Form\Stock\StockEntryType;
 use App\Repository\LocationRepository;
@@ -39,7 +39,7 @@ final class EntryController extends AbstractController
             return $this->render('stock/entry/form.html.twig', ['form' => null, 'title' => $title, 'type' => $type]);
         }
 
-        $form = $this->createForm(StockEntryType::class, ['lines' => [['quantity' => 1, 'condition' => ItemCondition::New]]], ['with_cost' => $isPurchase]);
+        $form = $this->createForm(StockEntryType::class, ['lines' => [['quantity' => 1, 'condition' => StockCondition::New]]], ['with_cost' => $isPurchase]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -66,12 +66,12 @@ final class EntryController extends AbstractController
 
     private function toEntry(StockMovementType $type, FormInterface $form): StockEntry
     {
-        /** @var array{location: Location, documentReference: ?string, comment: ?string, lines: list<array{variant: Variant, quantity: int, unitCostHt?: int|float|null, condition?: ItemCondition|null, serialNumbers?: string|null}>} $data */
+        /** @var array{location: Location, documentReference: ?string, comment: ?string, lines: list<array{variant: Variant, quantity: int, unitCostHt?: int|float|null, condition?: StockCondition|null, serialNumbers?: string|null}>} $data */
         $data = $form->getData();
         $lines = [];
         foreach ($data['lines'] as $row) {
             $serials = preg_split('/\R/', $row['serialNumbers'] ?? '') ?: [];
-            $lines[] = new StockEntryLine($row['variant'], $row['quantity'], isset($row['unitCostHt']) ? (int) round($row['unitCostHt']) : null, $row['condition'] ?? ItemCondition::New, $serials);
+            $lines[] = new StockEntryLine($row['variant'], $row['quantity'], isset($row['unitCostHt']) ? (int) round($row['unitCostHt']) : null, $row['condition'] ?? StockCondition::New, $serials);
         }
 
         return new StockEntry($type, $data['location'], $lines, $this->nullIfBlank($data['documentReference'] ?? null), $this->nullIfBlank($data['comment'] ?? null));

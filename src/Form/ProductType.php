@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Catalogue\TrackingModeResolver;
+use App\Catalogue\ProductKindResolver;
 use App\Entity\Product;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Stock\StockPresence;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -18,7 +18,7 @@ use Symfony\Component\Validator\Constraints\NotNull;
 final class ProductType extends AbstractType
 {
     public function __construct(
-        private readonly TrackingModeResolver $trackingModes,
+        private readonly ProductKindResolver $kinds,
         private readonly StockPresence $stockPresence,
     ) {
     }
@@ -26,7 +26,7 @@ final class ProductType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $product = $options['data'] ?? null;
-        $locked = $product instanceof Product && $this->stockPresence->productHasMovements($product);
+        $locked = $product instanceof Product && $this->stockPresence->productHasStock($product);
 
         $builder
             ->add('supplier', SupplierFilterAutocompleteField::class, [
@@ -47,26 +47,23 @@ final class ProductType extends AbstractType
                 'constraints' => [new NotNull(message: 'La catégorie est obligatoire.')],
             ])
             // Deux radios non présélectionnés à la création : un choix vide reçoit le défaut de la catégorie (côté serveur).
-            ->add('trackingMode', EnumType::class, [
-                'label' => 'Mode de suivi',
-                'class' => TrackingMode::class,
+            ->add('kind', EnumType::class, [
+                'label' => 'Type',
+                'class' => ProductKind::class,
                 'expanded' => true,
                 'required' => false,
                 'placeholder' => false,
                 'disabled' => $locked,
-                'help' => $locked ? 'Le produit a des mouvements de stock : le mode de suivi ne peut plus changer.' : null,
-                'choice_label' => static fn (TrackingMode $mode): string => match ($mode) {
-                    TrackingMode::Serialized => 'Sérialisé',
-                    TrackingMode::Quantity => 'Quantité',
-                },
-                'getter' => static fn (Product $product): ?TrackingMode => null === $product->getId() ? null : $product->getTrackingMode(),
-                'setter' => function (Product $product, ?TrackingMode $mode): void {
+                'help' => $locked ? 'Le produit a du stock ou du matériel prêté : son type ne peut plus changer.' : null,
+                'choice_label' => static fn (ProductKind $kind): string => $kind->label(),
+                'getter' => static fn (Product $product): ?ProductKind => null === $product->getId() ? null : $product->getKind(),
+                'setter' => function (Product $product, ?ProductKind $kind): void {
                     $category = $product->getCategory();
-                    if (null === $mode && null !== $category) {
-                        $mode = $this->trackingModes->defaultFor($category);
+                    if (null === $kind && null !== $category) {
+                        $kind = $this->kinds->defaultFor($category);
                     }
-                    if (null !== $mode) {
-                        $product->setTrackingMode($mode);
+                    if (null !== $kind) {
+                        $product->setKind($kind);
                     }
                 },
             ]);

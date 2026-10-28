@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Entity\Trait\TimestampableBlameableTrait;
-use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
+use App\Enum\StockCondition;
 use App\Repository\ItemRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -40,8 +40,8 @@ class Item
     #[ORM\Column]
     private int $purchaseCostHt;
 
-    #[ORM\Column(length: 20, enumType: ItemCondition::class)]
-    private ItemCondition $condition;
+    #[ORM\Column(length: 20, enumType: StockCondition::class)]
+    private StockCondition $condition;
 
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $serialNumber;
@@ -59,7 +59,7 @@ class Item
         Variant $variant,
         Location $location,
         int $purchaseCostHt,
-        ItemCondition $condition = ItemCondition::New,
+        StockCondition $condition = StockCondition::New,
         ?string $serialNumber = null,
     ) {
         $this->code = $code;
@@ -95,7 +95,7 @@ class Item
         return $this->purchaseCostHt;
     }
 
-    public function getCondition(): ItemCondition
+    public function getCondition(): StockCondition
     {
         return $this->condition;
     }
@@ -143,7 +143,7 @@ class Item
     /**
      * @internal réservé au StockMovementRecorder
      */
-    public function giveBack(Location $location, ItemCondition $condition): void
+    public function giveBack(Location $location, StockCondition $condition): void
     {
         $this->status = ItemStatus::InStock;
         $this->holder = null;

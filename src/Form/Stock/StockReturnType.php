@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Form\Stock;
 
 use App\Entity\Item;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
@@ -31,9 +31,9 @@ final class StockReturnType extends AbstractType
         $builder
             ->add('condition', EnumType::class, [
                 'label' => 'Nouvel état',
-                'class' => ItemCondition::class,
+                'class' => StockCondition::class,
                 'expanded' => true,
-                'choice_label' => static fn (ItemCondition $condition): string => $condition->label(),
+                'choice_label' => static fn (StockCondition $condition): string => $condition->label(),
                 'constraints' => [new NotNull(message: 'Choisissez un état.')],
             ])
             ->add('comment', TextareaType::class, ['label' => 'Commentaire', 'required' => false, 'attr' => ['rows' => 2]]);

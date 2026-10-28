@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
-enum ItemCondition: string
+enum StockCondition: string
 {
     case New = 'new';
     case Good = 'good';

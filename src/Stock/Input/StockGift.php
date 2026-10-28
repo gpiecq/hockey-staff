@@ -8,7 +8,7 @@ use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Team;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 
 /**
  * Don à un joueur ou à une équipe ; `$condition` est requis pour une variante suivie à la pièce, ignoré sinon.
@@ -19,7 +19,7 @@ final readonly class StockGift
         public Location $location,
         public Variant $variant,
         public int $quantity,
-        public ?ItemCondition $condition,
+        public ?StockCondition $condition,
         public ?Player $player,
         public ?Team $team,
         public ?string $comment = null,

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form\Stock;
 
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 
 /**
  * Options d'un champ « état » dont les libellés portent le nombre de pièces disponibles dans le lieu choisi.
@@ -20,10 +20,10 @@ final class ConditionChoices
     {
         return [
             'label' => $label,
-            'class' => ItemCondition::class,
+            'class' => StockCondition::class,
             'expanded' => true,
-            'choice_label' => static fn (ItemCondition $condition): string => \sprintf('%s (%d)', $condition->label(), $counts[$condition->value] ?? 0),
-            'choice_attr' => static fn (ItemCondition $condition): array => 0 === ($counts[$condition->value] ?? 0) ? ['data-empty' => '1'] : [],
+            'choice_label' => static fn (StockCondition $condition): string => \sprintf('%s (%d)', $condition->label(), $counts[$condition->value] ?? 0),
+            'choice_attr' => static fn (StockCondition $condition): array => 0 === ($counts[$condition->value] ?? 0) ? ['data-empty' => '1'] : [],
         ];
     }
 }

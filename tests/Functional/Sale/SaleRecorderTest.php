@@ -12,10 +12,10 @@ use App\Entity\Season;
 use App\Entity\SeasonPrice;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\Input\StockLoan;
@@ -51,7 +51,7 @@ final class SaleRecorderTest extends KernelTestCase
 
     private function helmet(): Variant
     {
-        return StockScenario::variant($this->em, TrackingMode::Serialized, 'CASQUE-1', 'Casque Re-Akt');
+        return StockScenario::variant($this->em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
     }
 
     private function price(Variant $variant, Season $season, ?int $publicTtc, int $vatRate = 2000): SeasonPrice
@@ -64,7 +64,7 @@ final class SaleRecorderTest extends KernelTestCase
     }
 
     /** Reçoit une pièce et la renvoie. */
-    private function receiveItem(Variant $variant, ItemCondition $condition = ItemCondition::Good, ?Location $location = null, int $cost = 15000): Item
+    private function receiveItem(Variant $variant, StockCondition $condition = StockCondition::Good, ?Location $location = null, int $cost = 15000): Item
     {
         $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location ?? $this->local, [new StockEntryLine($variant, 1, $cost, $condition)]));
         $item = $this->em->getRepository(Item::class)->findOneBy(['variant' => $variant], ['id' => 'DESC']);
@@ -121,7 +121,7 @@ final class SaleRecorderTest extends KernelTestCase
         $helmet = $this->helmet();
         $current = PlayerFixtures::season($this->em, 2026, true);
         $tariff = $this->price($helmet, $current, 30000);
-        $item = $this->receiveItem($helmet, ItemCondition::Good);
+        $item = $this->receiveItem($helmet, StockCondition::Good);
         $player = PlayerFixtures::player($this->em, 'Martin', 'Léo');
         self::assertSame(15000, $this->totalValueHt());
 
@@ -249,10 +249,10 @@ final class SaleRecorderTest extends KernelTestCase
         $helmet = $this->helmet();
         $this->price($helmet, PlayerFixtures::season($this->em, 2026, true), 30000);
         $reserve = StockFixtures::location($this->em, 'Réserve');
-        $new = $this->receiveItem($helmet, ItemCondition::New);
-        $loaned = $this->receiveItem($helmet, ItemCondition::Worn);
-        $elsewhere = $this->receiveItem($helmet, ItemCondition::Good, $reserve);
-        $this->recorder->recordLoan(new StockLoan($this->local, PlayerFixtures::player($this->em), $helmet, ItemCondition::Worn));
+        $new = $this->receiveItem($helmet, StockCondition::New);
+        $loaned = $this->receiveItem($helmet, StockCondition::Worn);
+        $elsewhere = $this->receiveItem($helmet, StockCondition::Good, $reserve);
+        $this->recorder->recordLoan(new StockLoan($this->local, PlayerFixtures::player($this->em), $helmet, StockCondition::Worn));
 
         $cases = [
             [$new->getId(), \sprintf('La pièce %s est neuve : seule l\'occasion se vend.', $new->getCode())],

@@ -10,10 +10,10 @@ use App\Entity\Player;
 use App\Entity\StockLevel;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Repository\ItemRepository;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -53,10 +53,10 @@ final class LoanGiftRecorderTest extends KernelTestCase
 
     private function helmet(): Variant
     {
-        return StockScenario::variant($this->em, TrackingMode::Serialized, 'CASQUE-1', 'Casque Re-Akt');
+        return StockScenario::variant($this->em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
     }
 
-    private function receive(Variant $variant, int $quantity, int $cost, ItemCondition $condition = ItemCondition::New): void
+    private function receive(Variant $variant, int $quantity, int $cost, StockCondition $condition = StockCondition::New): void
     {
         $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $this->local, [new StockEntryLine($variant, $quantity, $cost, $condition)]));
     }
@@ -88,10 +88,10 @@ final class LoanGiftRecorderTest extends KernelTestCase
     {
         $helmet = $this->helmet();
         $this->receive($helmet, 2, 15000);
-        $this->receive($helmet, 1, 15000, ItemCondition::Worn);
+        $this->receive($helmet, 1, 15000, StockCondition::Worn);
         [$first, $second] = $this->items($helmet);
 
-        $operation = $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, ItemCondition::New));
+        $operation = $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, StockCondition::New));
 
         self::assertSame(StockMovementType::LoanOut, $operation->getType());
         self::assertSame($this->local->getId(), $operation->getSource()?->getId());
@@ -107,27 +107,27 @@ final class LoanGiftRecorderTest extends KernelTestCase
         self::assertSame($this->player1->getId(), $first->getHolder()?->getId());
         self::assertSame('Local', $first->getLocation()->getName());
 
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, ItemCondition::New));
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, StockCondition::New));
         self::assertSame(ItemStatus::Loaned, $second->getStatus());
 
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player6, $helmet, ItemCondition::Worn));
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player6, $helmet, StockCondition::Worn));
         $worn = $this->items($helmet)[2];
         self::assertSame(ItemStatus::Loaned, $worn->getStatus());
         self::assertSame($this->player6->getId(), $worn->getHolder()?->getId());
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage('Aucune pièce « CASQUE-1 M » à l\'état Neuf disponible à « Local ».');
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, ItemCondition::New));
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, StockCondition::New));
     }
 
     public function testQuantityProductCannotBeLoaned(): void
     {
-        $pucks = StockScenario::variant($this->em, TrackingMode::Quantity, 'PALET-1', 'Palet');
+        $pucks = StockScenario::variant($this->em, ProductKind::Consumable, 'PALET-1', 'Palet');
         $this->receive($pucks, 10, 100);
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage('« PALET-1 M » est suivi en quantité : il ne se prête pas.');
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $pucks, ItemCondition::New));
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $pucks, StockCondition::New));
     }
 
     public function testLoanFromInactiveLocationIsRefused(): void
@@ -137,7 +137,7 @@ final class LoanGiftRecorderTest extends KernelTestCase
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage('Le lieu « Cave » est inactif.');
-        $this->recorder->recordLoan(new StockLoan($cave, $this->player1, $helmet, ItemCondition::New));
+        $this->recorder->recordLoan(new StockLoan($cave, $this->player1, $helmet, StockCondition::New));
     }
 
     public function testReturnRejectsWrongHolderOrNotLoaned(): void
@@ -145,12 +145,12 @@ final class LoanGiftRecorderTest extends KernelTestCase
         $helmet = $this->helmet();
         $this->receive($helmet, 1, 15000);
         $reserve = StockFixtures::location($this->em, 'Réserve');
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, ItemCondition::New));
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, StockCondition::New));
         [$item] = $this->items($helmet);
         $before = $this->operations();
 
         try {
-            $this->recorder->recordReturn(new StockReturn($item, $this->player6, $reserve, ItemCondition::Worn));
+            $this->recorder->recordReturn(new StockReturn($item, $this->player6, $reserve, StockCondition::Worn));
             self::fail('StockException attendue.');
         } catch (StockException $e) {
             self::assertSame(\sprintf('La pièce %s n\'est pas prêtée à Hugo Durand.', $item->getCode()), $e->getMessage());
@@ -165,7 +165,7 @@ final class LoanGiftRecorderTest extends KernelTestCase
         \assert($item instanceof Item && $player1 instanceof Player && $reserve instanceof Location);
         self::assertSame(ItemStatus::Loaned, $item->getStatus());
 
-        $operation = $this->recorder->recordReturn(new StockReturn($item, $player1, $reserve, ItemCondition::Worn, 'Fin de saison'));
+        $operation = $this->recorder->recordReturn(new StockReturn($item, $player1, $reserve, StockCondition::Worn, 'Fin de saison'));
 
         self::assertSame(StockMovementType::LoanReturn, $operation->getType());
         self::assertNull($operation->getSource());
@@ -180,19 +180,19 @@ final class LoanGiftRecorderTest extends KernelTestCase
         self::assertSame(ItemStatus::InStock, $fresh?->getStatus());
         self::assertNull($fresh->getHolder());
         self::assertSame('Réserve', $fresh->getLocation()->getName());
-        self::assertSame(ItemCondition::Worn, $fresh->getCondition());
+        self::assertSame(StockCondition::Worn, $fresh->getCondition());
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage(\sprintf('La pièce %s n\'est pas prêtée à Léo Martin.', $item->getCode()));
         $player1 = $this->em->getRepository(Player::class)->find($this->player1->getId());
         $reserve = $this->em->getRepository(Location::class)->find($reserve->getId());
         \assert($player1 instanceof Player && $reserve instanceof Location);
-        $this->recorder->recordReturn(new StockReturn($fresh, $player1, $reserve, ItemCondition::Worn));
+        $this->recorder->recordReturn(new StockReturn($fresh, $player1, $reserve, StockCondition::Worn));
     }
 
     public function testGiftToTeamOfQuantityUsesAverageCost(): void
     {
-        $pucks = StockScenario::variant($this->em, TrackingMode::Quantity, 'PALET-1', 'Palet');
+        $pucks = StockScenario::variant($this->em, ProductKind::Consumable, 'PALET-1', 'Palet');
         $this->receive($pucks, 10, 100);
         $team = PlayerFixtures::team($this->em, 'U15');
 
@@ -215,7 +215,7 @@ final class LoanGiftRecorderTest extends KernelTestCase
 
     public function testGiftOfQuantityBeyondStockIsRefused(): void
     {
-        $pucks = StockScenario::variant($this->em, TrackingMode::Quantity, 'PALET-1', 'Palet');
+        $pucks = StockScenario::variant($this->em, ProductKind::Consumable, 'PALET-1', 'Palet');
         $this->receive($pucks, 2, 100);
 
         $this->expectException(StockException::class);
@@ -225,7 +225,7 @@ final class LoanGiftRecorderTest extends KernelTestCase
 
     public function testGiftNeedsExactlyOneRecipient(): void
     {
-        $pucks = StockScenario::variant($this->em, TrackingMode::Quantity, 'PALET-1', 'Palet');
+        $pucks = StockScenario::variant($this->em, ProductKind::Consumable, 'PALET-1', 'Palet');
         $this->receive($pucks, 10, 100);
         $team = PlayerFixtures::team($this->em, 'U15');
         $before = $this->operations();
@@ -247,7 +247,7 @@ final class LoanGiftRecorderTest extends KernelTestCase
         $helmet = $this->helmet();
         $this->receive($helmet, 2, 15000);
 
-        foreach ([[1, null, 'Choisissez l\'état de la pièce.'], [2, ItemCondition::New, 'Une pièce se donne à l\'unité : quantité 1.']] as [$quantity, $condition, $message]) {
+        foreach ([[1, null, 'Choisissez l\'état de la pièce.'], [2, StockCondition::New, 'Une pièce se donne à l\'unité : quantité 1.']] as [$quantity, $condition, $message]) {
             try {
                 $this->recorder->recordGift(new StockGift($this->local, $helmet, $quantity, $condition, $this->player1, null));
                 self::fail('StockException attendue.');
@@ -260,10 +260,10 @@ final class LoanGiftRecorderTest extends KernelTestCase
     public function testGiftOfItemToPlayer(): void
     {
         $helmet = $this->helmet();
-        $this->receive($helmet, 1, 15000, ItemCondition::Good);
+        $this->receive($helmet, 1, 15000, StockCondition::Good);
         [$item] = $this->items($helmet);
 
-        $operation = $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, ItemCondition::Good, $this->player1, null));
+        $operation = $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, StockCondition::Good, $this->player1, null));
 
         self::assertSame(StockMovementType::GiftOut, $operation->getType());
         self::assertSame($this->player1->getId(), $operation->getPlayer()?->getId());
@@ -278,16 +278,16 @@ final class LoanGiftRecorderTest extends KernelTestCase
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage('Aucune pièce « CASQUE-1 M » à l\'état Bon disponible à « Local ».');
-        $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, ItemCondition::Good, $this->player1, null));
+        $this->recorder->recordGift(new StockGift($this->local, $helmet, 1, StockCondition::Good, $this->player1, null));
     }
 
     public function testRepositoryCountsByConditionAndListsLoans(): void
     {
         $helmet = $this->helmet();
         $this->receive($helmet, 3, 15000);
-        $this->receive($helmet, 1, 15000, ItemCondition::Worn);
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, ItemCondition::New));
-        $this->recorder->recordLoan(new StockLoan($this->local, $this->player6, $helmet, ItemCondition::New));
+        $this->receive($helmet, 1, 15000, StockCondition::Worn);
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player1, $helmet, StockCondition::New));
+        $this->recorder->recordLoan(new StockLoan($this->local, $this->player6, $helmet, StockCondition::New));
         $repository = static::getContainer()->get(ItemRepository::class);
         \assert($repository instanceof ItemRepository);
 

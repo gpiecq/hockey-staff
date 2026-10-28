@@ -8,7 +8,7 @@ use App\Entity\Location;
 use App\Entity\StockLevel;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Tests\Support\ImportFixtures;
 use App\Tests\Support\StockFixtures;
@@ -32,12 +32,12 @@ final class EntryControllerTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), $role, 'u@example.test'));
     }
 
-    private function variant(KernelBrowser $client, TrackingMode $mode = TrackingMode::Quantity, ?string $ean = '1234567890123', string $ref = 'REF-1', bool $archived = false): Variant
+    private function variant(KernelBrowser $client, ProductKind $mode = ProductKind::Consumable, ?string $ean = '1234567890123', string $ref = 'REF-1', bool $archived = false): Variant
     {
         $em = $this->em($client);
         $supplier = $em->getRepository(\App\Entity\Supplier::class)->findOneBy([]) ?? ImportFixtures::supplierWithMapping($em);
         $product = ImportFixtures::product($em, $supplier, $ref);
-        $product->setTrackingMode($mode);
+        $product->setKind($mode);
         $variant = ImportFixtures::variant($em, $product, $ean, 'M');
         if ($archived) {
             $variant->archive();
@@ -108,7 +108,7 @@ final class EntryControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $location = StockFixtures::location($this->em($client));
-        $variant = $this->variant($client, TrackingMode::Serialized);
+        $variant = $this->variant($client, ProductKind::Equipment);
 
         $crawler = $client->request('GET', '/stock/entree/achat');
         $this->submit($client, $crawler, $this->payload($location, $variant, 2, '10,00'));
@@ -196,8 +196,8 @@ final class EntryControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $this->variant($client, TrackingMode::Quantity, '0123456789012', 'REF-OK');
-        $this->variant($client, TrackingMode::Quantity, null, 'REF-ARCH', true);
+        $this->variant($client, ProductKind::Consumable, '0123456789012', 'REF-OK');
+        $this->variant($client, ProductKind::Consumable, null, 'REF-ARCH', true);
 
         $client->request('GET', '/autocomplete/stock_variant_autocomplete_field?query=123456789012');
         self::assertResponseIsSuccessful();
@@ -214,8 +214,8 @@ final class EntryControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $variant = $this->variant($client, TrackingMode::Quantity, null, 'REF-OK');
-        $this->variant($client, TrackingMode::Quantity, null, 'REF-OTHER');
+        $variant = $this->variant($client, ProductKind::Consumable, null, 'REF-OK');
+        $this->variant($client, ProductKind::Consumable, null, 'REF-OTHER');
 
         $client->request('GET', '/autocomplete/stock_variant_autocomplete_field?query='.strtolower((string) $variant->getCode()));
 

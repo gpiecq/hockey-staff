@@ -7,7 +7,7 @@ namespace App\Controller\Stock;
 use App\Catalogue\CurrentSeasonProvider;
 use App\Entity\StockLevel;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 use App\Repository\ItemRepository;
 use App\Repository\SeasonPriceRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -37,7 +37,7 @@ final class VariantSheetController extends AbstractController
             $name = $item->getLocation()->getName();
             $locations[$name]['conditions'][$item->getCondition()->value] = ($locations[$name]['conditions'][$item->getCondition()->value] ?? 0) + 1;
             $locations[$name]['quantity'] = ($locations[$name]['quantity'] ?? 0) + 1;
-            if (ItemCondition::New !== $item->getCondition()) {
+            if (StockCondition::New !== $item->getCondition()) {
                 $secondHand[] = $item;
             }
         }

@@ -8,8 +8,8 @@ use App\Entity\Item;
 use App\Entity\Product;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
+use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Repository\ItemRepository;
 use App\Repository\VariantRepository;
 use App\Stock\StockPresence;
@@ -151,7 +151,7 @@ final readonly class LabelLineBuilder
     {
         $serialized = array_values(array_filter(
             $variants,
-            static fn (Variant $variant): bool => TrackingMode::Serialized === $variant->getProduct()?->getTrackingMode(),
+            static fn (Variant $variant): bool => ProductKind::Equipment === $variant->getProduct()?->getKind(),
         ));
 
         $grouped = [];

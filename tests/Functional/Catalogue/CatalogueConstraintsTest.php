@@ -10,7 +10,7 @@ use App\Entity\Season;
 use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Repository\CategoryRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -72,7 +72,7 @@ final class CatalogueConstraintsTest extends KernelTestCase
             ->setDesignation('Patin X')
             ->setBrand($brand)
             ->setCategory($categories->findOrCreatePath(['Equipement', 'Joueur', 'Patin']))
-            ->setTrackingMode(TrackingMode::Serialized);
+            ->setKind(ProductKind::Equipment);
         $this->em->persist($product);
 
         return $product;

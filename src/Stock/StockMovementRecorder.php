@@ -13,11 +13,11 @@ use App\Entity\StockLevel;
 use App\Entity\StockMovement;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
-use App\Enum\TrackingMode;
 use App\Repository\ItemRepository;
 use App\Repository\StockLevelRepository;
 use App\Sale\SalePricing;
@@ -75,7 +75,7 @@ final readonly class StockMovementRecorder
                 $line = $plan['line'];
                 $variant = $line->variant;
 
-                if (TrackingMode::Serialized === $variant->getProduct()?->getTrackingMode()) {
+                if (ProductKind::Equipment === $variant->getProduct()?->getKind()) {
                     for ($i = 0; $i < $line->quantity; ++$i) {
                         $item = new Item($this->items->nextCode(), $variant, $entry->location, $plan['cost'], $line->condition, $plan['serials'][$i] ?? null);
                         $this->em->persist($item);
@@ -165,7 +165,7 @@ final readonly class StockMovementRecorder
 
     public function recordLoan(StockLoan $loan): StockOperation
     {
-        if (TrackingMode::Serialized !== $loan->variant->getProduct()?->getTrackingMode()) {
+        if (ProductKind::Equipment !== $loan->variant->getProduct()?->getKind()) {
             throw new StockException(\sprintf('« %s » est suivi en quantité : il ne se prête pas.', $this->label($loan->variant)));
         }
         if (!$loan->location->isActive()) {
@@ -219,7 +219,7 @@ final readonly class StockMovementRecorder
         }
         // État de la pièce à donner ; null pour un produit suivi en quantité.
         $condition = null;
-        if (TrackingMode::Serialized === $gift->variant->getProduct()?->getTrackingMode()) {
+        if (ProductKind::Equipment === $gift->variant->getProduct()?->getKind()) {
             $condition = $gift->condition ?? throw new StockException('Choisissez l\'état de la pièce.');
             if (1 !== $gift->quantity) {
                 throw new StockException('Une pièce se donne à l\'unité : quantité 1.');
@@ -282,7 +282,7 @@ final readonly class StockMovementRecorder
                 if (ItemStatus::InStock !== $item->getStatus() || $item->getLocation()->getId() !== $sale->location->getId()) {
                     throw new StockException(\sprintf('La pièce %s n\'est pas en stock à « %s ».', $item->getCode(), $sale->location->getName()));
                 }
-                if (ItemCondition::New === $item->getCondition()) {
+                if (StockCondition::New === $item->getCondition()) {
                     throw new StockException(\sprintf('La pièce %s est neuve : seule l\'occasion se vend.', $item->getCode()));
                 }
                 $plans[] = [$item, $this->pricing->price($item->getVariant(), $line->discountRate, $line->finalPriceTtc)];
@@ -321,7 +321,7 @@ final readonly class StockMovementRecorder
             if ($line->quantity < 1) {
                 throw new StockException('La quantité doit être au moins 1.');
             }
-            if (TrackingMode::Serialized !== $line->variant->getProduct()?->getTrackingMode()) {
+            if (ProductKind::Equipment !== $line->variant->getProduct()?->getKind()) {
                 if (null !== $line->item) {
                     throw new StockException(\sprintf('« %s » est suivi en quantité : n\'indiquez pas de pièce.', $this->label($line->variant)));
                 }
@@ -393,7 +393,7 @@ final readonly class StockMovementRecorder
     /**
      * Verrouille la plus ancienne pièce en stock de l'état demandé dans le lieu ; à appeler dans la transaction.
      */
-    private function lockOldestInStock(Variant $variant, Location $location, ItemCondition $condition): Item
+    private function lockOldestInStock(Variant $variant, Location $location, StockCondition $condition): Item
     {
         return $this->items->findOldestInStockForUpdate($variant, $location, $condition)
             ?? throw new StockException(\sprintf('Aucune pièce « %s » à l\'état %s disponible à « %s ».', $this->label($variant), $condition->label(), $location->getName()));
@@ -424,7 +424,7 @@ final readonly class StockMovementRecorder
         }
 
         $serials = [];
-        if (TrackingMode::Serialized === $variant->getProduct()?->getTrackingMode()) {
+        if (ProductKind::Equipment === $variant->getProduct()?->getKind()) {
             $serials = array_values(array_filter(
                 array_map(trim(...), $line->serialNumbers),
                 static fn (string $serial): bool => '' !== $serial,

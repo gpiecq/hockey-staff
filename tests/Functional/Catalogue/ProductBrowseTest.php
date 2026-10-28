@@ -10,7 +10,7 @@ use App\Entity\Season;
 use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Repository\CategoryRepository;
 use App\Tests\Support\UserFactory;
@@ -48,7 +48,7 @@ final class ProductBrowseTest extends WebTestCase
             ->setDesignation($designation)
             ->setBrand($brand)
             ->setCategory($categories->findOrCreatePath($path))
-            ->setTrackingMode(TrackingMode::Quantity);
+            ->setKind(ProductKind::Consumable);
         $this->em->persist($product);
         $this->em->flush();
 

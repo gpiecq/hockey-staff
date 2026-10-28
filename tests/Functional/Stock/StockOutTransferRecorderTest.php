@@ -12,9 +12,9 @@ use App\Entity\StockOperation;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ItemStatus;
+use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
-use App\Enum\TrackingMode;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\Input\StockLine;
@@ -47,11 +47,11 @@ final class StockOutTransferRecorderTest extends KernelTestCase
         $this->b = StockFixtures::location($this->em, 'Local B');
     }
 
-    private function variant(TrackingMode $mode = TrackingMode::Quantity, string $ref = 'REF-1', string $ean = '1234567890123'): Variant
+    private function variant(ProductKind $mode = ProductKind::Consumable, string $ref = 'REF-1', string $ean = '1234567890123'): Variant
     {
         $supplier = $this->em->getRepository(Supplier::class)->findOneBy([]) ?? ImportFixtures::supplierWithMapping($this->em);
         $product = ImportFixtures::product($this->em, $supplier, $ref);
-        $product->setTrackingMode($mode);
+        $product->setKind($mode);
         $provider = static::getContainer()->get(CurrentSeasonProvider::class);
         \assert($provider instanceof CurrentSeasonProvider);
         $season = $provider->get();
@@ -82,7 +82,7 @@ final class StockOutTransferRecorderTest extends KernelTestCase
 
     private function serialized(int $cost = 8000, ?Location $location = null): Item
     {
-        $variant = $this->variant(TrackingMode::Serialized);
+        $variant = $this->variant(ProductKind::Equipment);
         $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location ?? $this->a, [new StockEntryLine($variant, 1, $cost)]));
         $item = $this->em->getRepository(Item::class)->findOneBy([]);
         self::assertNotNull($item);
@@ -226,7 +226,7 @@ final class StockOutTransferRecorderTest extends KernelTestCase
 
     public function testSerializedLineWithoutItemIsRefused(): void
     {
-        $variant = $this->variant(TrackingMode::Serialized);
+        $variant = $this->variant(ProductKind::Equipment);
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage('Indiquez la pièce (code HS-) pour « REF-1 M ».');
@@ -279,7 +279,7 @@ final class StockOutTransferRecorderTest extends KernelTestCase
     public function testItemOfOtherVariantIsRefused(): void
     {
         $item = $this->serialized();
-        $other = $this->variant(TrackingMode::Serialized, 'REF-2', '1234567890124');
+        $other = $this->variant(ProductKind::Equipment, 'REF-2', '1234567890124');
 
         $this->assertMismatchRefused($item, new StockLine($other, 1, $item), 'La pièce {code} ne correspond pas à « REF-2 M ».');
     }
@@ -287,7 +287,7 @@ final class StockOutTransferRecorderTest extends KernelTestCase
     public function testQuantityLineWithItemIsRefused(): void
     {
         $item = $this->serialized();
-        $quantity = $this->variant(TrackingMode::Quantity, 'REF-2', '1234567890124');
+        $quantity = $this->variant(ProductKind::Consumable, 'REF-2', '1234567890124');
         $this->receive($quantity, $this->a, 3, 1000);
 
         $this->assertMismatchRefused($item, new StockLine($quantity, 1, $item), '« REF-2 M » est suivi en quantité : n\'indiquez pas de pièce.');

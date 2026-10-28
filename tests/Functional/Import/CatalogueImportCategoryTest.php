@@ -12,7 +12,7 @@ use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ImportAnomalyCode;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Import\CatalogueImportAnalyzer;
 use App\Import\CatalogueImportApplier;
 use App\Import\ImportDiff;
@@ -106,7 +106,7 @@ final class CatalogueImportCategoryTest extends KernelTestCase
         $product = $this->product('R1');
         self::assertNotNull($product);
         self::assertNull($product->getCategory());
-        self::assertSame(TrackingMode::Quantity, $product->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $product->getKind());
     }
 
     public function testUnknownCategoryIsWarningAndNotCreated(): void
@@ -143,11 +143,11 @@ final class CatalogueImportCategoryTest extends KernelTestCase
         self::assertSame('EQUIPEMENT › JOUEUR', $this->product('R1')?->getCategory()?->getPath());
     }
 
-    public function testFirstCategorizationByImportAppliesDefaultTrackingMode(): void
+    public function testFirstCategorizationByImportAppliesDefaultProductKind(): void
     {
         $this->categories->findOrCreatePath(['EQUIPEMENT', 'JOUEUR', 'PATIN']);
         $product = ImportFixtures::product($this->em, $this->supplier, 'R1');
-        $product->setCategory(null)->setTrackingMode(TrackingMode::Quantity);
+        $product->setCategory(null)->setKind(ProductKind::Consumable);
         $this->em->flush();
         ImportFixtures::variant($this->em, $product, '688698508062', 'SR L');
 
@@ -157,7 +157,7 @@ final class CatalogueImportCategoryTest extends KernelTestCase
         $product = $this->product('R1');
         self::assertNotNull($product);
         self::assertSame('EQUIPEMENT › JOUEUR › PATIN', $product->getCategory()?->getPath());
-        self::assertSame(TrackingMode::Serialized, $product->getTrackingMode());
+        self::assertSame(ProductKind::Equipment, $product->getKind());
     }
 
     public function testCategoryMatchIsNormalized(): void

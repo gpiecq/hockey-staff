@@ -11,8 +11,8 @@ use App\Entity\StockLevel;
 use App\Entity\StockOperation;
 use App\Entity\Variant;
 use App\Enum\ItemStatus;
+use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\StockException;
@@ -40,11 +40,11 @@ final class StockEntryRecorderTest extends KernelTestCase
         $this->location = StockFixtures::location($this->em);
     }
 
-    private function variant(TrackingMode $mode = TrackingMode::Quantity, ?int $club = null, ?string $ean = '1234567890123', string $ref = 'REF-1'): Variant
+    private function variant(ProductKind $mode = ProductKind::Consumable, ?int $club = null, ?string $ean = '1234567890123', string $ref = 'REF-1'): Variant
     {
         $supplier = $this->em->getRepository(\App\Entity\Supplier::class)->findOneBy([]) ?? ImportFixtures::supplierWithMapping($this->em);
         $product = ImportFixtures::product($this->em, $supplier, $ref);
-        $product->setTrackingMode($mode);
+        $product->setKind($mode);
         $season = $this->currentSeason();
         $variant = ImportFixtures::variant($this->em, $product, $ean, 'M', true, $season, $club);
 
@@ -101,7 +101,7 @@ final class StockEntryRecorderTest extends KernelTestCase
 
     public function testPurchaseOfSerializedProductCreatesItems(): void
     {
-        $variant = $this->variant(TrackingMode::Serialized);
+        $variant = $this->variant(ProductKind::Equipment);
 
         $operation = $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $this->location, [new StockEntryLine($variant, 2, 900, serialNumbers: [' SN1 ', ''])]));
 
@@ -191,7 +191,7 @@ final class StockEntryRecorderTest extends KernelTestCase
 
     public function testTooManySerialNumbersIsRefused(): void
     {
-        $variant = $this->variant(TrackingMode::Serialized);
+        $variant = $this->variant(ProductKind::Equipment);
 
         $this->expectException(StockException::class);
         $this->expectExceptionMessage('Plus de numéros de série que de pièces pour « REF-1 M ».');

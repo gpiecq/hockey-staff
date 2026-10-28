@@ -10,9 +10,15 @@ use App\Entity\Season;
 use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
+use App\Enum\StockOutReason;
 use App\Enum\UserRole;
 use App\Repository\CategoryRepository;
+use App\Stock\Input\StockLine;
+use App\Stock\Input\StockOut;
+use App\Stock\StockMovementRecorder;
+use App\Tests\Support\StockFixtures;
+use App\Tests\Support\StockScenario;
 use App\Tests\Support\UserFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -54,7 +60,7 @@ final class ProductEditTest extends WebTestCase
             ->setReference($reference)
             ->setDesignation('Casque')
             ->setCategory($categories->findOrCreatePath($path))
-            ->setTrackingMode(TrackingMode::Quantity);
+            ->setKind(ProductKind::Consumable);
         $this->em->persist($product);
         $this->em->flush();
 
@@ -135,14 +141,14 @@ final class ProductEditTest extends WebTestCase
         self::assertSelectorExists('select[name="product[supplier]"][data-controller~="symfony--ux-autocomplete--autocomplete"]');
         self::assertSelectorExists('select[name="product[brand]"][data-controller~="symfony--ux-autocomplete--autocomplete"]');
         self::assertSelectorExists('select[name="product[category]"][data-controller~="symfony--ux-autocomplete--autocomplete"]');
-        $radios = $crawler->filter('input[type=radio][name="product[trackingMode]"]');
+        $radios = $crawler->filter('input[type=radio][name="product[kind]"]');
         self::assertCount(2, $radios);
         self::assertCount(0, $crawler->filter('input[type=radio]:checked'));
-        self::assertStringContainsString('Sérialisé', $crawler->filter('form')->text());
-        self::assertStringContainsString('Quantité', $crawler->filter('form')->text());
+        self::assertStringContainsString('Équipement', $crawler->filter('form')->text());
+        self::assertStringContainsString('Consommable', $crawler->filter('form')->text());
     }
 
-    public function testCreateWithoutTrackingModeUsesEquipmentDefault(): void
+    public function testCreateWithoutProductKindUsesEquipmentDefault(): void
     {
         $this->login(UserRole::Manager);
         $crawler = $this->client->request('GET', '/catalogue/new');
@@ -151,28 +157,28 @@ final class ProductEditTest extends WebTestCase
 
         $product = $this->findProduct('NEW1');
         self::assertResponseRedirects('/catalogue/'.$product->getId());
-        self::assertSame(TrackingMode::Serialized, $product->getTrackingMode());
+        self::assertSame(ProductKind::Equipment, $product->getKind());
         self::assertSame('WARRIOR', $product->getBrand()?->getName());
     }
 
-    public function testCreateWithoutTrackingModeUsesQuantityOutsideEquipment(): void
+    public function testCreateWithoutProductKindUsesQuantityOutsideEquipment(): void
     {
         $this->login(UserRole::Manager);
         $crawler = $this->client->request('GET', '/catalogue/new');
 
         $this->post($crawler, 'Enregistrer', 'product', $this->productFields($this->categoryId('CONSOMMABLE', 'TAPE')));
 
-        self::assertSame(TrackingMode::Quantity, $this->findProduct('NEW1')->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $this->findProduct('NEW1')->getKind());
     }
 
-    public function testCreateKeepsExplicitTrackingMode(): void
+    public function testCreateKeepsExplicitProductKind(): void
     {
         $this->login(UserRole::Manager);
         $crawler = $this->client->request('GET', '/catalogue/new');
 
-        $this->post($crawler, 'Enregistrer', 'product', $this->productFields() + ['trackingMode' => 'quantity']);
+        $this->post($crawler, 'Enregistrer', 'product', $this->productFields() + ['kind' => 'consumable']);
 
-        self::assertSame(TrackingMode::Quantity, $this->findProduct('NEW1')->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $this->findProduct('NEW1')->getKind());
     }
 
     public function testInvalidProductRendersErrorsWith422(): void
@@ -189,21 +195,60 @@ final class ProductEditTest extends WebTestCase
         self::assertResponseStatusCodeSame(422);
     }
 
-    public function testEditShowsStoredTrackingModeAndAllowsChange(): void
+    public function testEditShowsStoredProductKindAndAllowsChange(): void
     {
         $this->login(UserRole::Manager);
         $product = $this->product('E1');
 
         $crawler = $this->client->request('GET', '/catalogue/'.$product->getId().'/edit');
         self::assertResponseIsSuccessful();
-        self::assertCount(1, $crawler->filter('input[type=radio][value=quantity]:checked'));
+        self::assertCount(1, $crawler->filter('input[type=radio][value=consumable]:checked'));
 
-        $this->post($crawler, 'Enregistrer', 'product', ['trackingMode' => 'serialized', 'designation' => 'Casque V2']);
+        $this->post($crawler, 'Enregistrer', 'product', ['kind' => 'equipment', 'designation' => 'Casque V2']);
 
         $product = $this->findProduct('E1');
         self::assertResponseRedirects('/catalogue/'.$product->getId());
-        self::assertSame(TrackingMode::Serialized, $product->getTrackingMode());
+        self::assertSame(ProductKind::Equipment, $product->getKind());
         self::assertSame('Casque V2', $product->getDesignation());
+    }
+
+    public function testKindLockedWhileProductHasStock(): void
+    {
+        $this->login(UserRole::Manager);
+        $product = $this->product('S1');
+        $variant = $this->variant($product, null);
+        $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        StockScenario::receive($recorder, $variant, StockFixtures::location($this->em), 3, 1000);
+
+        $crawler = $this->client->request('GET', '/catalogue/'.$product->getId().'/edit');
+        self::assertCount(2, $crawler->filter('input[type=radio][name="product[kind]"][disabled]'));
+
+        $form = $crawler->selectButton('Enregistrer')->form();
+        $values = $form->getPhpValues();
+        $values['product']['kind'] = 'equipment';
+        $this->client->request('POST', $form->getUri(), $values);
+
+        self::assertSame(ProductKind::Consumable, $this->findProduct('S1')->getKind());
+    }
+
+    public function testKindEditableAfterStockLeft(): void
+    {
+        $this->login(UserRole::Manager);
+        $product = $this->product('S2');
+        $variant = $this->variant($product, null);
+        $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $location = StockFixtures::location($this->em);
+        StockScenario::receive($recorder, $variant, $location, 3, 1000);
+        $recorder->recordOut(new StockOut($location, StockOutReason::Lost, [new StockLine($variant, 3)]));
+
+        $crawler = $this->client->request('GET', '/catalogue/'.$product->getId().'/edit');
+        self::assertCount(0, $crawler->filter('input[type=radio][name="product[kind]"][disabled]'));
+
+        $this->post($crawler, 'Enregistrer', 'product', ['kind' => 'equipment']);
+
+        self::assertSame(ProductKind::Equipment, $this->findProduct('S2')->getKind());
     }
 
     public function testProductSoftDeleteWithCsrfHidesProduct(): void

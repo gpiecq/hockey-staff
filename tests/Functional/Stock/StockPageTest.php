@@ -7,9 +7,9 @@ namespace App\Tests\Functional\Stock;
 use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\SeasonPrice;
-use App\Enum\ItemCondition;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockOutReason;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockGift;
 use App\Stock\Input\StockLine;
@@ -54,8 +54,8 @@ final class StockPageTest extends WebTestCase
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
         $b = StockFixtures::location($em, 'Local B');
-        $quantity = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Gants vrac');
-        $serial = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque série');
+        $quantity = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Gants vrac');
+        $serial = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
         StockScenario::receive($this->recorder($client), $quantity, $a, 3, 1250);
         StockScenario::receive($this->recorder($client), $serial, $b, 1, 8000);
 
@@ -113,7 +113,7 @@ final class StockPageTest extends WebTestCase
         $em = $this->em($client);
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $a = StockFixtures::location($em, 'Local A');
-        $variant = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Gants vrac');
+        $variant = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Gants vrac');
         StockScenario::receive($this->recorder($client), $variant, $a, 3, 1250);
 
         $season = ImportFixtures::season($em);
@@ -131,8 +131,8 @@ final class StockPageTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), UserRole::Stock, 'u@example.test'));
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $v1 = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Gants vrac', '0123456789012');
-        $v2 = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Z', 'Bâton vrac', '9876543210987');
+        $v1 = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Gants vrac', '0123456789012');
+        $v2 = StockScenario::variant($em, ProductKind::Consumable, 'REF-Z', 'Bâton vrac', '9876543210987');
         StockScenario::receive($this->recorder($client), $v1, $a, 1, 1000);
         StockScenario::receive($this->recorder($client), $v2, $a, 1, 1000);
 
@@ -175,9 +175,9 @@ final class StockPageTest extends WebTestCase
         $em = $this->em($client);
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $local = StockFixtures::location($em, 'Local');
-        $variant = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque série');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
         StockScenario::receive($this->recorder($client), $variant, $local, 1, 5000);
-        $this->recorder($client)->recordLoan(new StockLoan($local, PlayerFixtures::player($em), $variant, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, PlayerFixtures::player($em), $variant, StockCondition::New));
 
         $client->request('GET', '/stock');
 
@@ -197,9 +197,9 @@ final class StockPageTest extends WebTestCase
         $em = $this->em($client);
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $local = StockFixtures::location($em, 'Local');
-        $variant = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque série');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
         StockScenario::receive($this->recorder($client), $variant, $local, 2, 5000);
-        $this->recorder($client)->recordGift(new StockGift($local, $variant, 1, ItemCondition::New, PlayerFixtures::player($em), null));
+        $this->recorder($client)->recordGift(new StockGift($local, $variant, 1, StockCondition::New, PlayerFixtures::player($em), null));
 
         $client->request('GET', '/stock');
 
@@ -213,10 +213,10 @@ final class StockPageTest extends WebTestCase
         $em = $this->em($client);
         $client->loginUser(UserFactory::create($em, UserRole::Stock, 'u@example.test'));
         $local = StockFixtures::location($em, 'Local');
-        $variant = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque série');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
         StockScenario::receive($this->recorder($client), $variant, $local, 2, 5000);
         $player = PlayerFixtures::player($em);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $variant, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $variant, StockCondition::New));
         $em->remove($player);
         $em->flush();
         $em->clear();

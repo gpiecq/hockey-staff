@@ -6,7 +6,7 @@ namespace App\Tests\Functional\Catalogue;
 
 use App\Entity\Product;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\ImportFixtures;
@@ -35,13 +35,13 @@ final class CatalogueStockGuardsTest extends WebTestCase
     {
         $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
         \assert($recorder instanceof StockMovementRecorder);
-        $variant = StockScenario::variant($this->em, TrackingMode::Quantity, $reference, $designation);
+        $variant = StockScenario::variant($this->em, ProductKind::Consumable, $reference, $designation);
         StockScenario::receive($recorder, $variant, StockFixtures::location($this->em), 2, 1000);
 
         return $variant;
     }
 
-    public function testTrackingModeLockedInProductForm(): void
+    public function testProductKindLockedInProductForm(): void
     {
         $product = $this->stocked()->getProduct();
         self::assertNotNull($product);
@@ -50,29 +50,29 @@ final class CatalogueStockGuardsTest extends WebTestCase
         $crawler = $this->client->request('GET', '/catalogue/'.$id.'/edit');
 
         self::assertResponseIsSuccessful();
-        self::assertCount(2, $crawler->filter('input[type=radio][name="product[trackingMode]"][disabled]'));
+        self::assertCount(2, $crawler->filter('input[type=radio][name="product[kind]"][disabled]'));
         self::assertStringContainsString(
-            'Le produit a des mouvements de stock : le mode de suivi ne peut plus changer.',
+            'Le produit a du stock ou du matériel prêté : son type ne peut plus changer.',
             $crawler->filter('form')->text(),
         );
 
         $form = $crawler->selectButton('Enregistrer')->form();
         $values = $form->getPhpValues();
-        $values['product']['trackingMode'] = 'serialized';
+        $values['product']['kind'] = 'equipment';
         $this->client->request('POST', $form->getUri(), $values);
 
         $this->em->clear();
-        self::assertSame(TrackingMode::Quantity, $this->em->find(Product::class, $id)?->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $this->em->find(Product::class, $id)?->getKind());
     }
 
-    public function testTrackingModeEditableWithoutMovements(): void
+    public function testProductKindEditableWithoutMovements(): void
     {
         $supplier = ImportFixtures::supplierWithMapping($this->em);
         $product = ImportFixtures::product($this->em, $supplier, 'R9');
 
         $crawler = $this->client->request('GET', '/catalogue/'.$product->getId().'/edit');
 
-        self::assertCount(0, $crawler->filter('input[type=radio][name="product[trackingMode]"][disabled]'));
+        self::assertCount(0, $crawler->filter('input[type=radio][name="product[kind]"][disabled]'));
     }
 
     public function testVariantWithMovementsCannotBeDeleted(): void

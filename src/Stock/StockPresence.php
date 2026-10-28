@@ -74,6 +74,25 @@ final readonly class StockPresence
         return $found;
     }
 
+    /** Vrai si le produit a une pièce en stock ou prêtée, ou un niveau de quantité positif (c'est ce qui verrouille son type). */
+    public function productHasStock(Product $product): bool
+    {
+        if (null === $product->getId()) {
+            return false;
+        }
+
+        $items = (int) $this->em->createQuery(
+            'SELECT COUNT(i.id) FROM '.Item::class.' i JOIN i.variant v WHERE IDENTITY(v.product) = :product AND i.status IN (:statuses)',
+        )->setParameter('product', $product->getId())->setParameter('statuses', [ItemStatus::InStock, ItemStatus::Loaned])->getSingleScalarResult();
+        if ($items > 0) {
+            return true;
+        }
+
+        return (int) $this->em->createQuery(
+            'SELECT COUNT(l.id) FROM '.StockLevel::class.' l JOIN l.variant v WHERE IDENTITY(v.product) = :product AND l.quantity > 0',
+        )->setParameter('product', $product->getId())->getSingleScalarResult() > 0;
+    }
+
     /** Vrai si une variante du produit (vivante : les variantes avec mouvements ne se suppriment pas) a un mouvement de stock. */
     public function productHasMovements(Product $product): bool
     {

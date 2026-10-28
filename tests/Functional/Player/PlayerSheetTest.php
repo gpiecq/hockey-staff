@@ -7,9 +7,9 @@ namespace App\Tests\Functional\Player;
 use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -52,8 +52,8 @@ final class PlayerSheetTest extends WebTestCase
     {
         $em = $this->em($client);
         $local = StockFixtures::location($em, 'Local');
-        $helmet = StockScenario::variant($em, TrackingMode::Serialized, 'CASQUE-1', 'Casque Re-Akt');
-        $this->recorder($client)->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [new StockEntryLine($helmet, 3, 15000, ItemCondition::New)]));
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
+        $this->recorder($client)->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [new StockEntryLine($helmet, 3, 15000, StockCondition::New)]));
 
         return [$helmet, $local];
     }
@@ -73,8 +73,8 @@ final class PlayerSheetTest extends WebTestCase
         $this->login($client, UserRole::Stock);
         [$helmet, $local] = $this->helmet($client);
         $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
 
         $crawler = $client->request('GET', '/joueurs/'.$player->getId());
 
@@ -96,9 +96,9 @@ final class PlayerSheetTest extends WebTestCase
         $em = $this->em($client);
         $player = PlayerFixtures::player($em, 'Martin', 'Léo');
         PlayerFixtures::rosterEntry($em, PlayerFixtures::team($em, 'U15'), PlayerFixtures::season($em, 2026), $player, 9);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
         $item = $this->items($client, $helmet)[0];
-        $this->recorder($client)->recordReturn(new StockReturn($item, $player, $local, ItemCondition::Good));
+        $this->recorder($client)->recordReturn(new StockReturn($item, $player, $local, StockCondition::Good));
 
         $client->request('GET', '/joueurs/'.$player->getId());
 
@@ -121,8 +121,8 @@ final class PlayerSheetTest extends WebTestCase
         $team = PlayerFixtures::team($em, 'U15');
         $season = PlayerFixtures::season($em, 2026);
         PlayerFixtures::rosterEntry($em, $team, $season, $leo, 7);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $leo, $helmet, ItemCondition::New));
-        $this->recorder($client)->recordLoan(new StockLoan($local, $hugo, $helmet, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $leo, $helmet, StockCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $hugo, $helmet, StockCondition::New));
 
         $crawler = $client->request('GET', '/prets');
         self::assertResponseIsSuccessful();
@@ -139,7 +139,7 @@ final class PlayerSheetTest extends WebTestCase
         $this->login($client);
         [$helmet, $local] = $this->helmet($client);
         $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
 
         $crawler = $client->request('GET', '/joueurs/'.$player->getId());
 

@@ -13,7 +13,7 @@ use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ImportRunStatus;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Import\CatalogueImportAnalyzer;
 use App\Import\CatalogueImportApplier;
 use App\Import\Exception\StaleImportException;
@@ -114,9 +114,9 @@ final class CatalogueImportApplierTest extends KernelTestCase
         self::assertSame('NOUVELLE MARQUE', $r2->getBrand()?->getName());
         self::assertNotNull($this->em->getRepository(Brand::class)->findOneBy(['name' => 'NOUVELLE MARQUE']));
         self::assertSame('ACCESSOIRES › RUBAN › TEXTILE', $r2->getCategory()?->getPath());
-        // Mode de suivi issu de TrackingModeResolver::defaultFor.
-        self::assertSame(TrackingMode::Serialized, $r1->getTrackingMode());
-        self::assertSame(TrackingMode::Quantity, $r2->getTrackingMode());
+        // Type issu de ProductKindResolver::defaultFor.
+        self::assertSame(ProductKind::Equipment, $r1->getKind());
+        self::assertSame(ProductKind::Consumable, $r2->getKind());
         $variant = $this->variantByEan('688698508062');
         self::assertNotNull($variant);
         self::assertTrue($variant->isActive());

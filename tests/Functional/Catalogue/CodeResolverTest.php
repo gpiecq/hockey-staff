@@ -8,7 +8,7 @@ use App\Catalogue\CodeResolver;
 use App\Entity\Item;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\ImportFixtures;
@@ -50,7 +50,7 @@ final class CodeResolverTest extends WebTestCase
 
     private function item(): Item
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-S', 'Casque série');
+        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque série');
         $recorder = $this->client->getContainer()->get(StockMovementRecorder::class);
         \assert($recorder instanceof StockMovementRecorder);
         StockScenario::receive($recorder, $variant, StockFixtures::location($this->em), 1, 8000);

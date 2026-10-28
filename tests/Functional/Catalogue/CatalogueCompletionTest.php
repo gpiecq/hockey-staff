@@ -9,7 +9,7 @@ use App\Entity\Season;
 use App\Entity\SeasonPrice;
 use App\Entity\Supplier;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Repository\CategoryRepository;
 use App\Repository\ProductRepository;
@@ -189,7 +189,7 @@ final class CatalogueCompletionTest extends WebTestCase
             ->setSupplier($this->supplier)
             ->setReference($ref)
             ->setDesignation('Désignation '.$ref)
-            ->setTrackingMode(TrackingMode::Quantity);
+            ->setKind(ProductKind::Consumable);
         if ($withCategory) {
             $categories = self::getContainer()->get(CategoryRepository::class);
             \assert($categories instanceof CategoryRepository);

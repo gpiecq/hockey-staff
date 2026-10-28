@@ -7,9 +7,9 @@ namespace App\Tests\Functional\Stock;
 use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -51,8 +51,8 @@ final class LoanGiftControllerTest extends WebTestCase
     {
         $em = $this->em($client);
         $local = StockFixtures::location($em, 'Local');
-        $helmet = StockScenario::variant($em, TrackingMode::Serialized, 'CASQUE-1', 'Casque Re-Akt');
-        $this->recorder($client)->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [new StockEntryLine($helmet, 3, 15000, ItemCondition::New)]));
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
+        $this->recorder($client)->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $local, [new StockEntryLine($helmet, 3, 15000, StockCondition::New)]));
 
         return [$helmet, $local, PlayerFixtures::player($em, 'Martin', 'Léo')];
     }
@@ -113,7 +113,7 @@ final class LoanGiftControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client);
         [$helmet, $local, $player] = $this->helmet($client);
-        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
+        $this->recorder($client)->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
 
         $crawler = $client->request('GET', '/stock/variantes/'.$helmet->getId().'/retour');
         self::assertResponseIsSuccessful();
@@ -135,7 +135,7 @@ final class LoanGiftControllerTest extends WebTestCase
         $this->login($client);
         $em = $this->em($client);
         $local = StockFixtures::location($em, 'Local');
-        $pucks = StockScenario::variant($em, TrackingMode::Quantity, 'PALET-1', 'Palet');
+        $pucks = StockScenario::variant($em, ProductKind::Consumable, 'PALET-1', 'Palet');
         StockScenario::receive($this->recorder($client), $pucks, $local, 10, 100);
         $team = PlayerFixtures::team($em, 'U15');
 

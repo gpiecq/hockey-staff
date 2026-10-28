@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Player;
 
-use App\Enum\ItemCondition;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\UserRole;
 use App\Stock\Input\StockLoan;
 use App\Stock\StockMovementRecorder;
@@ -129,9 +129,9 @@ final class PlayerControllerTest extends WebTestCase
         \assert($recorder instanceof StockMovementRecorder);
         $player = PlayerFixtures::player($em);
         $local = StockFixtures::location($em, 'Local');
-        $helmet = StockScenario::variant($em, TrackingMode::Serialized, 'CASQUE-1', 'Casque');
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque');
         StockScenario::receive($recorder, $helmet, $local, 1, 15000);
-        $recorder->recordLoan(new StockLoan($local, $player, $helmet, ItemCondition::New));
+        $recorder->recordLoan(new StockLoan($local, $player, $helmet, StockCondition::New));
 
         $crawler = $client->request('GET', '/joueurs/'.$player->getId().'/delete');
         $client->submit($crawler->selectButton('Confirmer la suppression')->form());

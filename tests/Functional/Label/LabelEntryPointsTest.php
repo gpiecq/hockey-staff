@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Label;
 
 use App\Entity\Product;
+use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -137,8 +137,8 @@ final class LabelEntryPointsTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $em = $this->em($client);
-        $serialized = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque', '4006381333931');
-        $quantity = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Ruban', '5901234123457');
+        $serialized = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque', '4006381333931');
+        $quantity = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Ruban', '5901234123457');
         $location = StockFixtures::location($em, 'Local A');
         $recorder = $this->recorder($client);
         $entry = $recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $location, [

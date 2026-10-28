@@ -6,7 +6,7 @@ namespace App\Tests\Functional\Catalogue;
 
 use App\Entity\Product;
 use App\Entity\Supplier;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Repository\CategoryRepository;
 use App\Tests\Support\UserFactory;
@@ -31,7 +31,7 @@ final class ProductUncategorizedTest extends WebTestCase
             ->setSupplier($supplier)
             ->setReference('NOCAT')
             ->setDesignation('Article sans rubrique')
-            ->setTrackingMode(TrackingMode::Quantity);
+            ->setKind(ProductKind::Consumable);
         $this->em->persist($supplier);
         $this->em->persist($this->product);
         $this->em->flush();
@@ -70,21 +70,21 @@ final class ProductUncategorizedTest extends WebTestCase
         self::assertSelectorTextContains('.field-error', 'La catégorie est obligatoire.');
     }
 
-    public function testFirstCategoryAppliesDefaultTrackingMode(): void
+    public function testFirstCategoryAppliesDefaultProductKind(): void
     {
         $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], null);
 
-        self::assertSame(TrackingMode::Serialized, $this->reload()->getTrackingMode());
+        self::assertSame(ProductKind::Equipment, $this->reload()->getKind());
     }
 
-    public function testUserChangedTrackingModeWinsOnFirstCategory(): void
+    public function testUserChangedProductKindWinsOnFirstCategory(): void
     {
-        $this->product->setTrackingMode(TrackingMode::Serialized);
+        $this->product->setKind(ProductKind::Equipment);
         $this->em->flush();
 
-        $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], TrackingMode::Quantity);
+        $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], ProductKind::Consumable);
 
-        self::assertSame(TrackingMode::Quantity, $this->reload()->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $this->reload()->getKind());
     }
 
     public function testCategoryChangeOnCategorizedProductKeepsMode(): void
@@ -94,7 +94,7 @@ final class ProductUncategorizedTest extends WebTestCase
 
         $this->editWithCategory($this->product, ['EQUIPEMENT', 'JOUEUR'], null);
 
-        self::assertSame(TrackingMode::Quantity, $this->reload()->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $this->reload()->getKind());
     }
 
     private function categories(): CategoryRepository
@@ -115,7 +115,7 @@ final class ProductUncategorizedTest extends WebTestCase
     }
 
     /** @param list<string> $path */
-    private function editWithCategory(Product $product, array $path, ?TrackingMode $mode): void
+    private function editWithCategory(Product $product, array $path, ?ProductKind $mode): void
     {
         $category = $this->categories()->findOrCreatePath($path);
         $this->em->flush();
@@ -124,7 +124,7 @@ final class ProductUncategorizedTest extends WebTestCase
         $values = $form->getPhpValues();
         $values['product']['category'] = (string) $category->getId();
         if (null !== $mode) {
-            $values['product']['trackingMode'] = $mode->value;
+            $values['product']['kind'] = $mode->value;
         }
         $this->client->request('POST', $form->getUri(), $values);
 

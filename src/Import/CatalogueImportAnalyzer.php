@@ -305,11 +305,11 @@ final class CatalogueImportAnalyzer
                 $changes = $this->changes($matched, $row, $first);
                 if (isset($changes['category']) && null === $matched->getProduct()?->getCategory()
                     && !isset($lockChecked[$row->reference])) {
-                    // Première catégorisation : le mode de suivi ne bouge plus dès que le produit a des mouvements.
+                    // Première catégorisation : le type ne bouge plus dès que le produit a du stock.
                     $lockChecked[$row->reference] = true;
-                    if (null !== $matched->getProduct() && $this->stockPresence->productHasMovements($matched->getProduct())) {
-                        $builder->anomaly($row->line, ImportAnomalyCode::TrackingModeLocked, \sprintf(
-                            'Produit %s : mode de suivi conservé, le produit a des mouvements de stock.', $row->reference,
+                    if (null !== $matched->getProduct() && $this->stockPresence->productHasStock($matched->getProduct())) {
+                        $builder->anomaly($row->line, ImportAnomalyCode::ProductKindLocked, \sprintf(
+                            'Produit %s : type Équipement/Consommable conservé, le produit a du stock.', $row->reference,
                         ));
                     }
                 }

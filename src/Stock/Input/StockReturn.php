@@ -7,7 +7,7 @@ namespace App\Stock\Input;
 use App\Entity\Item;
 use App\Entity\Location;
 use App\Entity\Player;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 
 /**
  * Retour d'une pièce prêtée, dans un lieu, avec son nouvel état.
@@ -18,7 +18,7 @@ final readonly class StockReturn
         public Item $item,
         public Player $player,
         public Location $location,
-        public ItemCondition $condition,
+        public StockCondition $condition,
         public ?string $comment = null,
     ) {
     }

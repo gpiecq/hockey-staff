@@ -9,9 +9,9 @@ use App\Entity\Location;
 use App\Entity\Sale;
 use App\Entity\SeasonPrice;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Repository\SaleRepository;
 use App\Stock\Input\StockEntry;
@@ -45,7 +45,7 @@ final class SaleControllerTest extends WebTestCase
     /**
      * Un casque au Local : une pièce par état donné ; tarif public de la saison courante si $publicPrice.
      *
-     * @param list<ItemCondition> $conditions
+     * @param list<StockCondition> $conditions
      *
      * @return array{Variant, Location, list<Item>}
      */
@@ -55,7 +55,7 @@ final class SaleControllerTest extends WebTestCase
         $recorder = $client->getContainer()->get(StockMovementRecorder::class);
         \assert($recorder instanceof StockMovementRecorder);
         $local = StockFixtures::location($em, 'Local');
-        $helmet = StockScenario::variant($em, TrackingMode::Serialized, 'CASQUE-1', 'Casque Re-Akt');
+        $helmet = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-1', 'Casque Re-Akt');
         if (null !== $publicPrice) {
             $em->persist((new SeasonPrice())->setVariant($helmet)->setSeason(PlayerFixtures::season($em, 2026, true))->setPublicPriceTtc($publicPrice)->setVatRate(2000));
             $em->flush();
@@ -90,7 +90,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet, $local, $items] = $this->helmet($client, [ItemCondition::Good]);
+        [$helmet, $local, $items] = $this->helmet($client, [StockCondition::Good]);
 
         $crawler = $client->request('GET', '/ventes/new?variant='.$helmet->getId());
         self::assertResponseIsSuccessful();
@@ -118,7 +118,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet, , $items] = $this->helmet($client, [ItemCondition::Good, ItemCondition::New]);
+        [$helmet, , $items] = $this->helmet($client, [StockCondition::Good, StockCondition::New]);
 
         $this->submit($client, '/ventes/new?variant='.$helmet->getId(), [
             'buyer' => 'M. Petit',
@@ -134,7 +134,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet] = $this->helmet($client, [ItemCondition::Good]);
+        [$helmet] = $this->helmet($client, [StockCondition::Good]);
 
         $this->submit($client, '/ventes/new?variant='.$helmet->getId(), [
             'buyer' => 'M. Petit',
@@ -149,7 +149,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet] = $this->helmet($client, [ItemCondition::Good]);
+        [$helmet] = $this->helmet($client, [StockCondition::Good]);
 
         $this->submit($client, '/ventes/new?variant='.$helmet->getId(), ['buyer' => '  ', 'lines' => [0 => ['discount' => '80']]]);
 
@@ -172,7 +172,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet, , $items] = $this->helmet($client, [ItemCondition::Good, ItemCondition::Worn], null);
+        [$helmet, , $items] = $this->helmet($client, [StockCondition::Good, StockCondition::Worn], null);
 
         $this->submit($client, '/ventes/new?variant='.$helmet->getId(), [
             'buyer' => 'Mme Dupont',
@@ -217,7 +217,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet, , $items] = $this->helmet($client, [ItemCondition::Good]);
+        [$helmet, , $items] = $this->helmet($client, [StockCondition::Good]);
 
         $this->preview($client, '/ventes/new?variant='.$helmet->getId(), ['lines' => [0 => ['discount' => '80']]]);
 
@@ -237,7 +237,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet] = $this->helmet($client, [ItemCondition::Good], null);
+        [$helmet] = $this->helmet($client, [StockCondition::Good], null);
 
         $this->preview($client, '/ventes/new?variant='.$helmet->getId(), ['lines' => [0 => ['discount' => '80']]]);
 
@@ -252,7 +252,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [$helmet] = $this->helmet($client, [ItemCondition::Good]);
+        [$helmet] = $this->helmet($client, [StockCondition::Good]);
         $values = ['buyer' => 'M. Petit', 'lines' => [0 => ['discount' => '80', 'finalPrice' => '45']]];
 
         $this->preview($client, '/ventes/new?variant='.$helmet->getId(), $values);
@@ -269,7 +269,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [, $local, $items] = $this->helmet($client, [ItemCondition::Good, ItemCondition::Worn, ItemCondition::New]);
+        [, $local, $items] = $this->helmet($client, [StockCondition::Good, StockCondition::Worn, StockCondition::New]);
 
         $crawler = $client->request('GET', '/ventes/new?item='.strtolower($items[1]->getCode()));
         self::assertResponseIsSuccessful();
@@ -292,7 +292,7 @@ final class SaleControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client);
-        [, $local, $items] = $this->helmet($client, [ItemCondition::Good]);
+        [, $local, $items] = $this->helmet($client, [StockCondition::Good]);
         $em = $this->em($client);
         $player = PlayerFixtures::player($em, 'Martin', 'Léo');
         $recorder = $client->getContainer()->get(StockMovementRecorder::class);

@@ -6,9 +6,9 @@ namespace App\Tests\Functional\Label;
 
 use App\Entity\Location;
 use App\Entity\Variant;
+use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
 use App\Enum\StockOutReason;
-use App\Enum\TrackingMode;
 use App\Label\LabelLine;
 use App\Label\LabelLineBuilder;
 use App\Label\LabelMode;
@@ -56,7 +56,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testSerializedVariantInItemsModeGivesOneLinePerPiece(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-S', 'Casque', '4006381333931');
+        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque', '4006381333931');
         StockScenario::receive($this->recorder, $variant, $this->location, 3, 5000);
         $product = $variant->getProduct();
         self::assertNotNull($product);
@@ -79,7 +79,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testVariantsModeGivesVariantLine(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-S', 'Casque', '4006381333931');
+        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque', '4006381333931');
         StockScenario::receive($this->recorder, $variant, $this->location, 3, 5000);
 
         $lines = $this->builder->forVariants([$variant], LabelMode::Variants);
@@ -93,7 +93,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testSerializedVariantWithoutPieceGivesVariantLine(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-S', 'Casque');
+        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque');
 
         $lines = $this->builder->forVariants([$variant], LabelMode::Items);
 
@@ -104,7 +104,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testQuantityProductAlwaysGivesVariantLine(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $variant = StockScenario::variant($this->em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         StockScenario::receive($this->recorder, $variant, $this->location, 4, 300);
 
         $lines = $this->builder->forVariants([$variant], LabelMode::Items);
@@ -116,7 +116,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testArchivedVariantWithStockIsLabelable(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-A', 'Casque');
+        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-A', 'Casque');
         StockScenario::receive($this->recorder, $variant, $this->location, 1, 5000);
         $variant->archive();
         $this->em->flush();
@@ -134,7 +134,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testInactiveVariantWithoutStockIsExcluded(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Quantity, 'REF-I', 'Ruban');
+        $variant = StockScenario::variant($this->em, ProductKind::Consumable, 'REF-I', 'Ruban');
         $variant->setActive(false);
         $this->em->flush();
         $product = $variant->getProduct();
@@ -161,8 +161,8 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testEntryOperationLines(): void
     {
-        $serialized = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-S', 'Casque');
-        $quantity = StockScenario::variant($this->em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $serialized = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque');
+        $quantity = StockScenario::variant($this->em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         $operation = $this->recorder->recordEntry(new StockEntry(StockMovementType::PurchaseIn, $this->location, [
             new StockEntryLine($serialized, 2, 5000),
             new StockEntryLine($quantity, 5, 300),
@@ -182,7 +182,7 @@ final class LabelLineBuilderTest extends KernelTestCase
 
     public function testForItemGivesOneLine(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Serialized, 'REF-S', 'Casque');
+        $variant = StockScenario::variant($this->em, ProductKind::Equipment, 'REF-S', 'Casque');
         StockScenario::receive($this->recorder, $variant, $this->location, 1, 5000);
         $item = $this->em->getRepository(\App\Entity\Item::class)->findOneBy([]);
         self::assertNotNull($item);

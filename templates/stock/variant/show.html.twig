@@ -3,7 +3,7 @@
 {% block title %}{{ product.designation }} · {{ variant.label ?: 'Unique' }}{% endblock %}
 
 {% block body %}
-    {% set serialized = product.trackingMode.value == 'serialized' %}
+    {% set serialized = product.kind.value == 'equipment' %}
     <a class="back" href="{{ path('stock_index') }}">‹ Stock</a>
     <div class="page-head">
         <h1>{{ product.designation }}</h1>
@@ -32,7 +32,7 @@
         <dt>Référence</dt><dd><a href="{{ path('catalogue_product_show', {id: product.id}) }}">{{ product.reference }}</a></dd>
         <dt>EAN</dt><dd>{{ variant.ean ?? '—' }}</dd>
         <dt>Code</dt><dd>{{ variant.code }}</dd>
-        <dt>Suivi</dt><dd>{{ product.trackingMode.label }}</dd>
+        <dt>Type</dt><dd>{{ product.kind.label }}</dd>
         {% if price %}
             <dt>Prix club{% if season %} {{ season.label }}{% endif %}</dt><dd>{{ price.clubPriceTtc is null ? '—' : price.clubPriceTtc|euros ~ ' TTC' }}</dd>
             <dt>Prix public</dt><dd>{{ price.publicPriceTtc is null ? '—' : price.publicPriceTtc|euros ~ ' TTC' }}</dd>

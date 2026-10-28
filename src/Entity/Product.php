@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Entity\Trait\TimestampableBlameableTrait;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -54,8 +54,8 @@ class Product
     #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?Category $category = null;
 
-    #[ORM\Column(length: 20, enumType: TrackingMode::class)]
-    private TrackingMode $trackingMode = TrackingMode::Quantity;
+    #[ORM\Column(length: 20, enumType: ProductKind::class)]
+    private ProductKind $kind = ProductKind::Consumable;
 
     /** @var Collection<int, Variant> */
     #[ORM\OneToMany(targetEntity: Variant::class, mappedBy: 'product')]
@@ -135,14 +135,14 @@ class Product
         return $this;
     }
 
-    public function getTrackingMode(): TrackingMode
+    public function getKind(): ProductKind
     {
-        return $this->trackingMode;
+        return $this->kind;
     }
 
-    public function setTrackingMode(TrackingMode $trackingMode): static
+    public function setKind(ProductKind $kind): static
     {
-        $this->trackingMode = $trackingMode;
+        $this->kind = $kind;
 
         return $this;
     }

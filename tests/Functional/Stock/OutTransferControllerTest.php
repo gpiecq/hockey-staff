@@ -10,8 +10,8 @@ use App\Entity\StockLevel;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ItemStatus;
+use App\Enum\ProductKind;
 use App\Enum\StockMovementType;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
@@ -39,12 +39,12 @@ final class OutTransferControllerTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), $role, 'u@example.test'));
     }
 
-    private function receive(KernelBrowser $client, TrackingMode $mode, Location $location, int $quantity): Variant
+    private function receive(KernelBrowser $client, ProductKind $mode, Location $location, int $quantity): Variant
     {
         $em = $this->em($client);
         $supplier = $em->getRepository(Supplier::class)->findOneBy([]) ?? ImportFixtures::supplierWithMapping($em);
         $product = ImportFixtures::product($em, $supplier, 'REF-1');
-        $product->setTrackingMode($mode);
+        $product->setKind($mode);
         $variant = ImportFixtures::variant($em, $product, '1234567890123', 'M');
         $recorder = $client->getContainer()->get(StockMovementRecorder::class);
         \assert($recorder instanceof StockMovementRecorder);
@@ -82,7 +82,7 @@ final class OutTransferControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $location = StockFixtures::location($this->em($client));
-        $this->receive($client, TrackingMode::Serialized, $location, 1);
+        $this->receive($client, ProductKind::Equipment, $location, 1);
         $item = $this->item($client);
 
         $crawler = $client->request('GET', '/stock/sortie');
@@ -106,7 +106,7 @@ final class OutTransferControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $location = StockFixtures::location($this->em($client));
-        $variant = $this->receive($client, TrackingMode::Quantity, $location, 3);
+        $variant = $this->receive($client, ProductKind::Consumable, $location, 3);
 
         $crawler = $client->request('GET', '/stock/sortie');
         $this->submit($client, $crawler, 'stock_out', [
@@ -161,7 +161,7 @@ final class OutTransferControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $location = StockFixtures::location($this->em($client));
-        $this->receive($client, TrackingMode::Serialized, $location, 1);
+        $this->receive($client, ProductKind::Equipment, $location, 1);
         $item = $this->item($client);
         $variant = $item->getVariant();
 
@@ -184,7 +184,7 @@ final class OutTransferControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $location = StockFixtures::location($this->em($client));
-        $variant = $this->receive($client, TrackingMode::Quantity, $location, 1);
+        $variant = $this->receive($client, ProductKind::Consumable, $location, 1);
 
         $crawler = $client->request('GET', '/stock/sortie');
         $this->submit($client, $crawler, 'stock_out', [
@@ -221,7 +221,7 @@ final class OutTransferControllerTest extends WebTestCase
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
         $location = StockFixtures::location($this->em($client));
-        $variant = $this->receive($client, TrackingMode::Quantity, $location, 3);
+        $variant = $this->receive($client, ProductKind::Consumable, $location, 3);
         $this->leaveCatalogue($client, $variant, $archive);
 
         $crawler = $client->request('GET', '/stock/sortie');
@@ -243,7 +243,7 @@ final class OutTransferControllerTest extends WebTestCase
         $this->login($client, UserRole::Stock);
         $a = StockFixtures::location($this->em($client), 'Local A');
         $b = StockFixtures::location($this->em($client), 'Local B');
-        $variant = $this->receive($client, TrackingMode::Quantity, $a, 3);
+        $variant = $this->receive($client, ProductKind::Consumable, $a, 3);
         $this->leaveCatalogue($client, $variant, $archive);
 
         $crawler = $client->request('GET', '/stock/transfert');
@@ -265,7 +265,7 @@ final class OutTransferControllerTest extends WebTestCase
         $this->login($client, UserRole::Stock);
         $a = StockFixtures::location($this->em($client), 'Local A');
         $b = StockFixtures::location($this->em($client), 'Local B');
-        $variant = $this->receive($client, TrackingMode::Quantity, $a, 3);
+        $variant = $this->receive($client, ProductKind::Consumable, $a, 3);
 
         $crawler = $client->request('GET', '/stock/transfert');
         self::assertResponseIsSuccessful();
@@ -289,7 +289,7 @@ final class OutTransferControllerTest extends WebTestCase
         $this->login($client, UserRole::Stock);
         StockFixtures::location($this->em($client), 'Autre lieu');
         $location = StockFixtures::location($this->em($client), 'Lieu pièce');
-        $this->receive($client, TrackingMode::Serialized, $location, 1);
+        $this->receive($client, ProductKind::Equipment, $location, 1);
         $item = $this->item($client);
 
         $crawler = $client->request('GET', '/stock/sortie?item='.$item->getCode());

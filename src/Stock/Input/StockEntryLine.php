@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Stock\Input;
 
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 
 final readonly class StockEntryLine
 {
@@ -16,7 +16,7 @@ final readonly class StockEntryLine
         public Variant $variant,
         public int $quantity,
         public ?int $unitCostHt = null,
-        public ItemCondition $condition = ItemCondition::New,
+        public StockCondition $condition = StockCondition::New,
         public array $serialNumbers = [],
     ) {
     }

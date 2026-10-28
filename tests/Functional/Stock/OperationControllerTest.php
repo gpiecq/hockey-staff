@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Stock;
 
 use App\Entity\StockOperation;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Stock\Input\StockLine;
 use App\Stock\Input\StockTransfer;
@@ -46,7 +46,7 @@ final class OperationControllerTest extends WebTestCase
         $this->viewer($client);
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $variant = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $variant = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         for ($i = 1; $i <= 31; ++$i) {
             StockScenario::receive($this->recorder($client), $variant, $a, 1, 100 + $i);
         }
@@ -70,7 +70,7 @@ final class OperationControllerTest extends WebTestCase
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
         $b = StockFixtures::location($em, 'Local B');
-        $variant = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $variant = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         StockScenario::receive($this->recorder($client), $variant, $a, 5, 100);
         $this->recorder($client)->recordTransfer(new StockTransfer($a, $b, [new StockLine($variant, 2)]));
 
@@ -93,8 +93,8 @@ final class OperationControllerTest extends WebTestCase
         $this->viewer($client);
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $v1 = StockScenario::variant($em, TrackingMode::Quantity, 'REF-1', 'Ruban');
-        $v2 = StockScenario::variant($em, TrackingMode::Quantity, 'REF-2', 'Tape');
+        $v1 = StockScenario::variant($em, ProductKind::Consumable, 'REF-1', 'Ruban');
+        $v2 = StockScenario::variant($em, ProductKind::Consumable, 'REF-2', 'Tape');
         StockScenario::receive($this->recorder($client), $v1, $a, 5, 100);
         StockScenario::receive($this->recorder($client), $v2, $a, 5, 100);
         StockScenario::receive($this->recorder($client), $v2, $a, 3, 100);
@@ -113,7 +113,7 @@ final class OperationControllerTest extends WebTestCase
         $this->viewer($client);
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $variant = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque');
         StockScenario::receive($this->recorder($client), $variant, $a, 2, 8000);
         $operation = $em->getRepository(StockOperation::class)->findOneBy([]);
         self::assertNotNull($operation);
@@ -133,7 +133,7 @@ final class OperationControllerTest extends WebTestCase
         $this->viewer($client);
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $variant = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $variant = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         StockScenario::receive($this->recorder($client), $variant, $a, 2, 500);
         $variant->archive();
         $em->flush();
@@ -152,7 +152,7 @@ final class OperationControllerTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), UserRole::Manager, 'm@example.test'));
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $variant = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $variant = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         StockScenario::receive($this->recorder($client), $variant, $a, 2, 500);
         $operation = $em->getRepository(StockOperation::class)->findOneBy([]);
         self::assertNotNull($operation);
@@ -169,7 +169,7 @@ final class OperationControllerTest extends WebTestCase
         $this->viewer($client);
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
-        $variant = StockScenario::variant($em, TrackingMode::Quantity, 'REF-Q', 'Ruban');
+        $variant = StockScenario::variant($em, ProductKind::Consumable, 'REF-Q', 'Ruban');
         StockScenario::receive($this->recorder($client), $variant, $a, 1, 100);
         $today = (new \DateTimeImmutable())->format('Y-m-d');
         $yesterday = (new \DateTimeImmutable('-1 day'))->format('Y-m-d');

@@ -7,7 +7,7 @@ namespace App\Stock\Input;
 use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
+use App\Enum\StockCondition;
 
 /**
  * Prêt d'une pièce : l'appli prend la plus ancienne pièce de l'état demandé dans le lieu.
@@ -18,7 +18,7 @@ final readonly class StockLoan
         public Location $location,
         public Player $player,
         public Variant $variant,
-        public ItemCondition $condition,
+        public StockCondition $condition,
         public ?string $comment = null,
     ) {
     }

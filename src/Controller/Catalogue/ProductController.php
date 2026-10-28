@@ -8,7 +8,7 @@ use App\Catalogue\CatalogueSearch;
 use App\Catalogue\CatalogueSearchCriteria;
 use App\Catalogue\CodeResolver;
 use App\Catalogue\CurrentSeasonProvider;
-use App\Catalogue\TrackingModeResolver;
+use App\Catalogue\ProductKindResolver;
 use App\Entity\Brand;
 use App\Entity\Category;
 use App\Entity\Item;
@@ -119,19 +119,19 @@ final class ProductController extends AbstractController
 
     #[Route('/{id}/edit', name: 'catalogue_product_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     #[IsGranted('CATALOGUE_EDIT')]
-    public function edit(Product $product, Request $request, EntityManagerInterface $em, TrackingModeResolver $trackingModes, StockPresence $stockPresence): Response
+    public function edit(Product $product, Request $request, EntityManagerInterface $em, ProductKindResolver $kinds, StockPresence $stockPresence): Response
     {
-        $locked = $stockPresence->productHasMovements($product);
+        $locked = $stockPresence->productHasStock($product);
         $hadCategory = null !== $product->getCategory();
-        $originalMode = $product->getTrackingMode();
+        $originalKind = $product->getKind();
         $form = $this->createForm(ProductType::class, $product);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Première catégorisation : le mode par défaut de la catégorie s'applique, sauf si l'utilisateur l'a modifié.
+            // Première catégorisation : le type par défaut de la catégorie s'applique, sauf si l'utilisateur l'a modifié.
             $category = $product->getCategory();
-            if (!$locked && !$hadCategory && null !== $category && $product->getTrackingMode() === $originalMode) {
-                $product->setTrackingMode($trackingModes->defaultFor($category));
+            if (!$locked && !$hadCategory && null !== $category && $product->getKind() === $originalKind) {
+                $product->setKind($kinds->defaultFor($category));
             }
             $em->flush();
             $this->addFlash('success', 'Produit modifié.');

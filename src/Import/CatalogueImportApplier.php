@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Import;
 
 use App\Catalogue\NameNormalizer;
-use App\Catalogue\TrackingModeResolver;
+use App\Catalogue\ProductKindResolver;
 use App\Entity\Brand;
 use App\Entity\Category;
 use App\Entity\ImportRun;
@@ -13,7 +13,7 @@ use App\Entity\Product;
 use App\Entity\SeasonPrice;
 use App\Entity\Variant;
 use App\Enum\ImportRunStatus;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Import\Exception\ImportNotApplicableException;
 use App\Import\Exception\StaleImportException;
 use App\Repository\CategoryRepository;
@@ -34,7 +34,7 @@ final class CatalogueImportApplier
         private readonly EntityManagerInterface $em,
         private readonly CatalogueImportAnalyzer $analyzer,
         private readonly CategoryRepository $categories,
-        private readonly TrackingModeResolver $trackingModes,
+        private readonly ProductKindResolver $kinds,
         private readonly StockPresence $stockPresence,
         #[Autowire('%app.imports_dir%')]
         private readonly string $importsDir,
@@ -180,7 +180,7 @@ final class CatalogueImportApplier
                 ->setDesignation($new['designation'])
                 ->setBrand($brandFor($new['brand']))
                 ->setCategory($category)
-                ->setTrackingMode(null === $category ? TrackingMode::Quantity : $this->trackingModes->defaultFor($category));
+                ->setKind(null === $category ? ProductKind::Consumable : $this->kinds->defaultFor($category));
             $this->em->persist($product);
             $createdProducts[$new['reference']] = $product;
             $tick();
@@ -225,8 +225,8 @@ final class CatalogueImportApplier
                     $category = $categoryFor(explode(' › ', $changes['category']['to']));
                     if (null !== $category) {
                         // Première catégorisation : même règle que la fiche produit (spec lot 7 § 7).
-                        if (null === $product->getCategory() && !$this->stockPresence->productHasMovements($product)) {
-                            $product->setTrackingMode($this->trackingModes->defaultFor($category));
+                        if (null === $product->getCategory() && !$this->stockPresence->productHasStock($product)) {
+                            $product->setKind($this->kinds->defaultFor($category));
                         }
                         $product->setCategory($category);
                     }

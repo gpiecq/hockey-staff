@@ -12,8 +12,8 @@ use App\Entity\Season;
 use App\Entity\StockMovement;
 use App\Entity\Team;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
+use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\LockMode;
@@ -125,7 +125,7 @@ class ItemRepository extends ServiceEntityRepository
             ->where('i.status = :status')
             ->andWhere('i.condition <> :new')
             ->setParameter('status', ItemStatus::InStock)
-            ->setParameter('new', ItemCondition::New)
+            ->setParameter('new', StockCondition::New)
             ->orderBy('i.code')
             ->getQuery()
             ->getResult();
@@ -137,7 +137,7 @@ class ItemRepository extends ServiceEntityRepository
      * Plus ancienne pièce en stock (plus petit code) de la variante, du lieu et de l'état donnés, verrouillée
      * (PESSIMISTIC_WRITE, état rafraîchi) ; à appeler dans une transaction.
      */
-    public function findOldestInStockForUpdate(Variant $variant, Location $location, ItemCondition $condition): ?Item
+    public function findOldestInStockForUpdate(Variant $variant, Location $location, StockCondition $condition): ?Item
     {
         $item = $this->createQueryBuilder('i')
             ->where('i.variant = :variant')
@@ -161,11 +161,11 @@ class ItemRepository extends ServiceEntityRepository
     /**
      * Nombre de pièces en stock de la variante dans le lieu, par état.
      *
-     * @return array<string, int> clé = valeur d'ItemCondition
+     * @return array<string, int> clé = valeur d'StockCondition
      */
     public function countInStockByCondition(Variant $variant, Location $location): array
     {
-        /** @var list<array{itemCondition: ItemCondition|string, total: int|string}> $rows */
+        /** @var list<array{itemCondition: StockCondition|string, total: int|string}> $rows */
         $rows = $this->createQueryBuilder('i')
             ->select('i.condition AS itemCondition, COUNT(i.id) AS total')
             ->where('i.variant = :variant')
@@ -181,7 +181,7 @@ class ItemRepository extends ServiceEntityRepository
         $counts = [];
         foreach ($rows as $row) {
             $condition = $row['itemCondition'];
-            $counts[$condition instanceof ItemCondition ? $condition->value : $condition] = (int) $row['total'];
+            $counts[$condition instanceof StockCondition ? $condition->value : $condition] = (int) $row['total'];
         }
 
         return $counts;

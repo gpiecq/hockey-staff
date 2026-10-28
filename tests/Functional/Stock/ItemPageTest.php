@@ -6,9 +6,9 @@ namespace App\Tests\Functional\Stock;
 
 use App\Entity\Item;
 use App\Entity\Location;
-use App\Enum\ItemCondition;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
 use App\Enum\StockOutReason;
-use App\Enum\TrackingMode;
 use App\Enum\UserRole;
 use App\Stock\Input\StockGift;
 use App\Stock\Input\StockLine;
@@ -48,7 +48,7 @@ final class ItemPageTest extends WebTestCase
         $em = $this->em($client);
         $a = StockFixtures::location($em, 'Local A');
         $b = StockFixtures::location($em, 'Local B');
-        $variant = StockScenario::variant($em, TrackingMode::Serialized, 'REF-S', 'Casque série');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'REF-S', 'Casque série');
         StockScenario::receive($this->recorder($client), $variant, $a, 1, 8000);
         $item = $em->getRepository(Item::class)->findOneBy([]);
         self::assertNotNull($item);
@@ -112,7 +112,7 @@ final class ItemPageTest extends WebTestCase
         $client = static::createClient();
         $client->loginUser(UserFactory::create($this->em($client), UserRole::Viewer, 'v@example.test'));
         [$item] = $this->serialized($client);
-        $variant = StockScenario::variant($this->em($client), TrackingMode::Quantity, 'REF-Q', 'Gants vrac');
+        $variant = StockScenario::variant($this->em($client), ProductKind::Consumable, 'REF-Q', 'Gants vrac');
         $a = $this->em($client)->getRepository(Location::class)->findOneBy(['name' => 'Local A']);
         self::assertNotNull($a);
         StockScenario::receive($this->recorder($client), $variant, $a, 4, 1000);
@@ -134,9 +134,9 @@ final class ItemPageTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), UserRole::Stock, 'u@example.test'));
         [$item, $a] = $this->serialized($client);
         $player = PlayerFixtures::player($this->em($client), 'Martin', 'Léo');
-        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), ItemCondition::New));
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), StockCondition::New));
         $team = PlayerFixtures::team($this->em($client), 'U15');
-        $pucks = StockScenario::variant($this->em($client), TrackingMode::Quantity, 'PALET', 'Palet');
+        $pucks = StockScenario::variant($this->em($client), ProductKind::Consumable, 'PALET', 'Palet');
         StockScenario::receive($this->recorder($client), $pucks, $a, 10, 100);
         $gift = $this->recorder($client)->recordGift(new StockGift($a, $pucks, 2, null, null, $team));
 
@@ -168,9 +168,9 @@ final class ItemPageTest extends WebTestCase
         [$item, $a] = $this->serialized($client);
         $em = $this->em($client);
         $player = PlayerFixtures::player($em, 'Martin', 'Léo');
-        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), ItemCondition::New));
+        $loan = $this->recorder($client)->recordLoan(new StockLoan($a, $player, $item->getVariant(), StockCondition::New));
         $team = PlayerFixtures::team($em, 'U15');
-        $pucks = StockScenario::variant($em, TrackingMode::Quantity, 'PALET', 'Palet');
+        $pucks = StockScenario::variant($em, ProductKind::Consumable, 'PALET', 'Palet');
         StockScenario::receive($this->recorder($client), $pucks, $a, 10, 100);
         $gift = $this->recorder($client)->recordGift(new StockGift($a, $pucks, 2, null, null, $team));
         // Données héritées : suppression douce directe, sans passer par la garde du contrôleur.

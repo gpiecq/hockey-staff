@@ -24,5 +24,5 @@ enum ImportAnomalyCode: string
     case CategoryLevelMissing = 'category_level_missing';
     case CategoryUnknown = 'category_unknown';
     case ValueTooLong = 'value_too_long';
-    case TrackingModeLocked = 'tracking_mode_locked';
+    case ProductKindLocked = 'tracking_mode_locked';
 }

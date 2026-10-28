@@ -6,7 +6,7 @@ namespace App\Tests\Functional\Label;
 
 use App\Entity\Item;
 use App\Entity\Variant;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
 use App\Enum\UserRole;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\StockFixtures;
@@ -33,7 +33,7 @@ final class LabelControllerTest extends WebTestCase
         $client->loginUser(UserFactory::create($this->em($client), $role, 'u@example.test'));
     }
 
-    private function variant(KernelBrowser $client, TrackingMode $mode, string $reference, int $quantity = 0): Variant
+    private function variant(KernelBrowser $client, ProductKind $mode, string $reference, int $quantity = 0): Variant
     {
         $em = $this->em($client);
         $variant = StockScenario::variant($em, $mode, $reference, 'Produit '.$reference, self::EANS[$reference] ?? null);
@@ -79,7 +79,7 @@ final class LabelControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $this->variant($client, TrackingMode::Serialized, 'REF-S', 1);
+        $this->variant($client, ProductKind::Equipment, 'REF-S', 1);
         $item = $this->em($client)->getRepository(Item::class)->findOneBy([]);
         self::assertNotNull($item);
         $code = $item->getCode();
@@ -96,8 +96,8 @@ final class LabelControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $serialized = $this->variant($client, TrackingMode::Serialized, 'REF-S', 2);
-        $quantity = $this->variant($client, TrackingMode::Quantity, 'REF-Q', 3);
+        $serialized = $this->variant($client, ProductKind::Equipment, 'REF-S', 2);
+        $quantity = $this->variant($client, ProductKind::Consumable, 'REF-Q', 3);
 
         $client->request('GET', '/etiquettes', ['variantes' => [(string) $serialized->getId()]]);
         self::assertSelectorExists('input[type="radio"][name="mode"][value="pieces"]');
@@ -123,8 +123,8 @@ final class LabelControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $a = $this->variant($client, TrackingMode::Quantity, 'REF-A');
-        $b = $this->variant($client, TrackingMode::Quantity, 'REF-B');
+        $a = $this->variant($client, ProductKind::Consumable, 'REF-A');
+        $b = $this->variant($client, ProductKind::Consumable, 'REF-B');
         $token = $this->csrfToken($client, $a);
 
         $this->post($client, $token, [
@@ -142,7 +142,7 @@ final class LabelControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $variant = $this->variant($client, TrackingMode::Quantity, 'REF-A');
+        $variant = $this->variant($client, ProductKind::Consumable, 'REF-A');
         $token = $this->csrfToken($client, $variant);
         $valid = ['type' => 'variante', 'id' => (string) $variant->getId(), 'exemplaires' => '1'];
         $ghost = ['type' => 'variante', 'id' => '999999', 'exemplaires' => '1'];
@@ -158,7 +158,7 @@ final class LabelControllerTest extends WebTestCase
         $this->post($client, $token, [$valid, $ghost]);
         self::assertResponseStatusCodeSame(200);
 
-        $deleted = $this->variant($client, TrackingMode::Quantity, 'REF-B');
+        $deleted = $this->variant($client, ProductKind::Consumable, 'REF-B');
         $deletedId = (string) $deleted->getId();
         $em = $this->em($client);
         $em->remove($deleted);
@@ -175,7 +175,7 @@ final class LabelControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $variant = $this->variant($client, TrackingMode::Quantity, 'REF-A');
+        $variant = $this->variant($client, ProductKind::Consumable, 'REF-A');
         $token = $this->csrfToken($client, $variant);
 
         $this->post($client, $token, [['type' => 'variante', 'id' => (string) $variant->getId(), 'exemplaires' => '501']]);
@@ -188,7 +188,7 @@ final class LabelControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $this->login($client, UserRole::Stock);
-        $variant = $this->variant($client, TrackingMode::Quantity, 'REF-A');
+        $variant = $this->variant($client, ProductKind::Consumable, 'REF-A');
 
         $this->post($client, 'bad', [['type' => 'variante', 'id' => (string) $variant->getId(), 'exemplaires' => '1']]);
 

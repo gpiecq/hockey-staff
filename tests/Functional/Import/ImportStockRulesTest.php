@@ -10,14 +10,17 @@ use App\Entity\Season;
 use App\Entity\Supplier;
 use App\Entity\Variant;
 use App\Enum\ImportAnomalyCode;
-use App\Enum\ItemCondition;
-use App\Enum\TrackingMode;
+use App\Enum\ProductKind;
+use App\Enum\StockCondition;
+use App\Enum\StockOutReason;
 use App\Enum\UserRole;
 use App\Import\CatalogueImportAnalyzer;
 use App\Import\CatalogueImportApplier;
 use App\Import\ImportDiff;
 use App\Repository\CategoryRepository;
+use App\Stock\Input\StockLine;
 use App\Stock\Input\StockLoan;
+use App\Stock\Input\StockOut;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\ImportFixtures;
 use App\Tests\Support\PlayerFixtures;
@@ -126,11 +129,11 @@ final class ImportStockRulesTest extends WebTestCase
     public function testAbsentVariantWhoseOnlyItemIsLoanedIsNotArchived(): void
     {
         $absent = $this->absentVariant();
-        $absent->getProduct()?->setTrackingMode(TrackingMode::Serialized);
+        $absent->getProduct()?->setKind(ProductKind::Equipment);
         $this->em->flush();
         $location = StockFixtures::location($this->em);
         StockScenario::receive($this->recorder, $absent, $location, 1, 5000);
-        $this->recorder->recordLoan(new StockLoan($location, PlayerFixtures::player($this->em), $absent, ItemCondition::New));
+        $this->recorder->recordLoan(new StockLoan($location, PlayerFixtures::player($this->em), $absent, StockCondition::New));
 
         $diff = $this->analyzer->analyze(ImportFixtures::run($this->em, $this->supplier, $this->season, [self::row()]));
         self::assertSame([], $diff->archivedVariantIds);
@@ -219,9 +222,9 @@ final class ImportStockRulesTest extends WebTestCase
         self::assertStringContainsString('Absentes du fichier, sans stock : archivées (1)', $text);
     }
 
-    public function testFirstCategorizationKeepsModeWhenMovements(): void
+    public function testFirstCategorizationKeepsKindWhenStock(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Quantity, 'R1', 'Patin Vapor', '688698508062');
+        $variant = StockScenario::variant($this->em, ProductKind::Consumable, 'R1', 'Patin Vapor', '688698508062');
         $product = $variant->getProduct();
         self::assertInstanceOf(Product::class, $product);
         $this->stockIn($variant);
@@ -232,19 +235,39 @@ final class ImportStockRulesTest extends WebTestCase
         $diff = ImportDiff::fromArray($run->getDiff() ?? []);
         $messages = array_column($diff->anomalies, 'message', 'code');
         self::assertSame(
-            'Produit R1 : mode de suivi conservé, le produit a des mouvements de stock.',
-            $messages[ImportAnomalyCode::TrackingModeLocked->value] ?? null,
+            'Produit R1 : type Équipement/Consommable conservé, le produit a du stock.',
+            $messages[ImportAnomalyCode::ProductKindLocked->value] ?? null,
         );
 
         $this->applier->apply($run);
 
         self::assertSame('EQUIPEMENT › JOUEUR', $product->getCategory()?->getPath());
-        self::assertSame(TrackingMode::Quantity, $product->getTrackingMode());
+        self::assertSame(ProductKind::Consumable, $product->getKind());
     }
 
-    public function testFirstCategorizationSetsModeWithoutMovements(): void
+    public function testFirstCategorizationAppliesDefaultKindWhenMovementsButNoStock(): void
     {
-        $variant = StockScenario::variant($this->em, TrackingMode::Quantity, 'R1', 'Patin Vapor', '688698508062');
+        $variant = StockScenario::variant($this->em, ProductKind::Consumable, 'R1', 'Patin Vapor', '688698508062');
+        $product = $variant->getProduct();
+        self::assertInstanceOf(Product::class, $product);
+        $location = StockFixtures::location($this->em);
+        StockScenario::receive($this->recorder, $variant, $location, 2, 1000);
+        $this->recorder->recordOut(new StockOut($location, StockOutReason::Lost, [new StockLine($variant, 2)]));
+        $product->setCategory(null);
+        $this->em->flush();
+
+        $run = $this->analyzedRun([self::row(['Taille' => 'M'])]);
+        $diff = ImportDiff::fromArray($run->getDiff() ?? []);
+        self::assertNotContains(ImportAnomalyCode::ProductKindLocked->value, array_column($diff->anomalies, 'code'));
+
+        $this->applier->apply($run);
+
+        self::assertSame(ProductKind::Equipment, $product->getKind());
+    }
+
+    public function testFirstCategorizationSetsKindWithoutMovements(): void
+    {
+        $variant = StockScenario::variant($this->em, ProductKind::Consumable, 'R1', 'Patin Vapor', '688698508062');
         $product = $variant->getProduct();
         self::assertInstanceOf(Product::class, $product);
         $product->setCategory(null);
@@ -252,10 +275,10 @@ final class ImportStockRulesTest extends WebTestCase
 
         $run = $this->analyzedRun([self::row(['Taille' => 'M'])]);
         $diff = ImportDiff::fromArray($run->getDiff() ?? []);
-        self::assertNotContains(ImportAnomalyCode::TrackingModeLocked->value, array_column($diff->anomalies, 'code'));
+        self::assertNotContains(ImportAnomalyCode::ProductKindLocked->value, array_column($diff->anomalies, 'code'));
 
         $this->applier->apply($run);
 
-        self::assertSame(TrackingMode::Serialized, $product->getTrackingMode());
+        self::assertSame(ProductKind::Equipment, $product->getKind());
     }
 }

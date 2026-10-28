@@ -9,8 +9,8 @@ use App\Entity\Location;
 use App\Entity\Player;
 use App\Entity\Sale;
 use App\Entity\Variant;
-use App\Enum\ItemCondition;
 use App\Enum\ItemStatus;
+use App\Enum\StockCondition;
 use App\Form\Sale\SaleLineMapper;
 use App\Form\Sale\SaleType;
 use App\Pagination\Page;
@@ -119,10 +119,10 @@ final class SaleController extends AbstractController
             $variantId = $request->query->getString('variant');
             $variant = ctype_digit($variantId) ? $em->find(Variant::class, (int) $variantId) : null;
             $item = $variant instanceof Variant
-                ? array_find($items->findInStockByVariants([$variant]), static fn (Item $candidate): bool => ItemCondition::New !== $candidate->getCondition())
+                ? array_find($items->findInStockByVariants([$variant]), static fn (Item $candidate): bool => StockCondition::New !== $candidate->getCondition())
                 : null;
         }
-        if (null === $item || ItemStatus::InStock !== $item->getStatus() || ItemCondition::New === $item->getCondition() || !$item->getLocation()->isActive()) {
+        if (null === $item || ItemStatus::InStock !== $item->getStatus() || StockCondition::New === $item->getCondition() || !$item->getLocation()->isActive()) {
             return $empty;
         }
 
