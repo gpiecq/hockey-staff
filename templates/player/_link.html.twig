@@ -1,0 +1,2 @@
+{# Nom du joueur lié à sa fiche ; joueur supprimé (soft delete) : nom seul, sans lien. #}
+{% if player.deletedAt %}{{ player.fullName }} (supprimé){% else %}<a href="{{ path('player_show', {id: player.id}) }}">{{ player.fullName }}</a>{% endif %}

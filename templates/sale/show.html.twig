@@ -14,7 +14,7 @@
     <dl class="product-meta">
         <dt>Date</dt><dd>{{ sale.operation.occurredAt|date('d/m/Y H:i') }}</dd>
         <dt>Acheteur</dt><dd>{{ sale.buyer }}</dd>
-        {% if sale.player %}<dt>Joueur</dt><dd><a href="{{ path('player_show', {id: sale.player.id}) }}">{{ sale.player.fullName }}</a></dd>{% endif %}
+        {% if sale.player %}<dt>Joueur</dt><dd>{{ include('player/_link.html.twig', {player: sale.player}) }}</dd>{% endif %}
         {% if sale.comment %}<dt>Commentaire</dt><dd>{{ sale.comment }}</dd>{% endif %}
     </dl>
 
@@ -31,7 +31,7 @@
                         — {{ variant.product.reference }} — {{ variant.product.designation }}{% if variant.label %} — {{ variant.label }}{% endif %}
                     </td>
                     <td class="num" data-label="Prix public">{{ line.basePriceTtc is null ? '—' : line.basePriceTtc|euros }}</td>
-                    <td class="num" data-label="Réduction">{{ line.discountRate is null ? '—' : (line.discountRate / 100)|number_format(0) ~ ' %' }}</td>
+                    <td class="num" data-label="Réduction">{{ line.discountRate is null ? '—' : (line.discountRate / 100)|number_format(0) ~ ' %' ~ (line.discountApplied ? '' : ' (non appliquée)') }}</td>
                     <td class="num" data-label="Prix TTC">{{ line.priceTtc|euros }}</td>
                     <td class="num" data-label="Prix HT">{{ line.priceHt|euros }}</td>
                 </tr>

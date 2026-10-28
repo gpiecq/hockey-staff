@@ -6,14 +6,18 @@ namespace App\Tests\Functional\Sale;
 
 use App\Entity\Item;
 use App\Entity\Location;
+use App\Entity\Sale;
 use App\Entity\SeasonPrice;
 use App\Entity\Variant;
 use App\Enum\ItemCondition;
 use App\Enum\StockMovementType;
 use App\Enum\TrackingMode;
 use App\Enum\UserRole;
+use App\Repository\SaleRepository;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
+use App\Stock\Input\StockSale;
+use App\Stock\Input\StockSaleLine;
 use App\Stock\StockMovementRecorder;
 use App\Tests\Support\PlayerFixtures;
 use App\Tests\Support\StockFixtures;
@@ -91,6 +95,7 @@ final class SaleControllerTest extends WebTestCase
         $crawler = $client->request('GET', '/ventes/new?variant='.$helmet->getId());
         self::assertResponseIsSuccessful();
         self::assertSame($items[0]->getCode(), $crawler->filter('input[name="sale[lines][0][itemCode]"]')->attr('value'));
+        self::assertStringContainsString('Prix public : 300,00 €', $this->text($client));
 
         $this->submit($client, '/ventes/new?variant='.$helmet->getId(), [
             'buyer' => 'M. Petit, 06 00 00 00 00',
@@ -122,6 +127,7 @@ final class SaleControllerTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(422);
         self::assertStringContainsString('est neuve', $this->text($client));
+        self::assertStringContainsString('Prix TTC : 60,00 €', $this->text($client));
     }
 
     public function testUnknownCodeIsRejected(): void
@@ -183,6 +189,125 @@ final class SaleControllerTest extends WebTestCase
         $text = $this->text($client);
         self::assertStringContainsString('Mme Dupont', $text);
         self::assertStringContainsString('100,00 €', $text);
+
+        // Nombre de pièces et total TTC en une seule requête groupée (pas de chargement des lignes par vente).
+        $sales = $client->getContainer()->get(SaleRepository::class);
+        \assert($sales instanceof SaleRepository);
+        $sale = $sales->findOneBy(['buyer' => 'Mme Dupont']);
+        self::assertInstanceOf(Sale::class, $sale);
+        self::assertSame([(int) $sale->getId() => ['pieces' => 2, 'totalTtc' => 10000]], $sales->summaries([$sale]));
+    }
+
+    private function saleCount(KernelBrowser $client): int
+    {
+        return $this->em($client)->getRepository(Sale::class)->count([]);
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     */
+    private function preview(KernelBrowser $client, string $url, array $values): void
+    {
+        $crawler = $client->request('GET', $url);
+        $form = $crawler->selectButton('Calculer')->form();
+        $client->request($form->getMethod(), $form->getUri(), array_replace_recursive($form->getPhpValues(), ['sale' => $values]));
+    }
+
+    public function testPreviewShowsPricesWithoutRecording(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [$helmet, , $items] = $this->helmet($client, [ItemCondition::Good]);
+
+        $this->preview($client, '/ventes/new?variant='.$helmet->getId(), ['lines' => [0 => ['discount' => '80']]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $text = $this->text($client);
+        self::assertStringContainsString('Prix public : 300,00 €', $text);
+        self::assertStringContainsString('Prix TTC : 60,00 €', $text);
+        self::assertStringContainsString('Prix HT : 50,00 €', $text);
+        self::assertStringContainsString('Total : 60,00 € TTC · 50,00 € HT', $text);
+        self::assertStringNotContainsString('Indiquez l\'acheteur', $text);
+        self::assertSame($items[0]->getCode(), $client->getCrawler()->filter('input[name="sale[lines][0][itemCode]"]')->attr('value'));
+        self::assertSame(0, $this->saleCount($client));
+        self::assertGreaterThan(0, $client->getCrawler()->selectButton('Enregistrer la vente')->count());
+    }
+
+    public function testPreviewShowsPricingErrorOnTheLine(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [$helmet] = $this->helmet($client, [ItemCondition::Good], null);
+
+        $this->preview($client, '/ventes/new?variant='.$helmet->getId(), ['lines' => [0 => ['discount' => '80']]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $text = $this->text($client);
+        self::assertStringContainsString('Saisissez le prix de vente de « CASQUE-1 M »', $text);
+        self::assertStringNotContainsString('Total :', $text);
+        self::assertSame(0, $this->saleCount($client));
+    }
+
+    public function testDiscountOverriddenByFinalPriceIsFlagged(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [$helmet] = $this->helmet($client, [ItemCondition::Good]);
+        $values = ['buyer' => 'M. Petit', 'lines' => [0 => ['discount' => '80', 'finalPrice' => '45']]];
+
+        $this->preview($client, '/ventes/new?variant='.$helmet->getId(), $values);
+        self::assertStringContainsString('Réduction : 80 % (non appliquée)', $this->text($client));
+        self::assertStringContainsString('Prix TTC : 45,00 €', $this->text($client));
+
+        $this->submit($client, '/ventes/new?variant='.$helmet->getId(), $values);
+        self::assertResponseRedirects();
+        $client->followRedirect();
+        self::assertStringContainsString('80 % (non appliquée)', $this->text($client));
+    }
+
+    public function testItemQueryPrefillsThatItemAndItsLocation(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [, $local, $items] = $this->helmet($client, [ItemCondition::Good, ItemCondition::Worn, ItemCondition::New]);
+
+        $crawler = $client->request('GET', '/ventes/new?item='.strtolower($items[1]->getCode()));
+        self::assertResponseIsSuccessful();
+        self::assertSame($items[1]->getCode(), $crawler->filter('input[name="sale[lines][0][itemCode]"]')->attr('value'));
+        self::assertSame((string) $local->getId(), $crawler->filter('select[name="sale[location]"] option[selected]')->attr('value'));
+        self::assertSame('sale-sellable-items', $crawler->filter('input[name="sale[lines][0][itemCode]"]')->attr('list'));
+        $options = $crawler->filter('datalist#sale-sellable-items option')->each(static fn ($option): string => (string) $option->attr('value'));
+        self::assertSame([$items[0]->getCode(), $items[1]->getCode()], $options);
+
+        // Pièce neuve (non vendable) ou inconnue : formulaire vide.
+        foreach ([$items[2]->getCode(), 'HS-999999'] as $code) {
+            $crawler = $client->request('GET', '/ventes/new?item='.$code);
+            self::assertResponseIsSuccessful();
+            self::assertSame('', (string) $crawler->filter('input[name="sale[lines][0][itemCode]"]')->attr('value'));
+            self::assertCount(0, $crawler->filter('select[name="sale[location]"] option[selected]:not([value=""])'));
+        }
+    }
+
+    public function testSaleShowNamesDeletedPlayerWithoutLink(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+        [, $local, $items] = $this->helmet($client, [ItemCondition::Good]);
+        $em = $this->em($client);
+        $player = PlayerFixtures::player($em, 'Martin', 'Léo');
+        $recorder = $client->getContainer()->get(StockMovementRecorder::class);
+        \assert($recorder instanceof StockMovementRecorder);
+        $sale = $recorder->recordSale(new StockSale($local, 'Mme Dupont', [new StockSaleLine($items[0], 8000, null)], $player))->getSale();
+        self::assertNotNull($sale);
+        $em->remove($player);
+        $em->flush();
+        $em->clear();
+
+        $client->request('GET', '/ventes/'.$sale->getId());
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('JoueurLéo Martin (supprimé)', $client->getCrawler()->filter('dl.product-meta')->text());
+        self::assertCount(0, $client->getCrawler()->filter('dl.product-meta a'));
     }
 
     public function testSalesMenuEntryIsForManagersOnly(): void

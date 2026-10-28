@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Sale\SalePrice;
+use App\Sale\SalePricing;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -94,5 +95,11 @@ class SaleLine
     public function getPriceHt(): int
     {
         return $this->priceHt;
+    }
+
+    /** Faux quand un prix final a remplacé la réduction saisie (la réduction reste enregistrée, pour mémoire). */
+    public function isDiscountApplied(): bool
+    {
+        return SalePricing::isDiscountApplied($this->basePriceTtc, $this->discountRate, $this->priceTtc);
     }
 }

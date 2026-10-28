@@ -32,12 +32,14 @@ final class VariantSheetController extends AbstractController
 
         // Stock par lieu : pièces ventilées par état (sérialisé), quantités (produit en quantité).
         $locations = [];
-        $secondHandInStock = false;
+        $secondHand = [];
         foreach ($items->findInStockByVariants([$variant]) as $item) {
             $name = $item->getLocation()->getName();
             $locations[$name]['conditions'][$item->getCondition()->value] = ($locations[$name]['conditions'][$item->getCondition()->value] ?? 0) + 1;
             $locations[$name]['quantity'] = ($locations[$name]['quantity'] ?? 0) + 1;
-            $secondHandInStock = $secondHandInStock || ItemCondition::New !== $item->getCondition();
+            if (ItemCondition::New !== $item->getCondition()) {
+                $secondHand[] = $item;
+            }
         }
         foreach ($levels as $level) {
             if ($level->getQuantity() > 0) {
@@ -57,7 +59,7 @@ final class VariantSheetController extends AbstractController
             'price' => null === $season ? null : $prices->findOneBy(['variant' => $variant, 'season' => $season]),
             'locations' => $locations,
             'loaned' => $loaned,
-            'secondHandInStock' => $secondHandInStock,
+            'secondHand' => $secondHand,
         ]);
     }
 }

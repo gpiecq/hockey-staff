@@ -23,7 +23,7 @@ final class SaleLineType extends AbstractType
                 'label' => 'Code de la pièce',
                 'required' => false,
                 'help' => 'Code HS-… d\'une pièce d\'occasion en stock.',
-                'attr' => ['placeholder' => 'HS-000123', 'autocapitalize' => 'characters', 'autocomplete' => 'off'],
+                'attr' => ['placeholder' => 'HS-000123', 'autocapitalize' => 'characters', 'autocomplete' => 'off', 'list' => 'sale-sellable-items'],
             ])
             ->add('discount', IntegerType::class, [
                 'label' => 'Réduction (%)',

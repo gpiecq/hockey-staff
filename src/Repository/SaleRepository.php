@@ -35,33 +35,33 @@ class SaleRepository extends ServiceEntityRepository
     }
 
     /**
-     * Nombre de pièces par vente, en une seule requête.
+     * Nombre de pièces et total TTC par vente, en une seule requête groupée (les lignes ne sont pas chargées).
      *
      * @param list<Sale> $sales
      *
-     * @return array<int, int> id de vente => nombre de pièces
+     * @return array<int, array{pieces: int, totalTtc: int}> id de vente => résumé
      */
-    public function pieceCounts(array $sales): array
+    public function summaries(array $sales): array
     {
         if ([] === $sales) {
             return [];
         }
 
-        /** @var list<array{id: int|string, n: int|string}> $rows */
+        /** @var list<array{id: int|string, n: int|string, total: int|string}> $rows */
         $rows = $this->getEntityManager()->createQueryBuilder()
-            ->select('IDENTITY(l.sale) AS id', 'COUNT(l.id) AS n')
+            ->select('IDENTITY(l.sale) AS id', 'COUNT(l.id) AS n', 'SUM(l.priceTtc) AS total')
             ->from(SaleLine::class, 'l')
             ->where('l.sale IN (:sales)')
             ->setParameter('sales', $sales)
             ->groupBy('l.sale')
             ->getQuery()->getArrayResult();
 
-        $counts = [];
+        $summaries = [];
         foreach ($rows as $row) {
-            $counts[(int) $row['id']] = (int) $row['n'];
+            $summaries[(int) $row['id']] = ['pieces' => (int) $row['n'], 'totalTtc' => (int) $row['total']];
         }
 
-        return $counts;
+        return $summaries;
     }
 
     /**

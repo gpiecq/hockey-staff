@@ -31,10 +31,19 @@
 
         {{ include('sale/_lines.html.twig') }}
 
+        <datalist id="sale-sellable-items">
+            {% for item in sellable %}
+                <option value="{{ item.code }}">{{ item.variant.product.designation }}{% if item.variant.label %} — {{ item.variant.label }}{% endif %} — {{ item.condition.label }} — {{ item.location.name }}</option>
+            {% endfor %}
+        </datalist>
+
+        {% if totals %}<p class="sale-total"><strong>Total : {{ totals.ttc|euros }} TTC · {{ totals.ht|euros }} HT</strong></p>{% endif %}
+
         {{ form_rest(form) }}
 
         <div class="actions">
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="submit" class="btn" name="preview" value="1">Calculer</button>
+            <button type="submit" class="btn btn-primary">Enregistrer la vente</button>
             <a class="btn" href="{{ path('sale_index') }}">Annuler</a>
         </div>
     {{ form_end(form) }}

@@ -20,8 +20,9 @@
                     <tr>
                         <td data-label="Date"><a href="{{ path('sale_show', {id: sale.id}) }}">{{ sale.operation.occurredAt|date('d/m/Y H:i') }}</a></td>
                         <td data-label="Acheteur">{{ sale.buyer }}</td>
-                        <td class="num" data-label="Pièces">{{ counts[sale.id]|default(0) }}</td>
-                        <td class="num" data-label="Total TTC">{{ sale.totalTtc|euros }}</td>
+                        {% set summary = summaries[sale.id]|default({pieces: 0, totalTtc: 0}) %}
+                        <td class="num" data-label="Pièces">{{ summary.pieces }}</td>
+                        <td class="num" data-label="Total TTC">{{ summary.totalTtc|euros }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

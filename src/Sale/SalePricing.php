@@ -34,6 +34,20 @@ final readonly class SalePricing
         return intdiv($basePriceTtc * (10000 - $discountRate) + 5000, 10000);
     }
 
+    /**
+     * Vrai si la réduction a déterminé le prix : faux sans réduction, sans prix public, ou quand un prix final l'a remplacée.
+     */
+    public static function isDiscountApplied(?int $basePriceTtc, ?int $discountRate, int $priceTtc): bool
+    {
+        return null !== $basePriceTtc && null !== $discountRate && $priceTtc === self::discounted($basePriceTtc, $discountRate);
+    }
+
+    /** Prix public TTC de référence de la variante (saison courante, sinon la plus récente passée), ou null. */
+    public function publicReferencePrice(Variant $variant): ?int
+    {
+        return $this->prices->findPublicReference($variant, $this->seasons->get())?->getPublicPriceTtc();
+    }
+
     public function price(Variant $variant, ?int $discountRate, ?int $finalPriceTtc): SalePrice
     {
         if (null !== $discountRate && ($discountRate < 0 || $discountRate > 10000)) {

@@ -181,12 +181,19 @@ final class ItemPageTest extends WebTestCase
 
         $client->request('GET', '/stock/pieces/'.$item->getCode());
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('DétenteurLéo Martin', $client->getCrawler()->filter('dl.product-meta')->text());
+        self::assertStringContainsString('DétenteurLéo Martin (supprimé)', $client->getCrawler()->filter('dl.product-meta')->text());
+        self::assertCount(0, $client->getCrawler()->filter('dl.product-meta a[href^="/joueurs/"]'));
         self::assertStringContainsString('Joueur : Léo Martin', $client->getCrawler()->filter('table.history')->text());
+
+        $client->request('GET', '/stock/variantes/'.$item->getVariant()->getId());
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('Léo Martin (supprimé)', $client->getCrawler()->filter('table')->text());
+        self::assertCount(0, $client->getCrawler()->filter('a[href^="/joueurs/"]'));
 
         $client->request('GET', '/stock/operations/'.$loan->getId());
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('JoueurLéo Martin', $client->getCrawler()->filter('dl.product-meta')->text());
+        self::assertStringContainsString('JoueurLéo Martin (supprimé)', $client->getCrawler()->filter('dl.product-meta')->text());
+        self::assertCount(0, $client->getCrawler()->filter('dl.product-meta a[href^="/joueurs/"]'));
 
         $client->request('GET', '/stock/operations/'.$gift->getId());
         self::assertResponseIsSuccessful();

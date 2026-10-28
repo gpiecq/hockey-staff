@@ -22,7 +22,7 @@
         </div>
     {% endif %}
 
-    {% if serialized and secondHandInStock and is_granted('SALE_MANAGE') %}
+    {% if serialized and secondHand is not empty and is_granted('SALE_MANAGE') %}
         <div class="actions variant-actions">
             <a class="btn" href="{{ path('sale_new', {variant: variant.id}) }}">Vendre</a>
         </div>
@@ -58,6 +58,23 @@
         </ul>
     {% endif %}
 
+    {% if serialized and secondHand is not empty and is_granted('SALE_MANAGE') %}
+        <h2>Pièces d'occasion en stock</h2>
+        <table class="table second-hand">
+            <thead><tr><th>Pièce</th><th>État</th><th>Lieu</th><th></th></tr></thead>
+            <tbody>
+                {% for item in secondHand %}
+                    <tr>
+                        <td data-label="Pièce"><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
+                        <td data-label="État">{{ item.condition.label }}</td>
+                        <td data-label="Lieu">{{ item.location.name }}</td>
+                        <td><a href="{{ path('sale_new', {item: item.code}) }}">Vendre</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
     {% if serialized %}
         <h2>Pièces prêtées</h2>
         {% if loaned is empty %}
@@ -69,7 +86,7 @@
                     {% for item in loaned %}
                         <tr>
                             <td data-label="Pièce"><a href="{{ path('stock_item_show', {code: item.code}) }}">{{ item.code }}</a></td>
-                            <td data-label="Détenteur">{% if item.holder %}<a href="{{ path('player_show', {id: item.holder.id}) }}">{{ item.holder.fullName }}</a>{% else %}—{% endif %}</td>
+                            <td data-label="Détenteur">{% if item.holder %}{{ include('player/_link.html.twig', {player: item.holder}) }}{% else %}—{% endif %}</td>
                             <td data-label="État">{{ item.condition.label }}</td>
                             <td>{% if is_granted('STOCK_MOVE') %}<a href="{{ path('stock_loan_return', {id: variant.id, item: item.code}) }}">Retour</a>{% endif %}</td>
                         </tr>

@@ -16,5 +16,19 @@
         {{ form_help(line.finalPrice) }}
         {% for error in line.finalPrice.vars.errors %}<p class="field-error">{{ error.message }}</p>{% endfor %}
     </div>
+    {% if preview %}
+        {% set item = preview.item %}
+        <p class="sale-line-preview">
+            {{ item.variant.product.designation }}{% if item.variant.label %} — {{ item.variant.label }}{% endif %} — {{ item.condition.label }} — {{ item.location.name }}<br>
+            Prix public : {{ preview.basePriceTtc is null ? '—' : preview.basePriceTtc|euros }}
+            {% if preview.error %}
+                <br><span class="field-error">{{ preview.error }}</span>
+            {% elseif preview.price %}
+                {% set price = preview.price %}
+                {% if price.discountRate is not null %} · Réduction : {{ (price.discountRate / 100)|number_format(0) }} %{% if not price.discountApplied %} (non appliquée){% endif %}{% endif %}
+                · Prix TTC : {{ price.priceTtc|euros }} · Prix HT : {{ price.priceHt|euros }}
+            {% endif %}
+        </p>
+    {% endif %}
     <button type="button" class="btn" data-action="form-collection#remove">Retirer la ligne</button>
 </div>

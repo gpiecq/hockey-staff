@@ -22,7 +22,7 @@
         <dt>Produit</dt><dd><a href="{{ path('catalogue_product_show', {id: product.id}) }}">{{ product.reference }} — {{ product.designation }}</a></dd>
         <dt>Variante</dt><dd>{{ item.variant.label ?: 'Unique' }}</dd>
         <dt>Statut</dt><dd>{{ item.status.label }}</dd>
-        {% if item.holder %}<dt>Détenteur</dt><dd><a href="{{ path('player_show', {id: item.holder.id}) }}">{{ item.holder.fullName }}</a></dd>{% endif %}
+        {% if item.holder %}<dt>Détenteur</dt><dd>{{ include('player/_link.html.twig', {player: item.holder}) }}</dd>{% endif %}
         <dt>État</dt><dd>{{ item.condition.label }}</dd>
         <dt>Lieu</dt><dd>{{ item.location.name }}</dd>
         <dt>Prix d'achat</dt><dd>{{ item.purchaseCostHt|euros }} HT</dd>

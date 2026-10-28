@@ -17,4 +17,9 @@ final readonly class SalePrice
         public int $priceHt,
     ) {
     }
+
+    public function isDiscountApplied(): bool
+    {
+        return SalePricing::isDiscountApplied($this->basePriceTtc, $this->discountRate, $this->priceTtc);
+    }
 }

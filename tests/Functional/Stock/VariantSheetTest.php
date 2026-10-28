@@ -81,7 +81,7 @@ final class VariantSheetTest extends WebTestCase
         $manager = $client;
         $this->login($manager, UserRole::Manager, 'm@example.test');
         $manager->request('GET', '/stock/variantes/'.$variant->getId());
-        $link = $manager->getCrawler()->selectLink('Vendre');
+        $link = $manager->getCrawler()->filter('.variant-actions')->selectLink('Vendre');
         self::assertSame(1, $link->count());
         self::assertSame('/ventes/new?variant='.$variant->getId(), $link->attr('href'));
 
@@ -95,6 +95,34 @@ final class VariantSheetTest extends WebTestCase
         $recorder->recordSale(new StockSale($worn->getLocation(), 'Mme Dupont', [new StockSaleLine($worn, null, 1000)]));
         $manager->request('GET', '/stock/variantes/'.$variant->getId());
         self::assertSame(0, $manager->getCrawler()->selectLink('Vendre')->count());
+    }
+
+    public function testManagerSeesSecondHandItemsWithSellLinks(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $variant = $this->sheet($client);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $worn = $em->getRepository(Item::class)->findOneBy(['variant' => $variant, 'condition' => ItemCondition::Worn]);
+        \assert($worn instanceof Item);
+        $href = '/ventes/new?item='.$worn->getCode();
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+        self::assertCount(0, $client->getCrawler()->filter('a[href="'.$href.'"]'));
+        self::assertStringNotContainsString('Pièces d\'occasion en stock', $client->getCrawler()->filter('body')->text());
+
+        $manager = $client;
+        $this->login($manager, UserRole::Manager, 'm@example.test');
+        $manager->request('GET', '/stock/variantes/'.$variant->getId());
+        $table = $manager->getCrawler()->filter('table.second-hand');
+        self::assertCount(1, $table);
+        self::assertCount(1, $table->filter('tbody tr'));
+        $row = $table->filter('tbody tr')->text();
+        self::assertStringContainsString($worn->getCode(), $row);
+        self::assertStringContainsString('Usé', $row);
+        self::assertStringContainsString('Local', $row);
+        self::assertSame('Vendre', trim($table->filter('a[href="'.$href.'"]')->text()));
     }
 
     public function testViewerSeesNoActionButton(): void
