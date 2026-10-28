@@ -23,7 +23,7 @@ class SeasonPriceRepository extends ServiceEntityRepository
 
     /**
      * Tarif de référence pour le prix public : celui de la saison courante s'il a un prix public, sinon celui de la
-     * saison la plus récente (startsOn) qui en a un, sinon null.
+     * saison la plus récente (startsOn) qui en a un — jamais une saison future quand la saison courante est connue —, sinon null.
      */
     public function findPublicReference(Variant $variant, ?Season $current): ?SeasonPrice
     {
@@ -34,16 +34,19 @@ class SeasonPriceRepository extends ServiceEntityRepository
             }
         }
 
-        /** @var ?SeasonPrice $latest */
-        $latest = $this->createQueryBuilder('sp')
+        $query = $this->createQueryBuilder('sp')
             ->join('sp.season', 's')
             ->where('sp.variant = :variant')
             ->andWhere('sp.publicPriceTtc IS NOT NULL')
             ->setParameter('variant', $variant)
             ->orderBy('s.startsOn', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
+            ->setMaxResults(1);
+        if (null !== $current) {
+            $query->andWhere('s.startsOn <= :startsOn')->setParameter('startsOn', $current->getStartsOn());
+        }
+
+        /** @var ?SeasonPrice $latest */
+        $latest = $query->getQuery()->getOneOrNullResult();
 
         return $latest;
     }

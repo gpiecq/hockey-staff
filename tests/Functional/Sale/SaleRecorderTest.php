@@ -180,6 +180,21 @@ final class SaleRecorderTest extends KernelTestCase
         self::assertSame(5000, $line->getPriceTtc());
     }
 
+    public function testFallbackIgnoresFutureSeasons(): void
+    {
+        $helmet = $this->helmet();
+        $current = PlayerFixtures::season($this->em, 2026, true);
+        $this->price($helmet, $current, null);
+        $this->price($helmet, PlayerFixtures::season($this->em, 2025), 25000);
+        $this->price($helmet, PlayerFixtures::season($this->em, 2027), 40000);
+        $item = $this->receiveItem($helmet);
+
+        $line = $this->line($this->sell($item, 8000));
+
+        self::assertSame(25000, $line->getBasePriceTtc());
+        self::assertSame(5000, $line->getPriceTtc());
+    }
+
     public function testFinalPriceOverridesDiscount(): void
     {
         $helmet = $this->helmet();
