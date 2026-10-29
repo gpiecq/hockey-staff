@@ -35,3 +35,9 @@ qu'elle coûte si elle est fausse. À relire par l'utilisateur.
   qui rend les mêmes liens groupés que le panneau « Plus » (gabarit partagé `_nav_links.html.twig`) plus Déconnexion.
   Coût si faux : un navigateur dont l'UA contiendrait cette chaîne perdrait la navigation ; l'UA est fixé par nos
   coques natives.
+
+- **R55 — La path configuration Hotwire Native est servie par Symfony, versionnée `v1`.** Deux JSON publics
+  (`/hotwire-native/v1/ios-path-configuration.json` et `android-…`, cache 5 min) que les coques natives (lot 3b)
+  téléchargent au démarrage ; les formulaires de mouvement (entrée, sortie, transfert, prêt, retour, don, vente) et le
+  login s'ouvrent en modale, le reste en pile par défaut. Un test compare les patterns aux routes réelles. Coût si
+  faux : un changement d'URL non répercuté ici ferait ouvrir un formulaire en pleine page ; le test le détecte.

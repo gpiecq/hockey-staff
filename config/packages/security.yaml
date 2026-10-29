@@ -39,6 +39,7 @@ security:
     # Note: Only the *first* matching rule is applied
     access_control:
         - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/hotwire-native/, roles: PUBLIC_ACCESS }
         - { path: ^/, roles: ROLE_VIEWER }
 
 when@test:
