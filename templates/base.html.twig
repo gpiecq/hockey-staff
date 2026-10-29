@@ -23,11 +23,13 @@
     <body>
         {% block shell %}
             <div class="shell">
-                {% include '_nav.html.twig' %}
+                {% if not is_native_app() %}{% include '_nav.html.twig' %}{% endif %}
                 <div class="main">
+                    {% if not is_native_app() %}
                     <div class="topbar">
                         <span class="topbar-user">{{ app.user.fullName }} · {{ app.user.role.label }}</span>
                     </div>
+                    {% endif %}
                     <main class="content">
                         {% for type in ['success', 'error', 'info'] %}
                             {% for message in app.flashes(type) %}

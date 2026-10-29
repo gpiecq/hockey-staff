@@ -1,67 +1,11 @@
-{#
-  Modèle du menu. Ajouter une rubrique = ajouter un bloc dans `groups` :
-    {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
-        {label: 'Produits', route: 'catalogue_product_index', prefix: 'catalogue_product', main: true},
-    ]}
-  - title : intitulé de groupe (null = sans intitulé) ; role : rôle requis pour voir le groupe
-  - route : route du lien ; params : paramètres de route (optionnel) ; prefix : préfixe de route pour l'entrée active (défaut = route)
-  - role (item, optionnel) : rôle requis pour cette entrée, en plus de celui du groupe
-  - main : entrée affichée directement dans le menu bas mobile (les autres vont dans « Plus »)
-#}
-{% set groups = [
-    {title: null, role: 'ROLE_VIEWER', items: [
-        {label: 'Tableau de bord', route: 'app_dashboard', main: true},
-    ]},
-    {title: 'Stock', role: 'ROLE_VIEWER', items: [
-        {label: 'Scanner', route: 'scan_index', main: true},
-        {label: 'Stock', route: 'stock_index', prefix: 'stock_index', main: true},
-        {label: 'Opérations', route: 'stock_operation_index', prefix: 'stock_operation'},
-        {label: 'Nouvel achat', route: 'stock_entry_new', params: {type: 'achat'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
-        {label: 'Nouvelle dotation', route: 'stock_entry_new', params: {type: 'dotation'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
-        {label: 'Sortie de stock', route: 'stock_out_new', prefix: 'stock_out', role: 'ROLE_STOCK'},
-        {label: 'Transfert', route: 'stock_transfer_new', prefix: 'stock_transfer', role: 'ROLE_STOCK'},
-        {label: 'Ventes', route: 'sale_index', prefix: 'sale_', role: 'ROLE_MANAGER'},
-        {label: 'Lieux', route: 'stock_location_index', prefix: 'stock_location', role: 'ROLE_MANAGER'},
-    ]},
-    {title: 'Joueurs', role: 'ROLE_VIEWER', items: [
-        {label: 'Joueurs', route: 'player_index', prefix: 'player_'},
-        {label: 'Équipes', route: 'team_index', prefix: 'team_'},
-        {label: 'Prêts en cours', route: 'loan_index', prefix: 'loan_'},
-    ]},
-    {title: 'Catalogue', role: 'ROLE_VIEWER', items: [
-        {label: 'Produits', route: 'catalogue_product_index', prefix: 'catalogue_product', main: true},
-        {label: 'Saisons', route: 'catalogue_season_index', prefix: 'catalogue_season'},
-        {label: 'Fournisseurs', route: 'catalogue_supplier_index', prefix: 'catalogue_supplier'},
-        {label: 'Marques', route: 'catalogue_brand_index', prefix: 'catalogue_brand'},
-        {label: 'Catégories', route: 'catalogue_category_index', prefix: 'catalogue_category'},
-        {label: 'Imports', route: 'import_index', prefix: 'import_', role: 'ROLE_MANAGER'},
-    ]},
-    {title: 'Admin', role: 'ROLE_ADMIN', items: [
-        {label: 'Utilisateurs', route: 'admin_user_index', prefix: 'admin_user'},
-    ]},
-] %}
-{% set visible = [] %}
-{% for group in groups|filter(group => is_granted(group.role)) %}
-    {% set items = group.items|filter(item => is_granted(item.role|default('ROLE_VIEWER'))) %}
-    {% if items is not empty %}{% set visible = visible|merge([{title: group.title, items: items}]) %}{% endif %}
-{% endfor %}
-{% set current_route = app.current_route|default('') %}
-
-{% macro entry(item, current_route) %}
-    {% set prefix = item.prefix|default(item.route) %}
-    <a href="{{ path(item.route, item.params|default({})) }}"{% if current_route starts with prefix %} aria-current="page"{% endif %}>{{ item.label }}</a>
-{% endmacro %}
-
+{# Le modèle du menu est dans _nav_links.html.twig #}
 <nav class="sidebar" aria-label="Menu principal">
     <a class="brand" href="{{ path('app_dashboard') }}">
         <img src="{{ asset('images/logo-corsaires.png') }}" alt="" width="48" height="48">
         <span><strong>Corsaires</strong> · Matériel</span>
     </a>
     <div class="sidebar-links">
-        {% for group in visible %}
-            {% if group.title %}<p class="nav-group">{{ group.title }}</p>{% endif %}
-            {% for item in group.items %}{{ _self.entry(item, current_route) }}{% endfor %}
-        {% endfor %}
+        {% include '_nav_links.html.twig' %}
     </div>
     <a class="logout" href="{{ path('app_logout') }}">Déconnexion</a>
 </nav>
@@ -72,16 +16,11 @@
 </header>
 
 <nav class="bottombar" aria-label="Menu mobile">
-    {% for group in visible %}
-        {% for item in group.items|filter(i => i.main|default(false)) %}{{ _self.entry(item, current_route) }}{% endfor %}
-    {% endfor %}
+    {% include '_nav_links.html.twig' with {main_only: true} %}
     <details class="more">
         <summary>Plus</summary>
         <div class="more-panel">
-            {% for group in visible %}
-                {% if group.title %}<p class="nav-group">{{ group.title }}</p>{% endif %}
-                {% for item in group.items %}{{ _self.entry(item, current_route) }}{% endfor %}
-            {% endfor %}
+            {% include '_nav_links.html.twig' %}
             <a href="{{ path('app_logout') }}">Déconnexion</a>
         </div>
     </details>

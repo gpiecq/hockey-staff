@@ -26,3 +26,12 @@ qu'elle coûte si elle est fausse. À relire par l'utilisateur.
   variante ; sinon l'utilisateur choisit. Achat et Dotation préremplissent la variante (`EntryController` utilise
   désormais `initialData`, comme les autres écrans). Coût si faux : un choix de lieu de plus quand le stock est
   réparti, ou un lieu mal deviné si le stock a bougé entre le scan et l'action.
+
+## App native
+
+- **R54 — Détection native par User-Agent, navigation web masquée, page `/menu`.** `is_native_app()` est vrai si le
+  `User-Agent` de la requête principale contient `Hotwire Native`. Dans ce cas `base.html.twig` n'affiche ni la
+  navigation (barre latérale, en-tête et barre du bas mobiles) ni la `.topbar` ; l'onglet natif « Menu » ouvre `/menu`,
+  qui rend les mêmes liens groupés que le panneau « Plus » (gabarit partagé `_nav_links.html.twig`) plus Déconnexion.
+  Coût si faux : un navigateur dont l'UA contiendrait cette chaîne perdrait la navigation ; l'UA est fixé par nos
+  coques natives.
