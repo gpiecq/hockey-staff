@@ -349,7 +349,7 @@ final class ProductBrowseTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertSame('Produits', trim($crawler->filter('nav.sidebar [aria-current="page"]')->text()));
         $bottom = $crawler->filter('nav.bottombar > a')->each(static fn (Crawler $a): string => trim($a->text()));
-        self::assertSame(['Tableau de bord', 'Stock', 'Produits'], $bottom);
+        self::assertSame(['Tableau de bord', 'Scanner', 'Stock', 'Produits'], $bottom);
         self::assertSame('Plus', trim($crawler->filter('nav.bottombar summary')->text()));
     }
 

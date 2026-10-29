@@ -480,7 +480,7 @@ final class ImportControllerTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSelectorExists('.sidebar a[href="/imports"]');
-        self::assertSelectorExists('.bottombar > a[href="/imports"]');
+        self::assertSelectorExists('.bottombar .more-panel a[href="/imports"]');
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('lowRoles')]

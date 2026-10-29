@@ -30,11 +30,17 @@ class VariantRepository extends ServiceEntityRepository
     }
 
     /**
-     * Variante par code HV-… (espaces ignorés, insensible à la casse), y compris supprimée si le filtre est désactivé.
+     * Variante par code HV-… (espaces ignorés, insensible à la casse) ; null si son produit est supprimé
+     * (le filtre softdeleteable s'applique à la jointure).
      */
     public function findOneByCode(string $code): ?Variant
     {
-        $variant = $this->findOneBy(['code' => strtoupper(trim($code))]);
+        $variant = $this->createQueryBuilder('v')
+            ->innerJoin('v.product', 'p')
+            ->where('v.code = :code')
+            ->setParameter('code', strtoupper(trim($code)))
+            ->getQuery()
+            ->getOneOrNullResult();
 
         return $variant instanceof Variant ? $variant : null;
     }

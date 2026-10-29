@@ -13,6 +13,7 @@
         {label: 'Tableau de bord', route: 'app_dashboard', main: true},
     ]},
     {title: 'Stock', role: 'ROLE_VIEWER', items: [
+        {label: 'Scanner', route: 'scan_index', main: true},
         {label: 'Stock', route: 'stock_index', prefix: 'stock_index', main: true},
         {label: 'Opérations', route: 'stock_operation_index', prefix: 'stock_operation'},
         {label: 'Nouvel achat', route: 'stock_entry_new', params: {type: 'achat'}, prefix: 'stock_entry', role: 'ROLE_STOCK'},
@@ -33,7 +34,7 @@
         {label: 'Fournisseurs', route: 'catalogue_supplier_index', prefix: 'catalogue_supplier'},
         {label: 'Marques', route: 'catalogue_brand_index', prefix: 'catalogue_brand'},
         {label: 'Catégories', route: 'catalogue_category_index', prefix: 'catalogue_category'},
-        {label: 'Imports', route: 'import_index', prefix: 'import_', role: 'ROLE_MANAGER', main: true},
+        {label: 'Imports', route: 'import_index', prefix: 'import_', role: 'ROLE_MANAGER'},
     ]},
     {title: 'Admin', role: 'ROLE_ADMIN', items: [
         {label: 'Utilisateurs', route: 'admin_user_index', prefix: 'admin_user'},

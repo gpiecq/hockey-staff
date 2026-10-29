@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Scanner{% endblock %}
+
+{% block body %}
+    <div class="page-head">
+        <h1>Scanner</h1>
+    </div>
+
+    <p>Scannez l'étiquette ou saisissez le code (EAN ou HV-…).</p>
+
+    {% if unknown %}
+        <div class="flash flash-error" role="alert">Code inconnu : {{ code }}</div>
+    {% endif %}
+
+    <form method="get" action="{{ path('scan_index') }}" data-scan-form>
+        <label for="scan-code">Code</label>
+        <input type="text" name="code" id="scan-code" value="{{ code }}" autofocus autocomplete="off">
+        <button type="submit" class="btn">Ouvrir</button>
+    </form>
+
+    <div data-scan-zone></div>
+
+    {% if unknown %}
+        <p><a href="{{ path('catalogue_product_index', {q: code}) }}">Chercher dans le catalogue</a></p>
+    {% endif %}
+{% endblock %}
