@@ -29,7 +29,7 @@ final class HotwireNativeController extends AbstractController
     }
 
     /**
-     * @param array<string, mixed> $configuration
+     * @param array{settings: \stdClass, rules: list<array{patterns: list<string>, properties: array<string, mixed>}>} $configuration
      */
     private function cached(array $configuration): JsonResponse
     {

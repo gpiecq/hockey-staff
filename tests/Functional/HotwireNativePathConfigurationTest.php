@@ -63,6 +63,16 @@ final class HotwireNativePathConfigurationTest extends WebTestCase
         self::assertSame(['.*'], $data['rules'][0]['patterns']);
     }
 
+    public function testSettingsSerializeAsJsonObject(): void
+    {
+        foreach ([self::IOS, self::ANDROID] as $url) {
+            $client = self::$client ??= static::createClient();
+            $client->request('GET', $url);
+
+            self::assertStringContainsString('"settings":{}', (string) $client->getResponse()->getContent(), $url);
+        }
+    }
+
     public function testMovementFormsOpenAsModal(): void
     {
         $rules = $this->fetch(self::IOS)['rules'];

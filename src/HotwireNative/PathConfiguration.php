@@ -8,7 +8,7 @@ namespace App\HotwireNative;
  * Hotwire Native path configuration: rules are applied in order, the last matching one wins.
  *
  * @phpstan-type Rule array{patterns: list<string>, properties: array<string, mixed>}
- * @phpstan-type Configuration array{settings: array<string, mixed>, rules: list<Rule>}
+ * @phpstan-type Configuration array{settings: \stdClass, rules: list<Rule>}
  */
 final readonly class PathConfiguration
 {
@@ -50,7 +50,7 @@ final readonly class PathConfiguration
     private function build(?string $defaultUri, ?string $modalUri): array
     {
         return [
-            'settings' => [],
+            'settings' => new \stdClass(),
             'rules' => [
                 ['patterns' => self::DEFAULT_PATTERNS, 'properties' => $this->properties('default', true, $defaultUri)],
                 ['patterns' => self::MODAL_PATTERNS, 'properties' => $this->properties('modal', false, $modalUri)],
