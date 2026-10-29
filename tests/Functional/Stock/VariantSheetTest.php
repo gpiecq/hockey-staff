@@ -248,6 +248,42 @@ final class VariantSheetTest extends WebTestCase
         self::assertSame(0, $crawler->selectLink('Sortie')->count());
     }
 
+    public function testNoEntryActionsForArchivedVariant(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-11', 'Casque archivé');
+        $variant->archive();
+        $em->flush();
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+
+        self::assertResponseIsSuccessful();
+        $actions = $client->getCrawler()->filter('.variant-actions');
+        self::assertSame(0, $actions->selectLink('Achat')->count());
+        self::assertSame(0, $actions->selectLink('Dotation')->count());
+    }
+
+    public function testNoEntryActionsForInactiveVariant(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-12', 'Casque inactif');
+        $variant->setActive(false);
+        $em->flush();
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+
+        self::assertResponseIsSuccessful();
+        $actions = $client->getCrawler()->filter('.variant-actions');
+        self::assertSame(0, $actions->selectLink('Achat')->count());
+        self::assertSame(0, $actions->selectLink('Dotation')->count());
+    }
+
     public function testTransferAndOutPrefillSingleActiveLocation(): void
     {
         $client = static::createClient();

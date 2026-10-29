@@ -29,7 +29,7 @@
     {% set canLoan = equipment and canMove %}
     {% set canReturn = is_granted('STOCK_MOVE') and holders is not empty %}
     {% set canSell = equipment and secondHand is not empty and is_granted('SALE_MANAGE') %}
-    {% set canEnter = is_granted('STOCK_MOVE') %}
+    {% set canEnter = is_granted('STOCK_MOVE') and variant.active and not variant.archived %}
     {% set lieuParams = singleLocationId is null ? {} : {lieu: singleLocationId} %}
     {% if canEnter or canSell %}
         <div class="actions variant-actions">

@@ -24,7 +24,8 @@ qu'elle coûte si elle est fausse. À relire par l'utilisateur.
   Prêter, Retour, Donner, Transfert, Sortie et Vendre selon les droits et le stock. Le paramètre `lieu` n'est
   transmis à Transfert et Sortie (où il préremplit le lieu source) que si un seul lieu actif contient du stock de la
   variante ; sinon l'utilisateur choisit. Achat et Dotation préremplissent la variante (`EntryController` utilise
-  désormais `initialData`, comme les autres écrans). Coût si faux : un choix de lieu de plus quand le stock est
+  désormais `initialData`, comme les autres écrans). Achat et Dotation sont « toujours proposés » tant que la variante est au catalogue (active et non archivée) : une
+  variante archivée ou « plus au catalogue » ne peut plus recevoir d'entrée. Coût si faux : un choix de lieu de plus quand le stock est
   réparti, ou un lieu mal deviné si le stock a bougé entre le scan et l'action.
 
 ## App native

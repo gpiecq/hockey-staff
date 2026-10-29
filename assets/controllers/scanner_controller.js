@@ -1,3 +1,4 @@
+/* stimulusFetch: 'lazy' */
 import { Controller } from '@hotwired/stimulus';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat, DecodeHintType } from '@zxing/library';
@@ -16,6 +17,15 @@ export default class extends Controller {
 
     controls = null;
     starting = false;
+
+    connect() {
+        // Turbo snapshots the DOM before leaving the page: do not cache an open camera.
+        this.beforeCache = () => {
+            this.stop();
+            this.say('');
+        };
+        document.addEventListener('turbo:before-cache', this.beforeCache);
+    }
 
     async start() {
         if (this.controls || this.starting) {
@@ -75,6 +85,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        document.removeEventListener('turbo:before-cache', this.beforeCache);
         this.stop();
     }
 
