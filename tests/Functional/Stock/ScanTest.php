@@ -51,6 +51,23 @@ final class ScanTest extends WebTestCase
         self::assertSelectorNotExists('.flash-error');
     }
 
+    public function testScanPageWiresScannerControllers(): void
+    {
+        $client = static::createClient();
+        $this->login($client);
+
+        $client->request('GET', '/scan');
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorExists('form[data-scan-form][data-controller~="scanner"][data-controller~="bridge--barcode-scanner"]');
+        self::assertSelectorTextContains('button[data-scanner-target="webButton"]', 'Scanner avec la caméra');
+        self::assertSelectorExists('button[data-bridge--barcode-scanner-target="nativeButton"][hidden]');
+        self::assertSelectorTextContains('button[data-bridge--barcode-scanner-target="nativeButton"]', 'Scanner');
+        self::assertSelectorExists('video[data-scanner-target="video"][hidden][playsinline][muted]');
+        self::assertSelectorExists('[role="status"][data-scanner-target="status"]');
+        self::assertSelectorExists('input#scan-code[data-scanner-target="input"][data-bridge--barcode-scanner-target="input"]');
+    }
+
     public function testEanRedirectsToVariantSheet(): void
     {
         $client = static::createClient();

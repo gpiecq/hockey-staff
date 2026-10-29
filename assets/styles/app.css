@@ -27,6 +27,11 @@ a{color:var(--band)}
 .btn-block{width:100%}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
+/* —— Scan caméra —— */
+.scan-zone{margin-top:1rem}
+.scan-video{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:.75rem;background:var(--navy);margin-top:.75rem}
+.scan-status{margin:.5rem 0 0;color:var(--muted);min-height:1.5rem}
+
 /* L'attribut hidden doit l'emporter sur les règles display (.field, .actions…) */
 [hidden]{display:none!important}
 

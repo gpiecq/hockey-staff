@@ -36,4 +36,8 @@ return [
     'tom-select/dist/css/tom-select.default.css' => ['version' => '2.6.2', 'type' => 'css'],
     'tom-select/dist/css/tom-select.bootstrap4.css' => ['version' => '2.6.2', 'type' => 'css'],
     'tom-select/dist/css/tom-select.bootstrap5.css' => ['version' => '2.6.2', 'type' => 'css'],
+    '@zxing/browser' => ['version' => '0.2.1'],
+    '@hotwired/hotwire-native-bridge' => ['version' => '1.2.2'],
+    '@zxing/library' => ['version' => '0.23.0'],
+    'ts-custom-error' => ['version' => '3.3.1'],
 ];

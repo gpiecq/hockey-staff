@@ -41,3 +41,16 @@ qu'elle coûte si elle est fausse. À relire par l'utilisateur.
   téléchargent au démarrage ; les formulaires de mouvement (entrée, sortie, transfert, prêt, retour, don, vente) et le
   login s'ouvrent en modale, le reste en pile par défaut. Un test compare les patterns aux routes réelles. Coût si
   faux : un changement d'URL non répercuté ici ferait ouvrir un formulaire en pleine page ; le test le détecte.
+
+## Scan caméra et bridge
+
+- **R56 — Scan web par zxing seul, sans `BarcodeDetector`.** `@zxing/browser` (`BrowserMultiFormatReader`, formats
+  EAN-13, EAN-8, UPC-A, UPC-E, Code128, QR, caméra arrière) lit le flux ; l'API `BarcodeDetector` n'existe ni sur
+  Safari ni sur Firefox et n'ajouterait qu'un second chemin de code à tester pour un gain de performance inutile ici
+  (un scan par ouverture de page). Hors contexte sécurisé ou sans `getUserMedia`, la saisie manuelle reste l'unique
+  voie, avec un message. Coût si faux : un décodage un peu plus lent sur Chrome Android que le détecteur natif.
+- **R57 — Contrat bridge `barcode-scanner` figé pour le lot 3b.** Composant `barcode-scanner`, événement `scan`
+  (données vides hors `metadata.url` ajoutée par la bibliothèque), réponse `{ code: string }` ; une annulation côté
+  natif n'envoie aucune réponse et la page ne change pas. Le bouton « Scanner » natif remplace le bouton caméra web
+  seulement si le composant est annoncé par la coque (`this.enabled`), la saisie manuelle restant disponible. Coût si
+  faux : toute évolution du contrat impose de modifier en même temps le contrôleur Stimulus et les deux coques.
