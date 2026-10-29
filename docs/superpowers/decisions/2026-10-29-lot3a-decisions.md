@@ -17,3 +17,12 @@ qu'elle coûte si elle est fausse. À relire par l'utilisateur.
 - **R52 — Produit supprimé = code inconnu, y compris pour `HV-…`.** `VariantRepository::findOneByCode` joint le
   produit (le filtre softdeleteable s'applique à la jointure), comme la résolution par EAN. Coût si faux : un code
   `HV-` d'un produit supprimé n'ouvre plus de fiche ; le seul appelant est `CodeResolver`.
+
+## Fiche variante
+
+- **R53 — La fiche variante est la page d'actions du scan, sans écran intermédiaire.** Elle propose Achat, Dotation,
+  Prêter, Retour, Donner, Transfert, Sortie et Vendre selon les droits et le stock. Le paramètre `lieu` n'est
+  transmis à Transfert et Sortie (où il préremplit le lieu source) que si un seul lieu actif contient du stock de la
+  variante ; sinon l'utilisateur choisit. Achat et Dotation préremplissent la variante (`EntryController` utilise
+  désormais `initialData`, comme les autres écrans). Coût si faux : un choix de lieu de plus quand le stock est
+  réparti, ou un lieu mal deviné si le stock a bougé entre le scan et l'action.

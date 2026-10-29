@@ -62,6 +62,16 @@ final class VariantSheetController extends AbstractController
         $rank = array_flip(array_map(static fn (StockCondition $condition): string => $condition->value, StockCondition::cases()));
         usort($secondHand, static fn (StockLevel $a, StockLevel $b): int => [$a->getLocation()->getName(), $rank[$a->getCondition()->value]] <=> [$b->getLocation()->getName(), $rank[$b->getCondition()->value]]);
 
+        // Lieu à préremplir (Transfert, Sortie) : le seul lieu actif qui contient du stock de la variante.
+        $activeLocationIds = [];
+        foreach ($levels as $level) {
+            $locationId = $level->getLocation()->getId();
+            if (null !== $locationId && $level->getQuantity() > 0 && $level->getLocation()->isActive()) {
+                $activeLocationIds[$locationId] = true;
+            }
+        }
+        $singleLocationId = 1 === \count($activeLocationIds) ? array_key_first($activeLocationIds) : null;
+
         $season = $seasons->get();
 
         return $this->render('stock/variant/show.html.twig', [
@@ -72,6 +82,7 @@ final class VariantSheetController extends AbstractController
             'locations' => $locations,
             'holders' => $holdings->findByVariant($variant),
             'secondHand' => $secondHand,
+            'singleLocationId' => $singleLocationId,
         ]);
     }
 }

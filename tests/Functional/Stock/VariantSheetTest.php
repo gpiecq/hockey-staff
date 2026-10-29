@@ -79,10 +79,12 @@ final class VariantSheetTest extends WebTestCase
         $client->request('GET', '/stock/variantes/'.$variant->getId());
 
         self::assertResponseIsSuccessful();
-        self::assertCount(0, $client->getCrawler()->filter('.variant-actions'));
-        foreach (['Prêter', 'Retour', 'Donner', 'Vendre'] as $label) {
-            self::assertSame(0, $client->getCrawler()->selectLink($label)->count(), $label);
+        $actions = $client->getCrawler()->filter('.variant-actions');
+        foreach (['Prêter', 'Retour', 'Donner', 'Transfert', 'Sortie', 'Vendre'] as $label) {
+            self::assertSame(0, $actions->selectLink($label)->count(), $label);
         }
+        self::assertSame(1, $actions->selectLink('Achat')->count());
+        self::assertSame(1, $actions->selectLink('Dotation')->count());
     }
 
     public function testEquipmentSheetShowsConditionsHoldersAndActions(): void
@@ -109,7 +111,7 @@ final class VariantSheetTest extends WebTestCase
         foreach (['Prêter', 'Retour', 'Donner', 'Sortie', 'Vendre'] as $label) {
             self::assertSame(1, $actions->selectLink($label)->count(), $label);
         }
-        self::assertSame('/stock/sortie?variant='.$helmet->getId(), $actions->selectLink('Sortie')->attr('href'));
+        self::assertSame('/stock/sortie?variant='.$helmet->getId().'&lieu='.$local->getId(), $actions->selectLink('Sortie')->attr('href'));
     }
 
     public function testConsumableSheetShowsPlainQuantityWithoutLoan(): void
@@ -228,7 +230,75 @@ final class VariantSheetTest extends WebTestCase
         self::assertSame('Vendre', trim($table->filter('a[href="'.$href.'"]')->text()));
     }
 
-    public function testViewerSeesNoActionButton(): void
+    public function testEntryActionsAlwaysShownForStockRole(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-10', 'Casque sans stock');
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+
+        self::assertResponseIsSuccessful();
+        $crawler = $client->getCrawler()->filter('.variant-actions');
+        self::assertSame('/stock/entree/achat?variant='.$variant->getId(), $crawler->selectLink('Achat')->attr('href'));
+        self::assertSame('/stock/entree/dotation?variant='.$variant->getId(), $crawler->selectLink('Dotation')->attr('href'));
+        self::assertSame(0, $crawler->selectLink('Transfert')->count());
+        self::assertSame(0, $crawler->selectLink('Sortie')->count());
+    }
+
+    public function testTransferAndOutPrefillSingleActiveLocation(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $variant = $this->sheet($client);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $local = $em->getRepository(Location::class)->findOneBy(['name' => 'Local']);
+        \assert($local instanceof Location);
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+
+        $crawler = $client->getCrawler()->filter('.variant-actions');
+        self::assertSame('/stock/transfert?variant='.$variant->getId().'&lieu='.$local->getId(), $crawler->selectLink('Transfert')->attr('href'));
+        self::assertSame('/stock/sortie?variant='.$variant->getId().'&lieu='.$local->getId(), $crawler->selectLink('Sortie')->attr('href'));
+    }
+
+    public function testNoLocationPrefillWhenSeveralActiveLocations(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $variant = $this->sheet($client);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        StockFixtures::level($em, $variant, StockFixtures::location($em, 'Vestiaire'), 2, 15000, StockCondition::New);
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+
+        $crawler = $client->getCrawler()->filter('.variant-actions');
+        self::assertSame('/stock/transfert?variant='.$variant->getId(), $crawler->selectLink('Transfert')->attr('href'));
+        self::assertSame('/stock/sortie?variant='.$variant->getId(), $crawler->selectLink('Sortie')->attr('href'));
+    }
+
+    public function testNoLocationPrefillWhenOnlyInactiveLocation(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        $em = $client->getContainer()->get(EntityManagerInterface::class);
+        \assert($em instanceof EntityManagerInterface);
+        $closed = StockFixtures::location($em, 'Ancien local');
+        $variant = StockScenario::variant($em, ProductKind::Equipment, 'CASQUE-11', 'Casque lieu fermé');
+        StockFixtures::level($em, $variant, $closed, 2, 15000, StockCondition::New);
+        $closed->setActive(false);
+        $em->flush();
+
+        $client->request('GET', '/stock/variantes/'.$variant->getId());
+
+        self::assertSame('/stock/sortie?variant='.$variant->getId(), $client->getCrawler()->filter('.variant-actions')->selectLink('Sortie')->attr('href'));
+    }
+
+    public function testViewerSeesNoActions(): void
     {
         $client = static::createClient();
         $this->login($client, UserRole::Viewer);
@@ -237,8 +307,8 @@ final class VariantSheetTest extends WebTestCase
         $client->request('GET', '/stock/variantes/'.$variant->getId());
 
         self::assertResponseIsSuccessful();
-        foreach (['Prêter', 'Retour', 'Donner', 'Sortie'] as $label) {
-            self::assertSame(0, $client->getCrawler()->selectLink($label)->count(), $label);
+        foreach (['Achat', 'Dotation', 'Transfert', 'Sortie', 'Prêter'] as $label) {
+            self::assertSame(0, $client->getCrawler()->filter('.variant-actions')->selectLink($label)->count(), $label);
         }
     }
 }

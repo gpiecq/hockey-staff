@@ -10,6 +10,7 @@ use App\Enum\StockCondition;
 use App\Enum\StockMovementType;
 use App\Form\Stock\StockEntryType;
 use App\Repository\LocationRepository;
+use App\Repository\VariantRepository;
 use App\Stock\Input\StockEntry;
 use App\Stock\Input\StockEntryLine;
 use App\Stock\StockException;
@@ -28,7 +29,7 @@ final class EntryController extends AbstractController
     use StockOperationScreen;
 
     #[Route('/stock/entree/{type}', name: 'stock_entry_new', requirements: ['type' => 'achat|dotation'], methods: ['GET', 'POST'])]
-    public function new(string $type, Request $request, StockMovementRecorder $recorder, LocationRepository $locations): Response
+    public function new(string $type, Request $request, StockMovementRecorder $recorder, LocationRepository $locations, VariantRepository $variants): Response
     {
         $isPurchase = 'achat' === $type;
         $movementType = $isPurchase ? StockMovementType::PurchaseIn : StockMovementType::DonationIn;
@@ -38,7 +39,7 @@ final class EntryController extends AbstractController
             return $this->render('stock/entry/form.html.twig', ['form' => null, 'title' => $title, 'type' => $type]);
         }
 
-        $form = $this->createForm(StockEntryType::class, ['lines' => [['quantity' => 1, 'condition' => StockCondition::New]]], ['with_cost' => $isPurchase]);
+        $form = $this->createForm(StockEntryType::class, $this->initialData($request, $variants, $locations, 'location'), ['with_cost' => $isPurchase]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {

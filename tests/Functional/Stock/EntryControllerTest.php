@@ -231,4 +231,17 @@ final class EntryControllerTest extends WebTestCase
         self::assertStringContainsString('REF-OK', $body);
         self::assertStringNotContainsString('REF-OTHER', $body);
     }
+
+    public function testFormPrefilledFromVariant(): void
+    {
+        $client = static::createClient();
+        $this->login($client, UserRole::Stock);
+        StockFixtures::location($this->em($client));
+        $variant = $this->variant($client);
+
+        $crawler = $client->request('GET', '/stock/entree/achat?variant='.$variant->getId());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame((string) $variant->getId(), $crawler->filter('select[name="stock_entry[lines][0][variant]"] option[selected]')->attr('value'));
+    }
 }

@@ -29,13 +29,20 @@
     {% set canLoan = equipment and canMove %}
     {% set canReturn = is_granted('STOCK_MOVE') and holders is not empty %}
     {% set canSell = equipment and secondHand is not empty and is_granted('SALE_MANAGE') %}
-    {% if canLoan or canReturn or canMove or canSell %}
+    {% set canEnter = is_granted('STOCK_MOVE') %}
+    {% set lieuParams = singleLocationId is null ? {} : {lieu: singleLocationId} %}
+    {% if canEnter or canSell %}
         <div class="actions variant-actions">
-            {% if canLoan %}<a class="btn btn-primary" href="{{ path('stock_loan_new', {id: variant.id}) }}">Prêter</a>{% endif %}
+            {% if canEnter %}
+                <a class="btn btn-primary" href="{{ path('stock_entry_new', {type: 'achat', variant: variant.id}) }}">Achat</a>
+                <a class="btn" href="{{ path('stock_entry_new', {type: 'dotation', variant: variant.id}) }}">Dotation</a>
+            {% endif %}
+            {% if canLoan %}<a class="btn" href="{{ path('stock_loan_new', {id: variant.id}) }}">Prêter</a>{% endif %}
             {% if canReturn %}<a class="btn" href="{{ path('stock_loan_return', {id: variant.id}) }}">Retour</a>{% endif %}
             {% if canMove %}
                 <a class="btn" href="{{ path('stock_gift_new', {id: variant.id}) }}">Donner</a>
-                <a class="btn" href="{{ path('stock_out_new', {variant: variant.id}) }}">Sortie</a>
+                <a class="btn" href="{{ path('stock_transfer_new', {variant: variant.id}|merge(lieuParams)) }}">Transfert</a>
+                <a class="btn" href="{{ path('stock_out_new', {variant: variant.id}|merge(lieuParams)) }}">Sortie</a>
             {% endif %}
             {% if canSell %}<a class="btn" href="{{ path('sale_new', {variant: variant.id}) }}">Vendre</a>{% endif %}
         </div>
