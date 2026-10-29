@@ -126,6 +126,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue)}
     .content{padding:2rem 2.5rem}
 }
 
+/* —— App native (Hotwire Native) : navigation web masquée, onglets natifs —— */
+body.native .main{margin-left:0}
+body.native .content{padding:1.5rem 1rem calc(1.5rem + env(safe-area-inset-bottom))}
+.menu-list{display:flex;flex-direction:column;background:var(--surface);border-top:3px solid var(--blue);margin:0 -1rem}
+.menu-list a{display:flex;align-items:center;min-height:3rem;padding:0 1.25rem;border-bottom:1px solid var(--line-soft);color:var(--blue);text-decoration:none;font-weight:800}
+.menu-list a[aria-current=page]{background:var(--blue);color:#fff}
+.menu-list .nav-group{margin:0;padding:.75rem 1.25rem .25rem;font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.menu-list .logout{margin-top:1rem;border-top:1px solid var(--line);color:var(--danger)}
+
 /* —— Pagination —— */
 .pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;margin-top:1rem}
 .pagination-count{margin:0;color:var(--muted);font-weight:700}

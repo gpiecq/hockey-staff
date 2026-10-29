@@ -20,12 +20,13 @@
         <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
         {% endif %}
     </head>
-    <body>
+    {% set native = is_native_app() %}
+    <body{% if native %} class="native"{% endif %}>
         {% block shell %}
             <div class="shell">
-                {% if not is_native_app() %}{% include '_nav.html.twig' %}{% endif %}
+                {% if not native %}{% include '_nav.html.twig' %}{% endif %}
                 <div class="main">
-                    {% if not is_native_app() %}
+                    {% if not native %}
                     <div class="topbar">
                         <span class="topbar-user">{{ app.user.fullName }} · {{ app.user.role.label }}</span>
                     </div>

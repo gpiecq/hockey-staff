@@ -19,6 +19,7 @@ final class NativeAppTest extends WebTestCase
         $client = $this->clientAs(UserRole::Viewer);
         $crawler = $client->request('GET', '/');
 
+        self::assertCount(0, $crawler->filter('body.native'));
         foreach (['nav.sidebar', 'nav.bottombar', '.mobile-header', '.topbar'] as $selector) {
             self::assertCount(1, $crawler->filter($selector), $selector);
         }
@@ -29,6 +30,7 @@ final class NativeAppTest extends WebTestCase
         $client = $this->clientAs(UserRole::Viewer);
         $crawler = $client->request('GET', '/', server: ['HTTP_USER_AGENT' => self::NATIVE_UA]);
 
+        self::assertCount(1, $crawler->filter('body.native'));
         foreach (['nav.sidebar', 'nav.bottombar', '.mobile-header', '.topbar'] as $selector) {
             self::assertCount(0, $crawler->filter($selector), $selector);
         }
