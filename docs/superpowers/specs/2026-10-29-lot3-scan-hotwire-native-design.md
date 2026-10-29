@@ -108,8 +108,10 @@ restent des liens simples.
   Twig et testable.
 - En natif : la navigation web (menu latéral, barre du bas, barre du haut) est masquée, la coque native fournit la
   navigation ; le titre de page reste dans `<title>` (repris par la barre native).
-  Choix de Claude : la coque native a des onglets « Scanner », « Stock », « Catalogue », « Accueil » (chargeant
-  `/scan`, `/stock`, `/catalogue`, `/`) ; détail en 3b.
+  Choix de Claude : la coque native a des onglets « Scanner », « Stock », « Catalogue », « Menu » (chargeant
+  `/scan`, `/stock`, `/catalogue`, `/menu`) ; détail en 3b. La page web `GET /menu` (`app_menu`, tout utilisateur
+  connecté) liste les mêmes liens que le panneau « Plus » du menu mobile, groupés, avec « Déconnexion » : sans
+  elle, la déconnexion et les écrans secondaires seraient inaccessibles en natif.
 - Path configuration servie par Symfony, publique (lue avant connexion), JSON :
   - `GET /hotwire-native/v1/ios-path-configuration.json`
   - `GET /hotwire-native/v1/android-path-configuration.json`
